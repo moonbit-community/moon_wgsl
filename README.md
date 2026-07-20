@@ -58,20 +58,20 @@ Run workspace checks from the repository root:
 ```bash
 moon fmt
 moon info --target all
-moon check --target all --deny-warn
+moon check --target all --warn-list +73 --deny-warn
 moon test --target all
 ```
 
-Publish the four-module WGSL compatibility line with the synchronized release
-script:
+Publish the synchronized WGSL compatibility line and the independently
+versioned WESL module with the release script:
 
 ```bash
-moon run --target js publish.mbtx <version>
+moon run --target js publish.mbtx <workspace-version> <wesl-version>
 ```
 
 `moon_wesl` depends on `Milky2018/wgsl` for official WGSL parsing and semantic
-validation. It remains versioned and published separately while its first
-replacement release is prepared in this repository.
+validation. The script publishes it after the synchronized line so the pinned
+WGSL Core version is available first.
 
 ## License
 

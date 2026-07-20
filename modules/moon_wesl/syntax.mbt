@@ -122,7 +122,7 @@ fn syntax_resolve_import_module_path(
   module_path_text : String,
 ) -> ModulePath raise WeslCompileError {
   let raw_module_path = parse_module_path(module_path_text.trim().to_owned()) catch {
-    err => raise WeslCompileError::Parse(err.message())
+    err => raise Parse(err.message())
   }
   match raw_module_path.origin {
     Package(name) if raw_module_path.components.is_empty() =>
@@ -143,24 +143,20 @@ fn syntax_flatten_import_node(
   let full_path = syntax_concat_segments(prefix, node.path_segments)
   if node.is_leaf() {
     if full_path.length() == 0 {
-      raise WeslCompileError::Parse(
-        "import path must include a module or item (\{context})",
-      )
+      raise Parse("import path must include a module or item (\{context})")
     }
     let namespace_path = syntax_resolve_import_module_path(
       current_path,
       full_path.join("::"),
     ) catch {
-      Parse(reason) => raise WeslCompileError::Parse("\{reason} (\{context})")
+      Parse(reason) => raise Parse("\{reason} (\{context})")
       err => raise err
     }
     if namespace_path.components.length() == 0 {
-      raise WeslCompileError::Parse(
-        "import path must include a module name (\{context})",
-      )
+      raise Parse("import path must include a module name (\{context})")
     }
     if full_path.length() == 1 {
-      items.push(ImportedName::{
+      items.push({
         export_module_path: None,
         export_name: None,
         namespace_path,
@@ -173,10 +169,10 @@ fn syntax_flatten_import_node(
       current_path,
       full_path[:full_path.length() - 1].join("::"),
     ) catch {
-      Parse(reason) => raise WeslCompileError::Parse("\{reason} (\{context})")
+      Parse(reason) => raise Parse("\{reason} (\{context})")
       err => raise err
     }
-    items.push(ImportedName::{
+    items.push({
       export_module_path: Some(export_module_path),
       export_name: Some(item_name),
       namespace_path,
@@ -612,7 +608,7 @@ fn GlobalDeclaration::is_entrypoint(self : GlobalDeclaration) -> Bool {
 
 ///|
 fn GlobalDeclaration::is_const_assert(self : GlobalDeclaration) -> Bool {
-  self.header is GlobalDeclarationHeader::ConstAssert(_)
+  self.header is ConstAssert(_)
 }
 
 ///|
@@ -623,7 +619,7 @@ pub(all) struct TranslationUnit {
 
 ///|
 pub fn TranslationUnit::default() -> TranslationUnit {
-  TranslationUnit::{ imports: [], global_declarations: [] }
+  { imports: [], global_declarations: [] }
 }
 
 ///|

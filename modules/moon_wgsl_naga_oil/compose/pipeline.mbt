@@ -420,11 +420,11 @@ fn WgslComposeSymbolTable::generated_import_provenance(
     if !seen.contains(name) {
       seen.add(name)
       provenance.push(
-        @moon_wgsl_naga.WgslNagaGeneratedImportProvenance(
+        WgslNagaGeneratedImportProvenance(
           name,
           binding.rel_path,
           binding.target_name,
-          @moon_wgsl_naga.WgslNagaGeneratedImportProvenanceKind::VirtualOverrideSymbol,
+          VirtualOverrideSymbol,
           false,
         ),
       )
@@ -449,11 +449,11 @@ fn WgslComposeSymbolTable::generated_import_provenance(
     if !seen.contains(name) {
       seen.add(name)
       provenance.push(
-        @moon_wgsl_naga.WgslNagaGeneratedImportProvenance(
+        WgslNagaGeneratedImportProvenance(
           name,
           origin.rel_path(),
           origin.source_symbol_name(),
-          @moon_wgsl_naga.WgslNagaGeneratedImportProvenanceKind::ImportedSourceSymbol,
+          ImportedSourceSymbol,
           root_rel_path.has_suffix(".glsl") ||
           origin.rel_path().has_suffix(".glsl"),
           local_spelling=self.generated_import_has_local_spelling(
@@ -518,7 +518,7 @@ fn WgslComposeSymbolTable::naga_import_arena_events(
     let symbols : Array[@moon_wgsl_naga.WgslNagaImportArenaSymbol] = []
     for symbol in event.generated_symbols() {
       symbols.push(
-        @moon_wgsl_naga.WgslNagaImportArenaSymbol(
+        WgslNagaImportArenaSymbol(
           wgsl_compose_declaration_kind_to_naga(symbol.kind()),
           symbol.source_symbol_name(),
           symbol.generated_symbol_name(),
@@ -528,7 +528,7 @@ fn WgslComposeSymbolTable::naga_import_arena_events(
       )
     }
     events.push(
-      @moon_wgsl_naga.WgslNagaImportArenaEvent(
+      WgslNagaImportArenaEvent(
         event.sequence(),
         event.importer_rel_path(),
         event.target_rel_path(),

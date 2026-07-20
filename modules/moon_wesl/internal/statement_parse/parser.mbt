@@ -75,7 +75,7 @@ fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./parser.mbty
-// 13|    statements                    { FunctionBodyParseNode::{ statements: $1 } }
+// 13|    statements                    { { statements: $1 } }
 
 ///|
 fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -83,7 +83,7 @@ fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_FunctionBodyParseNode(
     {
       ()
-      FunctionBodyParseNode::{ statements: _dollar1 }
+      { statements: _dollar1 }
     },
   )
 }

@@ -69,7 +69,7 @@ pub(all) struct Inputs {
 
 ///|
 pub fn Inputs::new_zero_initialized() -> Inputs {
-  Inputs::{
+  {
     vertex_index: Some(0),
     instance_index: Some(0),
     position: Some([0.0, 0.0, 0.0, 0.0]),
@@ -179,9 +179,7 @@ fn const_eval_parse_expression_value(
   let parser = ConstEvalParser::new(tokens)
   let expr = parser.parse_expression()
   if !parser.view().is_empty() {
-    raise WeslCompileError::Validation(
-      "unexpected trailing const-eval expression tokens",
-    )
+    raise Validation("unexpected trailing const-eval expression tokens")
   }
   const_eval_eval_expr(expr, ctx)
 }
@@ -201,9 +199,7 @@ fn const_eval_parse_type_source(
   let parser = ConstEvalParser::new(tokens)
   let type_ = parser.parse_type()
   if !parser.view().is_empty() {
-    raise WeslCompileError::Validation(
-      "unexpected trailing const-eval type tokens",
-    )
+    raise Validation("unexpected trailing const-eval type tokens")
   }
   type_
 }
@@ -229,10 +225,10 @@ fn const_eval_type_source_with_unit(
 ) -> ConstEvalType raise WeslCompileError {
   let type_ = const_eval_parse_type_source(source)
   match type_ {
-    ConstEvalType::Struct(name) =>
+    Struct(name) =>
       match const_eval_struct_declaration(unit, name) {
         Some(_) => type_
-        None => raise WeslCompileError::Validation("unknown type `\{name}`")
+        None => raise Validation("unknown type `\{name}`")
       }
     _ => type_
   }
@@ -277,12 +273,12 @@ fn const_eval_attr_i32(attr : Attribute) -> Int? raise WeslCompileError {
           if value >= 0L && value <= 2147483647L {
             Some(value.to_int())
           } else {
-            raise WeslCompileError::Validation(
+            raise Validation(
               "resource attribute `\{attr.name}` is out of range",
             )
           }
         value =>
-          raise WeslCompileError::Validation(
+          raise Validation(
             "resource attribute `\{attr.name}` must evaluate to an integer, got \{const_eval_render_value(value)}",
           )
       }
@@ -362,9 +358,9 @@ fn const_eval_type_align(
         None => None
       }
     Matrix(_, rows, element) =>
-      const_eval_type_align(unit, ConstEvalType::Vector(rows, element))
+      const_eval_type_align(unit, Vector(rows, element))
     Array(element, _) => const_eval_type_align(unit, element)
-    ConstEvalType::Struct(name) =>
+    Struct(name) =>
       match const_eval_struct_declaration(unit, name) {
         Some(struct_) => {
           let mut align = 1
@@ -413,7 +409,7 @@ fn const_eval_type_size(
       Some(count * stride)
     }
     Array(_, None) => None
-    ConstEvalType::Struct(name) =>
+    Struct(name) =>
       match const_eval_struct_declaration(unit, name) {
         Some(struct_) => {
           let align = match const_eval_type_align(unit, type_) {
@@ -585,21 +581,21 @@ fn const_eval_scalar_value_from_buffer_at(
       } else {
         unsigned
       }
-      Some(ConstEvalValue::I32(signed))
+      Some(I32(signed))
     }
     U32 => {
       let value = match const_eval_le_u32_at(data, offset) {
         Some(value) => value
         None => return None
       }
-      Some(ConstEvalValue::U32(value))
+      Some(U32(value))
     }
     F32 => {
       let bits = match const_eval_le_u32_at(data, offset) {
         Some(value) => value.to_int()
         None => return None
       }
-      Some(ConstEvalValue::F32(Float::reinterpret_from_int(bits)))
+      Some(F32(Float::reinterpret_from_int(bits)))
     }
     _ => None
   }
@@ -631,7 +627,7 @@ fn const_eval_value_from_buffer_type(
           None => return None
         }
       }
-      Some(ConstEvalValue::Vector(width, element, values))
+      Some(Vector(width, element, values))
     }
     Matrix(columns, rows, element) => {
       let column_type = ConstEvalType::Vector(rows, element)
@@ -657,7 +653,7 @@ fn const_eval_value_from_buffer_type(
         }
       }
       ignore(column_size)
-      Some(ConstEvalValue::Matrix(columns, rows, element, values))
+      Some(Matrix(columns, rows, element, values))
     }
     Array(element, count) => {
       let element_size = match const_eval_type_size(unit, element) {
@@ -693,9 +689,9 @@ fn const_eval_value_from_buffer_type(
           None => return None
         }
       }
-      Some(ConstEvalValue::Array(element, count, values))
+      Some(Array(element, count, values))
     }
-    ConstEvalType::Struct(name) =>
+    Struct(name) =>
       match const_eval_struct_declaration(unit, name) {
         Some(struct_) => {
           let fields : Array[(String, ConstEvalValue)] = []
@@ -734,7 +730,7 @@ fn const_eval_value_from_buffer_type(
               cursor = cursor + member_size
             }
           }
-          Some(ConstEvalValue::Struct(name, fields))
+          Some(Struct(name, fields))
         }
         None => None
       }
@@ -795,7 +791,7 @@ fn const_eval_context_from_translation_unit_with_exec_inputs(
                   ) {
                   Some(value) => ctx.bindings.set(name, value)
                   None =>
-                    raise WeslCompileError::Validation(
+                    raise Validation(
                       "resource binding group=\{group} binding=\{binding} is incompatible with `\{type_source}`",
                     )
                 }
@@ -845,10 +841,7 @@ fn const_eval_context_from_translation_unit_with_exec_inputs(
             }
             ctx.bindings.set(override_.name, stored)
           }
-          None =>
-            raise WeslCompileError::Validation(
-              "uninitialized override `\{override_.name}`",
-            )
+          None => raise Validation("uninitialized override `\{override_.name}`")
         }
       }
       _ => ()
@@ -980,7 +973,7 @@ fn const_eval_value_to_buffer_with_unit(
       }
       Some(Bytes::from_array(bytes))
     }
-    ConstEvalValue::Struct(name, fields) =>
+    Struct(name, fields) =>
       match const_eval_struct_declaration(unit, name) {
         Some(struct_) => {
           let bytes : Array[Byte] = []
@@ -1033,7 +1026,7 @@ fn const_eval_value_to_buffer_with_unit(
 
 ///|
 fn const_eval_result(value : ConstEvalValue) -> EvalResult {
-  EvalResult::{
+  {
     value: const_eval_render_value(value),
     buffer: const_eval_value_to_buffer(value),
   }
@@ -1044,7 +1037,7 @@ fn const_eval_result_with_unit(
   unit : TranslationUnit,
   value : ConstEvalValue,
 ) -> EvalResult raise WeslCompileError {
-  EvalResult::{
+  {
     value: const_eval_render_value(value),
     buffer: const_eval_value_to_buffer_with_unit(unit, value),
   }
@@ -1091,19 +1084,19 @@ fn const_eval_int_input_value(
   context : String,
 ) -> ConstEvalValue raise WeslCompileError {
   match type_ {
-    I32 => ConstEvalValue::I32(number.to_int64())
+    I32 => I32(number.to_int64())
     U32 => {
       if number < 0 {
-        raise WeslCompileError::Validation(
+        raise Validation(
           "negative builtin input for u32 parameter `\{context}`",
         )
       }
-      ConstEvalValue::U32(number.to_int64())
+      U32(number.to_int64())
     }
-    F32 => ConstEvalValue::F32(Float::from_double(number.to_double()))
-    AbstractInt => ConstEvalValue::AbstractInt(number.to_int64())
+    F32 => F32(Float::from_double(number.to_double()))
+    AbstractInt => AbstractInt(number.to_int64())
     _ =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "builtin input `\{context}` is incompatible with `\{type_.label()}`",
       )
   }
@@ -1116,10 +1109,10 @@ fn const_eval_double_input_value(
   context : String,
 ) -> ConstEvalValue raise WeslCompileError {
   match type_ {
-    F32 => ConstEvalValue::F32(Float::from_double(number))
-    AbstractFloat => ConstEvalValue::AbstractFloat(number, true)
+    F32 => F32(Float::from_double(number))
+    AbstractFloat => AbstractFloat(number, true)
     _ =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "builtin input `\{context}` is incompatible with `\{type_.label()}`",
       )
   }
@@ -1134,7 +1127,7 @@ fn const_eval_int_vector_input_value(
   match type_ {
     Vector(width, element) => {
       if values.length() < width {
-        raise WeslCompileError::Validation(
+        raise Validation(
           "builtin input `\{context}` does not provide \{width} components",
         )
       }
@@ -1144,10 +1137,10 @@ fn const_eval_int_vector_input_value(
           const_eval_int_input_value(values[index], element, context),
         )
       }
-      ConstEvalValue::Vector(width, element, elements)
+      Vector(width, element, elements)
     }
     _ =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "builtin input `\{context}` is incompatible with `\{type_.label()}`",
       )
   }
@@ -1162,7 +1155,7 @@ fn const_eval_double_vector_input_value(
   match type_ {
     Vector(width, element) => {
       if values.length() < width {
-        raise WeslCompileError::Validation(
+        raise Validation(
           "builtin input `\{context}` does not provide \{width} components",
         )
       }
@@ -1172,10 +1165,10 @@ fn const_eval_double_vector_input_value(
           const_eval_double_input_value(values[index], element, context),
         )
       }
-      ConstEvalValue::Vector(width, element, elements)
+      Vector(width, element, elements)
     }
     _ =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "builtin input `\{context}` is incompatible with `\{type_.label()}`",
       )
   }
@@ -1190,9 +1183,9 @@ fn const_eval_user_input_value(
   match input {
     Bool(value) =>
       match type_ {
-        Bool => ConstEvalValue::Bool(value)
+        Bool => Bool(value)
         _ =>
-          raise WeslCompileError::Validation(
+          raise Validation(
             "user input `\{context}` is incompatible with `\{type_.label()}`",
           )
       }
@@ -1231,9 +1224,7 @@ fn const_eval_location_input_value(
   let input = match const_eval_user_defined_input(inputs, location) {
     Some(value) => value
     None =>
-      raise WeslCompileError::Validation(
-        "missing user-defined input at location \{location}",
-      )
+      raise Validation("missing user-defined input at location \{location}")
   }
   const_eval_user_input_value(input, type_, "location \{location}")
 }
@@ -1261,7 +1252,7 @@ fn const_eval_struct_member_input_value(
         Some(location) =>
           const_eval_location_input_value(inputs, location, type_)
         None =>
-          raise WeslCompileError::Validation(
+          raise Validation(
             "entrypoint struct member `\{field.name}` is missing a supported @builtin or @location attribute",
           )
       }
@@ -1287,7 +1278,7 @@ fn const_eval_struct_entrypoint_input_value(
               ),
             )
           }
-          Some(ConstEvalValue::Struct(name, fields))
+          Some(Struct(name, fields))
         }
         None => None
       }
@@ -1302,8 +1293,7 @@ fn[A] const_eval_required_input(
 ) -> A raise WeslCompileError {
   match value {
     Some(value) => value
-    None =>
-      raise WeslCompileError::Validation("missing builtin input `\{name}`")
+    None => raise Validation("missing builtin input `\{name}`")
   }
 }
 
@@ -1334,12 +1324,9 @@ fn const_eval_builtin_input_value(
       )
     "front_facing" =>
       match type_ {
-        Bool =>
-          ConstEvalValue::Bool(
-            const_eval_required_input(inputs.front_facing, builtin),
-          )
+        Bool => Bool(const_eval_required_input(inputs.front_facing, builtin))
         _ =>
-          raise WeslCompileError::Validation(
+          raise Validation(
             "builtin input `front_facing` is incompatible with `\{type_.label()}`",
           )
       }
@@ -1421,10 +1408,7 @@ fn const_eval_builtin_input_value(
         type_,
         builtin,
       )
-    _ =>
-      raise WeslCompileError::Validation(
-        "unsupported builtin input `\{builtin}`",
-      )
+    _ => raise Validation("unsupported builtin input `\{builtin}`")
   }
 }
 
@@ -1449,7 +1433,7 @@ fn const_eval_exec_entrypoint_args(
               const_eval_struct_entrypoint_input_value(unit, inputs, type_) {
               Some(value) => args.push(value)
               None =>
-                raise WeslCompileError::Validation(
+                raise Validation(
                   "entrypoint parameter `\{parameter.name}` is missing a supported @builtin or @location attribute",
                 )
             }
@@ -1506,7 +1490,7 @@ fn const_eval_exec_entrypoint(
               let args = const_eval_exec_entrypoint_args(
                 unit, function_, inputs,
               )
-              return ConstEvalEntryExec::{
+              return {
                 value: const_eval_execute_function(function_value, args, ctx),
                 ctx,
               }
@@ -1519,7 +1503,7 @@ fn const_eval_exec_entrypoint(
               let args = const_eval_exec_entrypoint_args(
                 unit, function_, inputs,
               )
-              return ConstEvalEntryExec::{
+              return {
                 value: Some(
                   const_eval_execute_function_value(function_value, args, ctx),
                 ),
@@ -1531,7 +1515,7 @@ fn const_eval_exec_entrypoint(
       _ => ()
     }
   }
-  raise WeslCompileError::Validation("unknown function `\{entrypoint}`")
+  raise Validation("unknown function `\{entrypoint}`")
 }
 
 ///|
@@ -1550,14 +1534,14 @@ fn const_eval_resources_from_exec_context(
             Some(value) =>
               match const_eval_value_to_buffer_with_unit(unit, value) {
                 Some(data) =>
-                  updated.push(ResourceBinding::{
+                  updated.push({
                     group: resource.group,
                     binding: resource.binding,
                     kind: resource.kind,
                     data,
                   })
                 None =>
-                  raise WeslCompileError::Validation(
+                  raise Validation(
                     "resource binding group=\{resource.group} binding=\{resource.binding} cannot be written back",
                   )
               }
@@ -1619,7 +1603,7 @@ pub fn CompileResult::exec(
     Some(value) => const_eval_value_to_buffer_with_unit(self.syntax, value)
     None => None
   }
-  ExecResult::{
+  {
     value,
     buffer,
     resources: const_eval_resources_from_exec_context(

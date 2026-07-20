@@ -105,13 +105,7 @@ fn item_parse_push_item(
   start_offset : Int,
   end_offset : Int,
 ) -> Unit {
-  tokens.push(
-    (
-      ITEM(TopLevelItemSpan::{ start_offset, end_offset }),
-      start_offset,
-      end_offset,
-    ),
-  )
+  tokens.push((ITEM({ start_offset, end_offset }), start_offset, end_offset))
 }
 
 ///|
@@ -127,10 +121,7 @@ fn item_parse_lex(source : String) -> TopLevelItemLexResult {
     if item_start is None {
       let (next_index, ok) = item_parse_skip_trivia(source, index)
       if !ok {
-        return LexFailed(TopLevelItemDiagnostic::{
-          offset: next_index,
-          incomplete: true,
-        })
+        return LexFailed({ offset: next_index, incomplete: true })
       }
       index = next_index
       if index >= source.length() {
@@ -148,10 +139,7 @@ fn item_parse_lex(source : String) -> TopLevelItemLexResult {
       if next == 42 {
         let (end_, closed) = item_parse_skip_block_comment(source, index + 2)
         if !closed {
-          return LexFailed(TopLevelItemDiagnostic::{
-            offset: index,
-            incomplete: true,
-          })
+          return LexFailed({ offset: index, incomplete: true })
         }
         index = end_
         continue
@@ -189,10 +177,7 @@ fn item_parse_lex(source : String) -> TopLevelItemLexResult {
       if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 && saw_brace {
         let (after_trivia, ok) = item_parse_skip_trivia(source, index)
         if !ok {
-          return LexFailed(TopLevelItemDiagnostic::{
-            offset: after_trivia,
-            incomplete: true,
-          })
+          return LexFailed({ offset: after_trivia, incomplete: true })
         }
         let end_offset = if after_trivia < source.length() &&
           source.code_unit_at(after_trivia).to_int() == 59 {
@@ -226,11 +211,7 @@ fn item_parse_lex(source : String) -> TopLevelItemLexResult {
     index += 1
   }
   match item_start {
-    Some(start) =>
-      return LexFailed(TopLevelItemDiagnostic::{
-        offset: start,
-        incomplete: true,
-      })
+    Some(start) => return LexFailed({ offset: start, incomplete: true })
     None => ()
   }
   Lexed(tokens)
@@ -247,9 +228,9 @@ pub fn parse_top_level_items_source(source : String) -> TopLevelItemParseResult 
   }
   let items = parse_top_level_items(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed(TopLevelItemDiagnostic::{ offset: start, incomplete: false })
+      return Failed({ offset: start, incomplete: false })
     UnexpectedEndOfInput(start, _) =>
-      return Failed(TopLevelItemDiagnostic::{ offset: start, incomplete: true })
+      return Failed({ offset: start, incomplete: true })
   }
   Parsed(items)
 }

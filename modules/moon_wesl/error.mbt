@@ -78,7 +78,7 @@ pub fn SourcePosition::new(
   column : Int,
   offset : Int,
 ) -> SourcePosition {
-  SourcePosition::{ line, column, offset }
+  { line, column, offset }
 }
 
 ///|
@@ -92,7 +92,7 @@ pub fn SourceSpan::new(
   start : SourcePosition,
   end : SourcePosition,
 ) -> SourceSpan {
-  SourceSpan::{ start, end }
+  { start, end }
 }
 
 ///|
@@ -171,13 +171,9 @@ pub fn SourceSpan::from_line_range(
   let start_offset = diagnostic_line_start(source, bounded_start_line)
   let end_line_start = diagnostic_line_start(source, bounded_end_line)
   let end_offset = diagnostic_line_end(source, end_line_start)
-  SourceSpan::{
-    start: SourcePosition::{
-      line: bounded_start_line,
-      column: 1,
-      offset: start_offset,
-    },
-    end: SourcePosition::{
+  {
+    start: { line: bounded_start_line, column: 1, offset: start_offset },
+    end: {
       line: bounded_end_line,
       column: end_offset - end_line_start + 1,
       offset: end_offset,
@@ -198,7 +194,7 @@ pub(all) struct DiagnosticDetail {
 
 ///|
 pub fn DiagnosticDetail::default() -> DiagnosticDetail {
-  DiagnosticDetail::{
+  {
     source: None,
     output: None,
     module_path: None,
@@ -229,7 +225,7 @@ pub fn WeslDiagnosticError::message(self : WeslDiagnosticError) -> String {
 
 ///|
 pub fn Diagnostic::new(error : WeslCompileError) -> Diagnostic {
-  Diagnostic::{ error, detail: DiagnosticDetail::default() }
+  { error, detail: DiagnosticDetail::default() }
 }
 
 ///|
@@ -252,11 +248,7 @@ pub fn Diagnostic::with_source(
 ) -> Diagnostic {
   match self.detail.source {
     Some(_) => self
-    None =>
-      Diagnostic::{
-        ..self,
-        detail: DiagnosticDetail::{ ..self.detail, source: Some(source) },
-      }
+    None => { ..self, detail: { ..self.detail, source: Some(source) } }
   }
 }
 
@@ -267,11 +259,7 @@ pub fn Diagnostic::with_output(
 ) -> Diagnostic {
   match self.detail.output {
     Some(_) => self
-    None =>
-      Diagnostic::{
-        ..self,
-        detail: DiagnosticDetail::{ ..self.detail, output: Some(output) },
-      }
+    None => { ..self, detail: { ..self.detail, output: Some(output) } }
   }
 }
 
@@ -282,11 +270,7 @@ pub fn Diagnostic::with_span(
 ) -> Diagnostic {
   match self.detail.span {
     Some(_) => self
-    None =>
-      Diagnostic::{
-        ..self,
-        detail: DiagnosticDetail::{ ..self.detail, span: Some(span) },
-      }
+    None => { ..self, detail: { ..self.detail, span: Some(span) } }
   }
 }
 
@@ -312,13 +296,7 @@ pub fn Diagnostic::with_declaration(
   match self.detail.declaration {
     Some(_) => self
     None =>
-      Diagnostic::{
-        ..self,
-        detail: DiagnosticDetail::{
-          ..self.detail,
-          declaration: Some(declaration),
-        },
-      }
+      { ..self, detail: { ..self.detail, declaration: Some(declaration) } }
   }
 }
 
@@ -331,13 +309,9 @@ pub fn Diagnostic::with_module_path(
   match self.detail.module_path {
     Some(_) => self
     None =>
-      Diagnostic::{
+      {
         ..self,
-        detail: DiagnosticDetail::{
-          ..self.detail,
-          module_path: Some(path),
-          display_name,
-        },
+        detail: { ..self.detail, module_path: Some(path), display_name },
       }
   }
 }
@@ -352,9 +326,9 @@ pub fn[S : SourceMap] Diagnostic::with_sourcemap(
     Some(decl) =>
       match S::get_decl(sourcemap, decl) {
         Some((path, original_decl)) => {
-          diagnostic = Diagnostic::{
+          diagnostic = {
             ..diagnostic,
-            detail: DiagnosticDetail::{
+            detail: {
               ..diagnostic.detail,
               module_path: Some(path),
               declaration: Some(original_decl),
@@ -363,12 +337,9 @@ pub fn[S : SourceMap] Diagnostic::with_sourcemap(
           }
           match S::get_source(sourcemap, path) {
             Some(source) =>
-              diagnostic = Diagnostic::{
+              diagnostic = {
                 ..diagnostic,
-                detail: DiagnosticDetail::{
-                  ..diagnostic.detail,
-                  source: Some(source),
-                },
+                detail: { ..diagnostic.detail, source: Some(source) },
               }
             None => ()
           }
@@ -384,24 +355,18 @@ pub fn[S : SourceMap] Diagnostic::with_sourcemap(
         Some(path) =>
           match S::get_source(sourcemap, path) {
             Some(source) =>
-              Diagnostic::{
+              {
                 ..diagnostic,
-                detail: DiagnosticDetail::{
-                  ..diagnostic.detail,
-                  source: Some(source),
-                },
+                detail: { ..diagnostic.detail, source: Some(source) },
               }
             None => diagnostic
           }
         None =>
           match S::get_default_source(sourcemap) {
             Some(source) =>
-              Diagnostic::{
+              {
                 ..diagnostic,
-                detail: DiagnosticDetail::{
-                  ..diagnostic.detail,
-                  source: Some(source),
-                },
+                detail: { ..diagnostic.detail, source: Some(source) },
               }
             None => diagnostic
           }
@@ -415,10 +380,7 @@ pub fn[S : SourceMap] Diagnostic::unmangle_with_sourcemap(
   sourcemap : S,
 ) -> Diagnostic {
   let message = S::unmangle_text(sourcemap, self.message())
-  Diagnostic::{
-    ..self,
-    detail: DiagnosticDetail::{ ..self.detail, message: Some(message) },
-  }
+  Diagnostic::{ ..self, detail: { ..self.detail, message: Some(message) } }
   .with_sourcemap(sourcemap)
   .infer_span_from_message()
 }
@@ -457,10 +419,7 @@ pub fn Diagnostic::unmangle_with_mangler(
   if start < text.length() {
     parts.push(text[start:text.length()].to_owned())
   }
-  Diagnostic::{
-    ..self,
-    detail: DiagnosticDetail::{ ..self.detail, message: Some(parts.join("")) },
-  }
+  { ..self, detail: { ..self.detail, message: Some(parts.join("")) } }
 }
 
 ///|

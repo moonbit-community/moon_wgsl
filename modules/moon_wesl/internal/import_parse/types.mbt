@@ -80,10 +80,7 @@ fn import_parse_lex(source : String) -> ImportLexResult {
           index += 1
         }
         if !closed {
-          return LexFailed(ImportParseDiagnostic::{
-            offset: index,
-            incomplete: true,
-          })
+          return LexFailed({ offset: index, incomplete: true })
         }
         continue
       }
@@ -118,11 +115,7 @@ fn import_parse_lex(source : String) -> ImportLexResult {
         tokens.push((RIGHT_BRACE, index, index + 1))
         index += 1
       }
-      _ =>
-        return LexFailed(ImportParseDiagnostic::{
-          offset: index,
-          incomplete: false,
-        })
+      _ => return LexFailed({ offset: index, incomplete: false })
     }
   }
   Lexed(tokens)
@@ -135,13 +128,13 @@ pub fn parse_import_tree_source(source : String) -> ImportParseResult {
     LexFailed(diagnostic) => return Failed(diagnostic)
   }
   if tokens.is_empty() {
-    return Failed(ImportParseDiagnostic::{ offset: 0, incomplete: true })
+    return Failed({ offset: 0, incomplete: true })
   }
   let nodes = parse_import_tree(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed(ImportParseDiagnostic::{ offset: start, incomplete: false })
+      return Failed({ offset: start, incomplete: false })
     UnexpectedEndOfInput(start, _) =>
-      return Failed(ImportParseDiagnostic::{ offset: start, incomplete: true })
+      return Failed({ offset: start, incomplete: true })
   }
   Parsed(nodes)
 }

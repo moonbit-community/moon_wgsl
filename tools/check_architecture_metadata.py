@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import json
 import hashlib
-import os
 import re
 import sys
 from pathlib import Path
@@ -14,25 +13,6 @@ MANIFEST = REPO_ROOT / "testdata" / "architecture_guardrails_manifest.json"
 def fail(message: str) -> None:
     print(f"architecture metadata check failed: {message}", file=sys.stderr)
     sys.exit(1)
-
-
-def issue_status(issue_id: str) -> str:
-    path = REPO_ROOT / "issues" / f"{issue_id}.md"
-    if not path.exists():
-        fail(f"migration exception references missing issue: {issue_id}")
-    match = re.search(r"^- Status: ([a-z_]+)$", path.read_text(), re.MULTILINE)
-    if not match:
-        fail(f"cannot read status for migration issue: {issue_id}")
-    return match.group(1)
-
-
-def require_unresolved_exception(issue_id: str, description: str) -> None:
-    status = issue_status(issue_id)
-    if status in {"closed", "deferred"}:
-        fail(
-            f"{description} is still excepted by {issue_id}, "
-            f"but that issue is {status}"
-        )
 
 
 def parse_moon_pkg_imports(path: Path) -> list[str]:
@@ -118,8 +98,7 @@ def check_module_packages(manifest: dict) -> None:
         actual = package_paths(module_root)
         allowed = set(policy.get("allowed", []))
         internal = set(policy.get("internal", []))
-        exceptions = policy.get("exceptions", {})
-        unexpected = sorted(actual - allowed - internal - set(exceptions))
+        unexpected = sorted(actual - allowed - internal)
         if unexpected:
             fail(
                 f"{relative} has package(s) outside its public inventory: "
@@ -145,18 +124,6 @@ def check_module_packages(manifest: dict) -> None:
                 f"{relative} internal inventory must use internal/ paths: "
                 + ", ".join(invalid_internal)
             )
-        for package, issue_id in exceptions.items():
-            if package not in actual:
-                fail(
-                    f"{relative}/{package} migration exception is stale; "
-                    f"remove the {issue_id} exception"
-                )
-            require_unresolved_exception(
-                issue_id,
-                f"{relative}/{package} public package",
-            )
-
-
 def check_internal_package_imports(manifest: dict) -> None:
     package_files = sorted(
         list((REPO_ROOT / "modules").glob("**/moon.pkg"))
@@ -210,18 +177,10 @@ def check_concept_ownership(manifest: dict) -> None:
                 matches.append(
                     f"{path.relative_to(REPO_ROOT)}:{match.group(0)}"
                 )
-        issue_id = policy.get("exception_issue")
         if matches:
-            if not issue_id:
-                fail(
-                    f"{policy['name']} violates conceptual ownership: "
-                    + ", ".join(matches[:8])
-                )
-            require_unresolved_exception(issue_id, policy["name"])
-        elif issue_id:
             fail(
-                f"{policy['name']} migration exception is stale; "
-                f"remove the {issue_id} exception"
+                f"{policy['name']} violates conceptual ownership: "
+                + ", ".join(matches[:8])
             )
 
 
@@ -294,7 +253,6 @@ def check_exported_type_methods(manifest: dict) -> None:
             fail(f"type interface file missing: {relative}")
         actual = exported_type_methods(path, policy["type"], interfaces)
         expected = set(policy["allowed"])
-        issue_id = policy.get("exception_issue")
         if actual != expected:
             details = []
             extra = sorted(actual - expected)
@@ -303,47 +261,21 @@ def check_exported_type_methods(manifest: dict) -> None:
                 details.append("extra methods: " + ", ".join(extra))
             if missing:
                 details.append("missing methods: " + ", ".join(missing))
-            if not issue_id:
-                fail(
-                    f"{relative} {policy['type']} method inventory changed; "
-                    + "; ".join(details)
-                )
-            require_unresolved_exception(
-                issue_id,
-                f"{relative} {policy['type']} method inventory",
-            )
-        elif issue_id:
             fail(
-                f"{relative} {policy['type']} method exception is stale; "
-                f"remove the {issue_id} exception"
+                f"{relative} {policy['type']} method inventory changed; "
+                + "; ".join(details)
             )
 
 
 def check_source_symlinks(manifest: dict) -> None:
-    configured: set[Path] = set()
-    for entry in manifest.get("source_symlink_exceptions", []):
-        relative = entry["path"]
-        target = entry["target"]
-        issue_id = entry["issue"]
-        path = REPO_ROOT / relative
-        configured.add(path)
-        if not path.is_symlink():
-            fail(
-                f"{relative} source symlink exception is stale; "
-                f"remove the {issue_id} exception"
-            )
-        actual = os.readlink(path)
-        if actual != target:
-            fail(f"{relative} must target {target}, found {actual}")
-        require_unresolved_exception(issue_id, f"{relative} source symlink")
     if manifest.get("forbid_unlisted_source_symlinks", False):
-        unlisted = sorted(
+        source_symlinks = sorted(
             str(path.relative_to(REPO_ROOT))
             for path in (REPO_ROOT / "modules").glob("**/*")
-            if path.is_symlink() and path not in configured
+            if path.is_symlink()
         )
-        if unlisted:
-            fail("unlisted source symlink(s): " + ", ".join(unlisted))
+        if source_symlinks:
+            fail("source symlink(s) are forbidden: " + ", ".join(source_symlinks))
 
 
 def check_source_owners(manifest: dict) -> None:

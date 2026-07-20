@@ -73,7 +73,7 @@ fn init {
 
 // file:///./parser.mbty
 // 21|    "enable" item_list opt_semi
-// 22|                                 { DirectiveParseNode::{ kind: DirectiveParseKind::Enable, arguments: $2 } }
+// 22|                                 { { kind: Enable, arguments: $2 } }
 
 ///|
 fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -81,17 +81,14 @@ fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_DirectiveParseNode(
     {
       ()
-      DirectiveParseNode::{
-        kind: DirectiveParseKind::Enable,
-        arguments: _dollar2,
-      }
+      { kind: Enable, arguments: _dollar2 }
     },
   )
 }
 
 // file:///./parser.mbty
 // 23|    "requires" item_list opt_semi
-// 24|                                 { DirectiveParseNode::{ kind: DirectiveParseKind::Requires, arguments: $2 } }
+// 24|                                 { { kind: Requires, arguments: $2 } }
 
 ///|
 fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -99,17 +96,14 @@ fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_DirectiveParseNode(
     {
       ()
-      DirectiveParseNode::{
-        kind: DirectiveParseKind::Requires,
-        arguments: _dollar2,
-      }
+      { kind: Requires, arguments: _dollar2 }
     },
   )
 }
 
 // file:///./parser.mbty
 // 25|    "diagnostic" "(" item_list ")" opt_semi
-// 26|                                 { DirectiveParseNode::{ kind: DirectiveParseKind::Diagnostic, arguments: $3 } }
+// 26|                                 { { kind: Diagnostic, arguments: $3 } }
 
 ///|
 fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -117,10 +111,7 @@ fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_DirectiveParseNode(
     {
       ()
-      DirectiveParseNode::{
-        kind: DirectiveParseKind::Diagnostic,
-        arguments: _dollar3,
-      }
+      { kind: Diagnostic, arguments: _dollar3 }
     },
   )
 }

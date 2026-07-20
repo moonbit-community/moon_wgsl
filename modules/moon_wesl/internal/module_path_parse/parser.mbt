@@ -130,7 +130,7 @@ fn yy_action_3(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./parser.mbty
-// 30|    "package" tail_segments      { ModulePathParseNode::{ origin: ModulePathParseOrigin::Absolute, components: $2 } }
+// 30|    "package" tail_segments      { { origin: Absolute, components: $2 } }
 
 ///|
 fn yy_action_4(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -138,16 +138,13 @@ fn yy_action_4(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_ModulePathParseNode(
     {
       ()
-      ModulePathParseNode::{
-        origin: ModulePathParseOrigin::Absolute,
-        components: _dollar2,
-      }
+      { origin: Absolute, components: _dollar2 }
     },
   )
 }
 
 // file:///./parser.mbty
-// 34|    "self" tail_segments         { ModulePathParseNode::{ origin: ModulePathParseOrigin::Relative(0), components: $2 } }
+// 34|    "self" tail_segments         { { origin: Relative(0), components: $2 } }
 
 ///|
 fn yy_action_5(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -155,16 +152,13 @@ fn yy_action_5(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_ModulePathParseNode(
     {
       ()
-      ModulePathParseNode::{
-        origin: ModulePathParseOrigin::Relative(0),
-        components: _dollar2,
-      }
+      { origin: Relative(0), components: _dollar2 }
     },
   )
 }
 
 // file:///./parser.mbty
-// 38|    super_prefix tail_segments   { ModulePathParseNode::{ origin: ModulePathParseOrigin::Relative($1), components: $2 } }
+// 38|    super_prefix tail_segments   { { origin: Relative($1), components: $2 } }
 
 ///|
 fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -173,10 +167,7 @@ fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_ModulePathParseNode(
     {
       ()
-      ModulePathParseNode::{
-        origin: ModulePathParseOrigin::Relative(_dollar1),
-        components: _dollar2,
-      }
+      { origin: Relative(_dollar1), components: _dollar2 }
     },
   )
 }
@@ -196,7 +187,7 @@ fn yy_action_7(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./parser.mbty
-// 42|    SEGMENT tail_segments        { ModulePathParseNode::{ origin: ModulePathParseOrigin::Package($1), components: $2 } }
+// 42|    SEGMENT tail_segments        { { origin: Package($1), components: $2 } }
 
 ///|
 fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -205,10 +196,7 @@ fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_ModulePathParseNode(
     {
       ()
-      ModulePathParseNode::{
-        origin: ModulePathParseOrigin::Package(_dollar1),
-        components: _dollar2,
-      }
+      { origin: Package(_dollar1), components: _dollar2 }
     },
   )
 }

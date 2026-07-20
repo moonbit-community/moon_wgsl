@@ -46,11 +46,7 @@ pub fn TypeSpecifierParseNode::from_path(
   for index in 0..<(path.length() - 1) {
     prefix.push(path[index])
   }
-  TypeSpecifierParseNode::{
-    path: prefix,
-    ident: path[path.length() - 1],
-    template_args: [],
-  }
+  { path: prefix, ident: path[path.length() - 1], template_args: [] }
 }
 
 ///|
@@ -63,7 +59,7 @@ pub fn TypeSpecifierParseNode::qualified_child(
     path.push(segment)
   }
   path.push(self.ident)
-  TypeSpecifierParseNode::{ path, ident, template_args: [] }
+  { path, ident, template_args: [] }
 }
 
 ///|
@@ -71,7 +67,7 @@ pub fn TypeSpecifierParseNode::with_template_args(
   self : TypeSpecifierParseNode,
   template_args : Array[TypeTemplateArgumentParseNode],
 ) -> TypeSpecifierParseNode {
-  TypeSpecifierParseNode::{ path: self.path, ident: self.ident, template_args }
+  { path: self.path, ident: self.ident, template_args }
 }
 
 ///|
@@ -239,7 +235,7 @@ fn type_parse_lex(source : String) -> TypeLexResult {
       if next == 42 {
         let (end_, closed) = type_parse_skip_block_comment(source, index + 2)
         if !closed {
-          return LexFailed(TypeParseDiagnostic::{
+          return LexFailed({
             offset: index,
             incomplete: true,
             message: Some("unterminated block comment"),
@@ -263,7 +259,7 @@ fn type_parse_lex(source : String) -> TypeLexResult {
       let start = index
       let (end_, valid) = type_parse_number_end(source, index)
       if !valid {
-        return LexFailed(TypeParseDiagnostic::{
+        return LexFailed({
           offset: start,
           incomplete: false,
           message: Some("invalid numeric literal"),
@@ -286,7 +282,7 @@ fn type_parse_lex(source : String) -> TypeLexResult {
       60 => type_parse_push_token(tokens, LESS, index, 1)
       62 => type_parse_push_token(tokens, GREATER, index, 1)
       _ =>
-        return LexFailed(TypeParseDiagnostic::{
+        return LexFailed({
           offset: index,
           incomplete: false,
           message: Some("unsupported type token"),
@@ -303,25 +299,13 @@ pub fn parse_type_source(source : String) -> TypeParseResult {
     LexFailed(diagnostic) => return Failed(diagnostic)
   }
   if tokens.is_empty() {
-    return Failed(TypeParseDiagnostic::{
-      offset: 0,
-      incomplete: true,
-      message: Some("empty type"),
-    })
+    return Failed({ offset: 0, incomplete: true, message: Some("empty type") })
   }
   let parsed = parse_type_specifier(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed(TypeParseDiagnostic::{
-        offset: start,
-        incomplete: false,
-        message: None,
-      })
+      return Failed({ offset: start, incomplete: false, message: None })
     UnexpectedEndOfInput(start, _) =>
-      return Failed(TypeParseDiagnostic::{
-        offset: start,
-        incomplete: true,
-        message: None,
-      })
+      return Failed({ offset: start, incomplete: true, message: None })
   }
   Parsed(parsed)
 }

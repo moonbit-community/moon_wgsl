@@ -8,12 +8,8 @@ import {
   "Milky2018/wgsl/ast_analysis",
 } for "wbtest"
 
-options(
-  "pre-build": [
-    {
-      "command": "sh -c 'moonyacc=\"$1/.mooncakes/moonbitlang/yacc/moonyacc\"; if [ ! -x \"$moonyacc\" ]; then moonyacc=\"$1/../../.mooncakes/moonbitlang/yacc/moonyacc\"; fi; \"$moonyacc\" \"$2\" --input-mode array -o \"$3\" && moonfmt -w \"$3\"' sh $mod_dir $input $output",
-      "input": "wgsl_parser.mbty",
-      "output": "wgsl_generated_parser.mbt",
-    },
-  ],
+dev_build(
+  rule: "moonyacc-array",
+  input: "wgsl_parser.mbty",
+  output: "wgsl_generated_parser.mbt",
 )

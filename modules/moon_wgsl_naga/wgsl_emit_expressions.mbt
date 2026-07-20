@@ -413,8 +413,8 @@ fn WgslIrEmitter::float_vector_shape_from_lane_count(
   ignore(self)
   let size = match lanes {
     2 => VectorSize::Bi
-    3 => VectorSize::Tri
-    4 => VectorSize::Quad
+    3 => Tri
+    4 => Quad
     _ => return None
   }
   Some((size, { kind: Float, width: 4 }))

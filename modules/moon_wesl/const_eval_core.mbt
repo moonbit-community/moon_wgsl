@@ -108,142 +108,142 @@ fn const_eval_lex(
     }
     match code {
       64 => {
-        tokens.push(ConstEvalToken::At)
+        tokens.push(At)
         index += 1
       }
       40 => {
-        tokens.push(ConstEvalToken::LeftParen)
+        tokens.push(LeftParen)
         index += 1
       }
       41 => {
-        tokens.push(ConstEvalToken::RightParen)
+        tokens.push(RightParen)
         index += 1
       }
       91 => {
-        tokens.push(ConstEvalToken::LeftBracket)
+        tokens.push(LeftBracket)
         index += 1
       }
       93 => {
-        tokens.push(ConstEvalToken::RightBracket)
+        tokens.push(RightBracket)
         index += 1
       }
       123 => {
-        tokens.push(ConstEvalToken::LeftBrace)
+        tokens.push(LeftBrace)
         index += 1
       }
       125 => {
-        tokens.push(ConstEvalToken::RightBrace)
+        tokens.push(RightBrace)
         index += 1
       }
       58 => {
-        tokens.push(ConstEvalToken::Colon)
+        tokens.push(Colon)
         index += 1
       }
       59 => {
-        tokens.push(ConstEvalToken::Semi)
+        tokens.push(Semi)
         index += 1
       }
       44 => {
-        tokens.push(ConstEvalToken::Comma)
+        tokens.push(Comma)
         index += 1
       }
       46 => {
-        tokens.push(ConstEvalToken::Dot)
+        tokens.push(Dot)
         index += 1
       }
       61 =>
         if index + 1 < source.length() &&
           source.code_unit_at(index + 1).to_int() == 61 {
-          tokens.push(ConstEvalToken::EqualEqual)
+          tokens.push(EqualEqual)
           index += 2
         } else {
-          tokens.push(ConstEvalToken::Equal)
+          tokens.push(Equal)
           index += 1
         }
       33 =>
         if index + 1 < source.length() &&
           source.code_unit_at(index + 1).to_int() == 61 {
-          tokens.push(ConstEvalToken::BangEqual)
+          tokens.push(BangEqual)
           index += 2
         } else {
-          tokens.push(ConstEvalToken::Bang)
+          tokens.push(Bang)
           index += 1
         }
       60 =>
         if index + 1 < source.length() &&
           source.code_unit_at(index + 1).to_int() == 60 {
-          tokens.push(ConstEvalToken::LeftShift)
+          tokens.push(LeftShift)
           index += 2
         } else if index + 1 < source.length() &&
           source.code_unit_at(index + 1).to_int() == 61 {
-          tokens.push(ConstEvalToken::LessEqual)
+          tokens.push(LessEqual)
           index += 2
         } else {
-          tokens.push(ConstEvalToken::Less)
+          tokens.push(Less)
           index += 1
         }
       62 =>
         if index + 1 < source.length() &&
           source.code_unit_at(index + 1).to_int() == 62 {
-          tokens.push(ConstEvalToken::RightShift)
+          tokens.push(RightShift)
           index += 2
         } else if index + 1 < source.length() &&
           source.code_unit_at(index + 1).to_int() == 61 {
-          tokens.push(ConstEvalToken::GreaterEqual)
+          tokens.push(GreaterEqual)
           index += 2
         } else {
-          tokens.push(ConstEvalToken::Greater)
+          tokens.push(Greater)
           index += 1
         }
       38 =>
         if index + 1 < source.length() &&
           source.code_unit_at(index + 1).to_int() == 38 {
-          tokens.push(ConstEvalToken::AmpAmp)
+          tokens.push(AmpAmp)
           index += 2
         } else {
-          tokens.push(ConstEvalToken::Amp)
+          tokens.push(Amp)
           index += 1
         }
       124 =>
         if index + 1 < source.length() &&
           source.code_unit_at(index + 1).to_int() == 124 {
-          tokens.push(ConstEvalToken::PipePipe)
+          tokens.push(PipePipe)
           index += 2
         } else {
-          tokens.push(ConstEvalToken::Pipe)
+          tokens.push(Pipe)
           index += 1
         }
       94 => {
-        tokens.push(ConstEvalToken::Caret)
+        tokens.push(Caret)
         index += 1
       }
       43 => {
-        tokens.push(ConstEvalToken::Plus)
+        tokens.push(Plus)
         index += 1
       }
       42 => {
-        tokens.push(ConstEvalToken::Star)
+        tokens.push(Star)
         index += 1
       }
       45 =>
         if index + 1 < source.length() &&
           source.code_unit_at(index + 1).to_int() == 62 {
-          tokens.push(ConstEvalToken::Arrow)
+          tokens.push(Arrow)
           index += 2
         } else {
-          tokens.push(ConstEvalToken::Minus)
+          tokens.push(Minus)
           index += 1
         }
       47 => {
-        tokens.push(ConstEvalToken::Slash)
+        tokens.push(Slash)
         index += 1
       }
       37 => {
-        tokens.push(ConstEvalToken::Percent)
+        tokens.push(Percent)
         index += 1
       }
       126 => {
-        tokens.push(ConstEvalToken::Tilde)
+        tokens.push(Tilde)
         index += 1
       }
       _ =>
@@ -256,7 +256,7 @@ fn const_eval_lex(
                 ) {
             index += 1
           }
-          tokens.push(ConstEvalToken::Ident(source[start:index].to_owned()))
+          tokens.push(Ident(source[start:index].to_owned()))
         } else if const_eval_is_digit(code) {
           let start = index
           index += 1
@@ -264,9 +264,9 @@ fn const_eval_lex(
                 const_eval_is_number_char(source.code_unit_at(index).to_int()) {
             index += 1
           }
-          tokens.push(ConstEvalToken::Number(source[start:index].to_owned()))
+          tokens.push(Number(source[start:index].to_owned()))
         } else {
-          raise WeslCompileError::Parse(
+          raise Parse(
             "unsupported const-eval token `\{source[index:index + 1].to_owned()}`",
           )
         }
@@ -282,7 +282,7 @@ priv struct ConstEvalParser {
 
 ///|
 fn ConstEvalParser::new(tokens : Array[ConstEvalToken]) -> ConstEvalParser {
-  ConstEvalParser::{ rest: tokens[:] }
+  { rest: tokens[:] }
 }
 
 ///|
@@ -304,7 +304,7 @@ fn[A] ConstEvalParser::error(
   message : String,
 ) -> A raise WeslCompileError {
   ignore(self)
-  raise WeslCompileError::Parse(message)
+  raise Parse(message)
 }
 
 ///|
@@ -458,23 +458,23 @@ fn ConstEvalParser::parse_type(
   match self.view() {
     [Ident("bool"), .. rest] => {
       self.update_view(rest)
-      ConstEvalType::Bool
+      Bool
     }
     [Ident("void"), .. rest] => {
       self.update_view(rest)
-      ConstEvalType::Void
+      Void
     }
     [Ident("i32"), .. rest] => {
       self.update_view(rest)
-      ConstEvalType::I32
+      I32
     }
     [Ident("u32"), .. rest] => {
       self.update_view(rest)
-      ConstEvalType::U32
+      U32
     }
     [Ident("f32"), .. rest] => {
       self.update_view(rest)
-      ConstEvalType::F32
+      F32
     }
     [Ident(name), Less, .. rest] => {
       if name == "array" {
@@ -497,7 +497,7 @@ fn ConstEvalParser::parse_type(
           }
           _ => self.error("expected `>` in const-eval array type")
         }
-        return ConstEvalType::Array(element, count)
+        return Array(element, count)
       }
       if name.length() == 6 &&
         name[:3].to_owned() == "mat" &&
@@ -514,7 +514,7 @@ fn ConstEvalParser::parse_type(
           [Greater, .. after] => self.update_view(after)
           _ => self.error("expected `>` in const-eval matrix type")
         }
-        return ConstEvalType::Matrix(columns, rows, element)
+        return Matrix(columns, rows, element)
       }
       if !(name == "vec2" || name == "vec3" || name == "vec4") {
         self.error("expected const-eval type")
@@ -535,11 +535,11 @@ fn ConstEvalParser::parse_type(
         [Greater, .. after] => self.update_view(after)
         _ => self.error("expected `>` in const-eval vector type")
       }
-      ConstEvalType::Vector(width, element)
+      Vector(width, element)
     }
     [Ident(name), .. rest] => {
       self.update_view(rest)
-      ConstEvalType::Struct(name)
+      Struct(name)
     }
     _ => self.error("expected const-eval type")
   }
@@ -552,20 +552,20 @@ fn ConstEvalParser::parse_primary(
   match self.view() {
     [Number(text), .. rest] => {
       self.update_view(rest)
-      ConstEvalExpr::Literal(text)
+      Literal(text)
     }
     [Ident("true"), .. rest] => {
       self.update_view(rest)
-      ConstEvalExpr::Literal("true")
+      Literal("true")
     }
     [Ident("false"), .. rest] => {
       self.update_view(rest)
-      ConstEvalExpr::Literal("false")
+      Literal("false")
     }
     [Ident(name), Less, .. rest] => {
       if !(name == "vec2" || name == "vec3" || name == "vec4") {
         self.update_view(self.view()[1:])
-        return ConstEvalExpr::Binding(name)
+        return Binding(name)
       }
       self.update_view(rest)
       let element = self.parse_type()
@@ -576,7 +576,7 @@ fn ConstEvalParser::parse_primary(
       let args : Array[ConstEvalExpr] = []
       if self.view() is [RightParen, .. after_empty] {
         self.update_view(after_empty)
-        return ConstEvalExpr::Call("\{name}<\{element.label()}>", args)
+        return Call("\{name}<\{element.label()}>", args)
       }
       while true {
         args.push(self.parse_expression())
@@ -589,14 +589,14 @@ fn ConstEvalParser::parse_primary(
           _ => self.error("expected `,` or `)` in const-eval argument list")
         }
       }
-      ConstEvalExpr::Call("\{name}<\{element.label()}>", args)
+      Call("\{name}<\{element.label()}>", args)
     }
     [Ident(name), LeftParen, .. rest] => {
       self.update_view(rest)
       let args : Array[ConstEvalExpr] = []
       if self.view() is [RightParen, .. after_empty] {
         self.update_view(after_empty)
-        return ConstEvalExpr::Call(name, args)
+        return Call(name, args)
       }
       while true {
         args.push(self.parse_expression())
@@ -609,11 +609,11 @@ fn ConstEvalParser::parse_primary(
           _ => self.error("expected `,` or `)` in const-eval argument list")
         }
       }
-      ConstEvalExpr::Call(name, args)
+      Call(name, args)
     }
     [Ident(name), .. rest] => {
       self.update_view(rest)
-      ConstEvalExpr::Binding(name)
+      Binding(name)
     }
     [LeftParen, .. rest] => {
       self.update_view(rest)
@@ -639,7 +639,7 @@ fn ConstEvalParser::parse_postfix(
     match rest {
       [Dot, Ident(name), .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Access(expr, name)
+        expr = Access(expr, name)
         continue self.view()
       }
       [Dot, ..] =>
@@ -651,7 +651,7 @@ fn ConstEvalParser::parse_postfix(
           [RightBracket, .. after] => self.update_view(after)
           _ => self.error("expected `]` in const-eval index expression")
         }
-        expr = ConstEvalExpr::Index(expr, index)
+        expr = Index(expr, index)
         continue self.view()
       }
       _ => break
@@ -667,19 +667,19 @@ fn ConstEvalParser::parse_unary(
   match self.view() {
     [Minus, .. rest] => {
       self.update_view(rest)
-      ConstEvalExpr::UnaryNeg(self.parse_unary())
+      UnaryNeg(self.parse_unary())
     }
     [Bang, .. rest] => {
       self.update_view(rest)
-      ConstEvalExpr::UnaryNot(self.parse_unary())
+      UnaryNot(self.parse_unary())
     }
     [Tilde, .. rest] => {
       self.update_view(rest)
-      ConstEvalExpr::UnaryBitNot(self.parse_unary())
+      UnaryBitNot(self.parse_unary())
     }
     [Amp, .. rest] => {
       self.update_view(rest)
-      ConstEvalExpr::AddressOf(self.parse_lvalue())
+      AddressOf(self.parse_lvalue())
     }
     _ => self.parse_postfix()
   }
@@ -694,29 +694,17 @@ fn ConstEvalParser::parse_multiplicative(
     match rest {
       [Star, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::Mul,
-          expr,
-          self.parse_unary(),
-        )
+        expr = Binary(Mul, expr, self.parse_unary())
         continue self.view()
       }
       [Slash, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::Div,
-          expr,
-          self.parse_unary(),
-        )
+        expr = Binary(Div, expr, self.parse_unary())
         continue self.view()
       }
       [Percent, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::Mod,
-          expr,
-          self.parse_unary(),
-        )
+        expr = Binary(Mod, expr, self.parse_unary())
         continue self.view()
       }
       rest => {
@@ -737,20 +725,12 @@ fn ConstEvalParser::parse_additive(
     match rest {
       [Plus, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::Add,
-          expr,
-          self.parse_multiplicative(),
-        )
+        expr = Binary(Add, expr, self.parse_multiplicative())
         continue self.view()
       }
       [Minus, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::Sub,
-          expr,
-          self.parse_multiplicative(),
-        )
+        expr = Binary(Sub, expr, self.parse_multiplicative())
         continue self.view()
       }
       rest => {
@@ -771,20 +751,12 @@ fn ConstEvalParser::parse_shift(
     match rest {
       [LeftShift, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::Shl,
-          expr,
-          self.parse_additive(),
-        )
+        expr = Binary(Shl, expr, self.parse_additive())
         continue self.view()
       }
       [RightShift, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::Shr,
-          expr,
-          self.parse_additive(),
-        )
+        expr = Binary(Shr, expr, self.parse_additive())
         continue self.view()
       }
       rest => {
@@ -805,38 +777,22 @@ fn ConstEvalParser::parse_relational(
     match rest {
       [Less, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::Lt,
-          expr,
-          self.parse_shift(),
-        )
+        expr = Binary(Lt, expr, self.parse_shift())
         continue self.view()
       }
       [LessEqual, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::Le,
-          expr,
-          self.parse_shift(),
-        )
+        expr = Binary(Le, expr, self.parse_shift())
         continue self.view()
       }
       [Greater, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::Gt,
-          expr,
-          self.parse_shift(),
-        )
+        expr = Binary(Gt, expr, self.parse_shift())
         continue self.view()
       }
       [GreaterEqual, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::Ge,
-          expr,
-          self.parse_shift(),
-        )
+        expr = Binary(Ge, expr, self.parse_shift())
         continue self.view()
       }
       rest => {
@@ -857,20 +813,12 @@ fn ConstEvalParser::parse_equality(
     match rest {
       [EqualEqual, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::Eq,
-          expr,
-          self.parse_relational(),
-        )
+        expr = Binary(Eq, expr, self.parse_relational())
         continue self.view()
       }
       [BangEqual, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::Ne,
-          expr,
-          self.parse_relational(),
-        )
+        expr = Binary(Ne, expr, self.parse_relational())
         continue self.view()
       }
       rest => {
@@ -891,11 +839,7 @@ fn ConstEvalParser::parse_bitwise_and(
     match rest {
       [Amp, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::BitAnd,
-          expr,
-          self.parse_equality(),
-        )
+        expr = Binary(BitAnd, expr, self.parse_equality())
         continue self.view()
       }
       rest => {
@@ -916,11 +860,7 @@ fn ConstEvalParser::parse_bitwise_xor(
     match rest {
       [Caret, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::BitXor,
-          expr,
-          self.parse_bitwise_and(),
-        )
+        expr = Binary(BitXor, expr, self.parse_bitwise_and())
         continue self.view()
       }
       rest => {
@@ -941,11 +881,7 @@ fn ConstEvalParser::parse_bitwise_or(
     match rest {
       [Pipe, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::BitOr,
-          expr,
-          self.parse_bitwise_xor(),
-        )
+        expr = Binary(BitOr, expr, self.parse_bitwise_xor())
         continue self.view()
       }
       rest => {
@@ -966,11 +902,7 @@ fn ConstEvalParser::parse_logical_and(
     match rest {
       [AmpAmp, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::LogicalAnd,
-          expr,
-          self.parse_bitwise_or(),
-        )
+        expr = Binary(LogicalAnd, expr, self.parse_bitwise_or())
         continue self.view()
       }
       rest => {
@@ -991,11 +923,7 @@ fn ConstEvalParser::parse_logical_or(
     match rest {
       [PipePipe, .. next] => {
         self.update_view(next)
-        expr = ConstEvalExpr::Binary(
-          ConstEvalBinaryOp::LogicalOr,
-          expr,
-          self.parse_logical_and(),
-        )
+        expr = Binary(LogicalOr, expr, self.parse_logical_and())
         continue self.view()
       }
       rest => {
@@ -1071,7 +999,7 @@ fn ConstEvalParser::parse_if_statement(
     }
     _ => []
   }
-  ConstEvalStatement::If(condition, then_branch, else_branch)
+  If(condition, then_branch, else_branch)
 }
 
 ///|
@@ -1134,7 +1062,7 @@ fn ConstEvalParser::parse_switch_case(
     }
     _ => self.error("expected const-eval switch case")
   }
-  ConstEvalSwitchCase::{ selectors, body: self.parse_switch_case_body() }
+  { selectors, body: self.parse_switch_case_body() }
 }
 
 ///|
@@ -1157,7 +1085,7 @@ fn ConstEvalParser::parse_switch_statement(
       _ => cases.push(self.parse_switch_case())
     }
   }
-  ConstEvalStatement::Switch(selector, cases)
+  Switch(selector, cases)
 }
 
 ///|
@@ -1166,7 +1094,7 @@ fn ConstEvalParser::parse_while_statement(
 ) -> ConstEvalStatement raise WeslCompileError {
   let condition = self.parse_if_condition()
   let body = self.parse_statement_block()
-  ConstEvalStatement::While(condition, body)
+  While(condition, body)
 }
 
 ///|
@@ -1196,7 +1124,7 @@ fn ConstEvalParser::parse_loop_statement(
       _ => body.push(self.parse_statement())
     }
   }
-  ConstEvalStatement::Loop(body, continuing)
+  Loop(body, continuing)
 }
 
 ///|
@@ -1226,7 +1154,7 @@ fn ConstEvalParser::parse_binding_statement_with_terminator(
   if !self.consume_token(terminator) {
     self.error("expected terminator after const-eval binding")
   }
-  ConstEvalStatement::Binding(ConstEvalBinding::{ name, declared_type, expr })
+  Binding({ name, declared_type, expr })
 }
 
 ///|
@@ -1250,7 +1178,7 @@ fn ConstEvalParser::parse_assignment_statement_with_terminator(
   if !self.consume_token(terminator) {
     self.error("expected terminator after const-eval assignment")
   }
-  ConstEvalStatement::Assignment(target, expr)
+  Assignment(target, expr)
 }
 
 ///|
@@ -1268,7 +1196,7 @@ fn ConstEvalParser::parse_compound_assignment_statement_with_terminator(
   if !self.consume_token(terminator) {
     self.error("expected terminator after const-eval compound assignment")
   }
-  ConstEvalStatement::CompoundAssignment(target, op, expr)
+  CompoundAssignment(target, op, expr)
 }
 
 ///|
@@ -1281,7 +1209,7 @@ fn ConstEvalParser::parse_lvalue_tail(
     match rest {
       [Dot, Ident(name), .. next] => {
         self.update_view(next)
-        target = ConstEvalLValue::Field(target, name)
+        target = Field(target, name)
         continue self.view()
       }
       [Dot, ..] =>
@@ -1293,7 +1221,7 @@ fn ConstEvalParser::parse_lvalue_tail(
           [RightBracket, .. after] => self.update_view(after)
           _ => self.error("expected `]` in const-eval assignment target")
         }
-        target = ConstEvalLValue::Element(target, index)
+        target = Element(target, index)
         continue self.view()
       }
       _ => break
@@ -1409,14 +1337,14 @@ fn ConstEvalParser::parse_lvalue_statement_with_terminator(
       if !self.consume_token(terminator) {
         self.error("expected terminator after const-eval increment")
       }
-      ConstEvalStatement::Increment(target)
+      Increment(target)
     }
     [Minus, Minus, .. rest] => {
       self.update_view(rest)
       if !self.consume_token(terminator) {
         self.error("expected terminator after const-eval decrement")
       }
-      ConstEvalStatement::Decrement(target)
+      Decrement(target)
     }
     _ => self.error("expected const-eval assignment statement")
   }
@@ -1490,7 +1418,7 @@ fn ConstEvalParser::parse_for_statement(
     _ => ()
   }
   let body = self.parse_statement_block()
-  ConstEvalStatement::For(initializer, condition, update, body)
+  For(initializer, condition, update, body)
 }
 
 ///|
@@ -1508,7 +1436,7 @@ fn ConstEvalParser::parse_param(
     [Colon, .. rest] => self.update_view(rest)
     _ => self.error("expected `:` in const-eval parameter")
   }
-  ConstEvalParam::{ name, declared_type: self.parse_type() }
+  { name, declared_type: self.parse_type() }
 }
 
 ///|
@@ -1582,28 +1510,28 @@ fn ConstEvalParser::parse_statement(
         [Semi, .. after_semi] => self.update_view(after_semi)
         _ => self.error("expected `;` after const-eval break-if")
       }
-      ConstEvalStatement::BreakIf(expr)
+      BreakIf(expr)
     }
     [Ident("break"), Semi, .. rest] => {
       self.update_view(rest)
-      ConstEvalStatement::Break
+      Break
     }
     [Ident("continue"), Semi, .. rest] => {
       self.update_view(rest)
-      ConstEvalStatement::Continue
+      Continue
     }
     [Ident("return"), .. rest] => {
       self.update_view(rest)
       if self.view() is [Semi, .. after_semi] {
         self.update_view(after_semi)
-        return ConstEvalStatement::ReturnVoid
+        return ReturnVoid
       }
       let expr = self.parse_expression()
       match self.view() {
         [Semi, .. after_semi] => self.update_view(after_semi)
         _ => self.error("expected `;` after const-eval return")
       }
-      ConstEvalStatement::Return(expr)
+      Return(expr)
     }
     [Ident(_), ..] => {
       let target = self.parse_lvalue()
@@ -1633,7 +1561,7 @@ fn ConstEvalParser::parse_function(
     }
   }
   if !has_const {
-    raise WeslCompileError::Validation("expected `@const` function")
+    raise Validation("expected `@const` function")
   }
   match self.view() {
     [Ident("fn"), .. rest] => self.update_view(rest)
@@ -1667,7 +1595,7 @@ fn ConstEvalParser::parse_function(
   if !self.view().is_empty() {
     self.error("unexpected trailing const-eval tokens")
   }
-  ConstEvalFunction::{ name, params, return_type, statements }
+  { name, params, return_type, statements }
 }
 
 ///|
@@ -1694,17 +1622,14 @@ priv struct ConstEvalContext {
 
 ///|
 fn ConstEvalContext::new() -> ConstEvalContext {
-  ConstEvalContext::{
-    bindings: @hashmap.HashMap([]),
-    functions: @hashmap.HashMap([]),
-  }
+  { bindings: HashMap([]), functions: HashMap([]) }
 }
 
 ///|
 fn const_eval_clone_bindings(
   bindings : @hashmap.HashMap[String, ConstEvalValue],
 ) -> @hashmap.HashMap[String, ConstEvalValue] {
-  let copy : @hashmap.HashMap[String, ConstEvalValue] = @hashmap.HashMap([])
+  let copy : @hashmap.HashMap[String, ConstEvalValue] = HashMap([])
   for entry in bindings.iter() {
     let (name, value) = entry
     copy.set(name, value)
@@ -1716,7 +1641,7 @@ fn const_eval_clone_bindings(
 fn ConstEvalContext::new_call_scope(
   self : ConstEvalContext,
 ) -> ConstEvalContext {
-  ConstEvalContext::{
+  {
     bindings: const_eval_clone_bindings(self.bindings),
     functions: self.functions,
   }
@@ -1725,19 +1650,18 @@ fn ConstEvalContext::new_call_scope(
 ///|
 fn ConstEvalValue::value_type(self : ConstEvalValue) -> ConstEvalType {
   match self {
-    Bool(_) => ConstEvalType::Bool
-    AbstractInt(_) => ConstEvalType::AbstractInt
-    AbstractFloat(_, _) => ConstEvalType::AbstractFloat
-    I32(_) => ConstEvalType::I32
-    U32(_) => ConstEvalType::U32
-    F32(_) => ConstEvalType::F32
-    Vector(width, element, _) => ConstEvalType::Vector(width, element)
-    Matrix(columns, rows, element, _) =>
-      ConstEvalType::Matrix(columns, rows, element)
-    Array(element, count, _) => ConstEvalType::Array(element, count)
-    Struct(name, _) => ConstEvalType::Struct(name)
-    FrexpAbstract(_, _) => ConstEvalType::FrexpAbstractResult
-    FrexpF32(_, _) => ConstEvalType::FrexpF32Result
+    Bool(_) => Bool
+    AbstractInt(_) => AbstractInt
+    AbstractFloat(_, _) => AbstractFloat
+    I32(_) => I32
+    U32(_) => U32
+    F32(_) => F32
+    Vector(width, element, _) => Vector(width, element)
+    Matrix(columns, rows, element, _) => Matrix(columns, rows, element)
+    Array(element, count, _) => Array(element, count)
+    Struct(name, _) => Struct(name)
+    FrexpAbstract(_, _) => FrexpAbstractResult
+    FrexpF32(_, _) => FrexpF32Result
   }
 }
 
@@ -1815,7 +1739,7 @@ fn const_eval_hex_digit_value(code : Int) -> Int raise WeslCompileError {
   if code >= 97 && code <= 102 {
     return code - 87
   }
-  raise WeslCompileError::Validation("invalid hex digit")
+  raise Validation("invalid hex digit")
 }
 
 ///|
@@ -1827,12 +1751,11 @@ fn const_eval_parse_integer_literal(
     (normalized[:2].to_owned() == "0x" || normalized[:2].to_owned() == "0X") {
     let digits = normalized[2:normalized.length()].to_owned()
     return @string.parse_int64(digits[:], base=16) catch {
-      _ =>
-        raise WeslCompileError::Validation("invalid integer literal `\{text}`")
+      _ => raise Validation("invalid integer literal `\{text}`")
     }
   }
   @string.parse_int64(normalized[:], base=10) catch {
-    _ => raise WeslCompileError::Validation("invalid integer literal `\{text}`")
+    _ => raise Validation("invalid integer literal `\{text}`")
   }
 }
 
@@ -1845,7 +1768,7 @@ fn const_eval_parse_array_count(text : String) -> Int raise WeslCompileError {
   }
   let value = const_eval_parse_integer_literal(normalized)
   if value <= 0L || value > 2147483647L {
-    raise WeslCompileError::Validation("invalid array count `\{text}`")
+    raise Validation("invalid array count `\{text}`")
   }
   value.to_int()
 }
@@ -1854,7 +1777,7 @@ fn const_eval_parse_array_count(text : String) -> Int raise WeslCompileError {
 fn const_eval_matrix_dimension(text : String) -> Int raise WeslCompileError {
   let value = const_eval_parse_integer_literal(text)
   if value < 2L || value > 4L {
-    raise WeslCompileError::Validation("invalid matrix dimension `\{text}`")
+    raise Validation("invalid matrix dimension `\{text}`")
   }
   value.to_int()
 }
@@ -1866,7 +1789,7 @@ fn const_eval_parse_hex_float_literal(
   let normalized = const_eval_remove_underscores(text)
   guard normalized.length() >= 3 &&
     (normalized[:2].to_owned() == "0x" || normalized[:2].to_owned() == "0X") else {
-    raise WeslCompileError::Validation("invalid float literal `\{text}`")
+    raise Validation("invalid float literal `\{text}`")
   }
   let body = normalized[2:normalized.length()].to_owned()
   let exponent_index = match body.find("p") {
@@ -1874,8 +1797,7 @@ fn const_eval_parse_hex_float_literal(
     None =>
       match body.find("P") {
         Some(index) => index
-        None =>
-          raise WeslCompileError::Validation("invalid float literal `\{text}`")
+        None => raise Validation("invalid float literal `\{text}`")
       }
   }
   let mantissa = body[:exponent_index].to_owned()
@@ -1883,7 +1805,7 @@ fn const_eval_parse_hex_float_literal(
     body[exponent_index + 1:body.length()],
     base=10,
   ) catch {
-    _ => raise WeslCompileError::Validation("invalid float literal `\{text}`")
+    _ => raise Validation("invalid float literal `\{text}`")
   }
   let dot_index = mantissa.find(".")
   let integer_text = match dot_index {
@@ -1903,7 +1825,7 @@ fn const_eval_parse_hex_float_literal(
   for i = 0; i < fraction_text.length(); i = i + 1 {
     let code = fraction_text.code_unit_at(i).to_int()
     if !const_eval_is_hex_digit(code) {
-      raise WeslCompileError::Validation("invalid float literal `\{text}`")
+      raise Validation("invalid float literal `\{text}`")
     }
     value = value + const_eval_hex_digit_value(code).to_double() * factor
     factor = factor / 16.0
@@ -1937,7 +1859,7 @@ fn const_eval_parse_double_literal(
         (normalized[:2].to_owned() == "0x" || normalized[:2].to_owned() == "0X") {
         const_eval_parse_hex_float_literal(normalized)
       } else {
-        raise WeslCompileError::Validation("invalid float literal `\{text}`")
+        raise Validation("invalid float literal `\{text}`")
       }
   }
 }
@@ -1949,10 +1871,10 @@ fn const_eval_exact_f32_from_double(
 ) -> Float raise WeslCompileError {
   let narrowed = Float::from_double(value)
   if Float::is_inf(narrowed) || Float::is_nan(narrowed) {
-    raise WeslCompileError::Validation("f32 literal out of range `\{text}`")
+    raise Validation("f32 literal out of range `\{text}`")
   }
   if narrowed.to_double() != value {
-    raise WeslCompileError::Validation("f32 literal loses precision `\{text}`")
+    raise Validation("f32 literal loses precision `\{text}`")
   }
   narrowed
 }
@@ -1964,7 +1886,7 @@ fn const_eval_rounded_f32_from_double(
 ) -> Float raise WeslCompileError {
   let narrowed = Float::from_double(value)
   if Float::is_inf(narrowed) || Float::is_nan(narrowed) {
-    raise WeslCompileError::Validation("f32 literal out of range `\{text}`")
+    raise Validation("f32 literal out of range `\{text}`")
   }
   narrowed
 }
@@ -1974,11 +1896,11 @@ fn const_eval_parse_literal(
   text : String,
 ) -> ConstEvalValue raise WeslCompileError {
   if text.length() == 0 {
-    raise WeslCompileError::Validation("empty literal")
+    raise Validation("empty literal")
   }
   match text {
-    "true" => return ConstEvalValue::Bool(true)
-    "false" => return ConstEvalValue::Bool(false)
+    "true" => return Bool(true)
+    "false" => return Bool(false)
     _ => ()
   }
   let is_hex = text.length() >= 2 &&
@@ -1990,27 +1912,26 @@ fn const_eval_parse_literal(
     }
     let value = const_eval_parse_double_literal(float_text)
     return match text[text.length() - 1:text.length()].to_owned() {
-      "f" =>
-        ConstEvalValue::F32(const_eval_rounded_f32_from_double(text, value))
+      "f" => F32(const_eval_rounded_f32_from_double(text, value))
       _ => {
         let f32_lossless = if is_hex {
           Float::from_double(value).to_double() == value
         } else {
           true
         }
-        ConstEvalValue::AbstractFloat(value, f32_lossless)
+        AbstractFloat(value, f32_lossless)
       }
     }
   }
   if is_hex {
-    return ConstEvalValue::AbstractInt(const_eval_parse_integer_literal(text))
+    return AbstractInt(const_eval_parse_integer_literal(text))
   }
   let suffix = text[text.length() - 1:text.length()].to_owned()
   match suffix {
     "u" =>
-      ConstEvalValue::U32(
+      U32(
         const_eval_require_u32(
-          ConstEvalValue::AbstractInt(
+          AbstractInt(
             const_eval_parse_integer_literal(
               text[:text.length() - 1].to_owned(),
             ),
@@ -2019,9 +1940,9 @@ fn const_eval_parse_literal(
         ),
       )
     "i" =>
-      ConstEvalValue::I32(
+      I32(
         const_eval_require_i32(
-          ConstEvalValue::AbstractInt(
+          AbstractInt(
             const_eval_parse_integer_literal(
               text[:text.length() - 1].to_owned(),
             ),
@@ -2033,9 +1954,9 @@ fn const_eval_parse_literal(
       let value = const_eval_parse_double_literal(
         text[:text.length() - 1].to_owned(),
       )
-      ConstEvalValue::F32(const_eval_rounded_f32_from_double(text, value))
+      F32(const_eval_rounded_f32_from_double(text, value))
     }
-    _ => ConstEvalValue::AbstractInt(const_eval_parse_integer_literal(text))
+    _ => AbstractInt(const_eval_parse_integer_literal(text))
   }
 }
 
@@ -2045,55 +1966,33 @@ fn const_eval_require_i32(
   context : String,
 ) -> Int64 raise WeslCompileError {
   match value {
-    Bool(_) =>
-      raise WeslCompileError::Validation(
-        "cannot convert bool to i32 in \{context}",
-      )
+    Bool(_) => raise Validation("cannot convert bool to i32 in \{context}")
     AbstractInt(number) =>
       if number < CONST_EVAL_I32_MIN || number > CONST_EVAL_I32_MAX {
-        raise WeslCompileError::Validation(
-          "value out of range for i32 in \{context}",
-        )
+        raise Validation("value out of range for i32 in \{context}")
       } else {
         number
       }
     I32(number) => number
     U32(number) =>
       if number > CONST_EVAL_I32_MAX {
-        raise WeslCompileError::Validation(
-          "value out of range for i32 in \{context}",
-        )
+        raise Validation("value out of range for i32 in \{context}")
       } else {
         number
       }
     AbstractFloat(_, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert abstract float to i32 in \{context}",
-      )
-    F32(_) =>
-      raise WeslCompileError::Validation(
-        "cannot convert f32 to i32 in \{context}",
-      )
+      raise Validation("cannot convert abstract float to i32 in \{context}")
+    F32(_) => raise Validation("cannot convert f32 to i32 in \{context}")
     FrexpAbstract(_, _) | FrexpF32(_, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert frexp result to i32 in \{context}",
-      )
+      raise Validation("cannot convert frexp result to i32 in \{context}")
     Struct(_, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert struct to i32 in \{context}",
-      )
+      raise Validation("cannot convert struct to i32 in \{context}")
     Matrix(_, _, _, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert matrix to i32 in \{context}",
-      )
+      raise Validation("cannot convert matrix to i32 in \{context}")
     Array(_, _, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert array to i32 in \{context}",
-      )
+      raise Validation("cannot convert array to i32 in \{context}")
     Vector(_, _, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert vector to i32 in \{context}",
-      )
+      raise Validation("cannot convert vector to i32 in \{context}")
   }
 }
 
@@ -2103,55 +2002,33 @@ fn const_eval_require_u32(
   context : String,
 ) -> Int64 raise WeslCompileError {
   match value {
-    Bool(_) =>
-      raise WeslCompileError::Validation(
-        "cannot convert bool to u32 in \{context}",
-      )
+    Bool(_) => raise Validation("cannot convert bool to u32 in \{context}")
     AbstractInt(number) =>
       if number < 0 || number > CONST_EVAL_U32_MAX {
-        raise WeslCompileError::Validation(
-          "value out of range for u32 in \{context}",
-        )
+        raise Validation("value out of range for u32 in \{context}")
       } else {
         number
       }
     U32(number) => number
     I32(number) =>
       if number < 0 {
-        raise WeslCompileError::Validation(
-          "value out of range for u32 in \{context}",
-        )
+        raise Validation("value out of range for u32 in \{context}")
       } else {
         number
       }
     AbstractFloat(_, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert abstract float to u32 in \{context}",
-      )
-    F32(_) =>
-      raise WeslCompileError::Validation(
-        "cannot convert f32 to u32 in \{context}",
-      )
+      raise Validation("cannot convert abstract float to u32 in \{context}")
+    F32(_) => raise Validation("cannot convert f32 to u32 in \{context}")
     FrexpAbstract(_, _) | FrexpF32(_, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert frexp result to u32 in \{context}",
-      )
+      raise Validation("cannot convert frexp result to u32 in \{context}")
     Struct(_, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert struct to u32 in \{context}",
-      )
+      raise Validation("cannot convert struct to u32 in \{context}")
     Matrix(_, _, _, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert matrix to u32 in \{context}",
-      )
+      raise Validation("cannot convert matrix to u32 in \{context}")
     Array(_, _, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert array to u32 in \{context}",
-      )
+      raise Validation("cannot convert array to u32 in \{context}")
     Vector(_, _, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert vector to u32 in \{context}",
-      )
+      raise Validation("cannot convert vector to u32 in \{context}")
   }
 }
 
@@ -2161,10 +2038,7 @@ fn const_eval_require_f32(
   context : String,
 ) -> Float raise WeslCompileError {
   match value {
-    Bool(_) =>
-      raise WeslCompileError::Validation(
-        "cannot convert bool to f32 in \{context}",
-      )
+    Bool(_) => raise Validation("cannot convert bool to f32 in \{context}")
     AbstractInt(number) =>
       const_eval_exact_f32_from_double(context, number.to_double())
     AbstractFloat(number, f32_lossless) =>
@@ -2174,34 +2048,18 @@ fn const_eval_require_f32(
         const_eval_exact_f32_from_double(context, number)
       }
     F32(number) => number
-    I32(_) =>
-      raise WeslCompileError::Validation(
-        "cannot convert i32 to f32 in \{context}",
-      )
-    U32(_) =>
-      raise WeslCompileError::Validation(
-        "cannot convert u32 to f32 in \{context}",
-      )
+    I32(_) => raise Validation("cannot convert i32 to f32 in \{context}")
+    U32(_) => raise Validation("cannot convert u32 to f32 in \{context}")
     FrexpAbstract(_, _) | FrexpF32(_, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert frexp result to f32 in \{context}",
-      )
+      raise Validation("cannot convert frexp result to f32 in \{context}")
     Struct(_, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert struct to f32 in \{context}",
-      )
+      raise Validation("cannot convert struct to f32 in \{context}")
     Matrix(_, _, _, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert matrix to f32 in \{context}",
-      )
+      raise Validation("cannot convert matrix to f32 in \{context}")
     Array(_, _, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert array to f32 in \{context}",
-      )
+      raise Validation("cannot convert array to f32 in \{context}")
     Vector(_, _, _) =>
-      raise WeslCompileError::Validation(
-        "cannot convert vector to f32 in \{context}",
-      )
+      raise Validation("cannot convert vector to f32 in \{context}")
   }
 }
 
@@ -2212,10 +2070,7 @@ fn const_eval_require_bool(
 ) -> Bool raise WeslCompileError {
   match value {
     Bool(value) => value
-    _ =>
-      raise WeslCompileError::Validation(
-        "cannot convert non-bool to bool in \{context}",
-      )
+    _ => raise Validation("cannot convert non-bool to bool in \{context}")
   }
 }
 
@@ -2227,7 +2082,7 @@ fn const_eval_require_abstract_int(
   match value {
     AbstractInt(number) => number
     _ =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "cannot convert non-abstract-int to abstract int in \{context}",
       )
   }
@@ -2242,21 +2097,16 @@ fn const_eval_convert_to_type(
   match target {
     AbstractInt => value
     AbstractFloat => value
-    Void =>
-      raise WeslCompileError::Validation(
-        "cannot convert value to void in \{context}",
-      )
-    Bool => ConstEvalValue::Bool(const_eval_require_bool(value, context))
-    I32 => ConstEvalValue::I32(const_eval_require_i32(value, context))
-    U32 => ConstEvalValue::U32(const_eval_require_u32(value, context))
-    F32 => ConstEvalValue::F32(const_eval_require_f32(value, context))
+    Void => raise Validation("cannot convert value to void in \{context}")
+    Bool => Bool(const_eval_require_bool(value, context))
+    I32 => I32(const_eval_require_i32(value, context))
+    U32 => U32(const_eval_require_u32(value, context))
+    F32 => F32(const_eval_require_f32(value, context))
     Vector(width, element) =>
       match value {
         Vector(value_width, _, elements) =>
           if value_width != width || elements.length() != width {
-            raise WeslCompileError::Validation(
-              "cannot convert vector width in \{context}",
-            )
+            raise Validation("cannot convert vector width in \{context}")
           } else {
             let converted : Array[ConstEvalValue] = []
             for element_value in elements {
@@ -2264,10 +2114,10 @@ fn const_eval_convert_to_type(
                 const_eval_convert_to_type(element_value, element, context),
               )
             }
-            ConstEvalValue::Vector(width, element, converted)
+            Vector(width, element, converted)
           }
         _ =>
-          raise WeslCompileError::Validation(
+          raise Validation(
             "cannot convert non-vector to vec\{width}<\{element.label()}> in \{context}",
           )
       }
@@ -2277,24 +2127,22 @@ fn const_eval_convert_to_type(
           if value_columns != columns ||
             value_rows != rows ||
             columns_values.length() != columns {
-            raise WeslCompileError::Validation(
-              "cannot convert matrix dimensions in \{context}",
-            )
+            raise Validation("cannot convert matrix dimensions in \{context}")
           } else {
             let converted : Array[ConstEvalValue] = []
             for column in columns_values {
               converted.push(
                 const_eval_convert_to_type(
                   column,
-                  ConstEvalType::Vector(rows, element),
+                  Vector(rows, element),
                   context,
                 ),
               )
             }
-            ConstEvalValue::Matrix(columns, rows, element, converted)
+            Matrix(columns, rows, element, converted)
           }
         _ =>
-          raise WeslCompileError::Validation(
+          raise Validation(
             "cannot convert non-matrix to mat\{columns}x\{rows}<\{element.label()}> in \{context}",
           )
       }
@@ -2302,9 +2150,7 @@ fn const_eval_convert_to_type(
       match value {
         Array(_, value_count, elements) =>
           if count != None && value_count != count {
-            raise WeslCompileError::Validation(
-              "cannot convert array count in \{context}",
-            )
+            raise Validation("cannot convert array count in \{context}")
           } else {
             let converted : Array[ConstEvalValue] = []
             for element_value in elements {
@@ -2312,10 +2158,10 @@ fn const_eval_convert_to_type(
                 const_eval_convert_to_type(element_value, element, context),
               )
             }
-            ConstEvalValue::Array(element, count, converted)
+            Array(element, count, converted)
           }
         _ =>
-          raise WeslCompileError::Validation(
+          raise Validation(
             "cannot convert non-array to \{target.label()} in \{context}",
           )
       }
@@ -2323,14 +2169,14 @@ fn const_eval_convert_to_type(
       match value {
         Struct(value_name, fields) =>
           if value_name == name {
-            ConstEvalValue::Struct(name, fields)
+            Struct(name, fields)
           } else {
-            raise WeslCompileError::Validation(
+            raise Validation(
               "cannot convert struct `\{value_name}` to `\{name}` in \{context}",
             )
           }
         _ =>
-          raise WeslCompileError::Validation(
+          raise Validation(
             "cannot convert non-struct to `\{name}` in \{context}",
           )
       }
@@ -2343,19 +2189,17 @@ fn const_eval_unary_neg(
   value : ConstEvalValue,
 ) -> ConstEvalValue raise WeslCompileError {
   match value {
-    Bool(_) => raise WeslCompileError::Validation("cannot negate bool literal")
-    AbstractInt(number) => ConstEvalValue::AbstractInt(-number)
-    AbstractFloat(number, f32_lossless) =>
-      ConstEvalValue::AbstractFloat(-number, f32_lossless)
-    I32(number) => ConstEvalValue::I32(-number)
-    U32(_) => raise WeslCompileError::Validation("cannot negate u32 literal")
-    F32(number) => ConstEvalValue::F32(-number)
+    Bool(_) => raise Validation("cannot negate bool literal")
+    AbstractInt(number) => AbstractInt(-number)
+    AbstractFloat(number, f32_lossless) => AbstractFloat(-number, f32_lossless)
+    I32(number) => I32(-number)
+    U32(_) => raise Validation("cannot negate u32 literal")
+    F32(number) => F32(-number)
     FrexpAbstract(_, _) | FrexpF32(_, _) =>
-      raise WeslCompileError::Validation("cannot negate frexp result")
-    Struct(_, _) => raise WeslCompileError::Validation("cannot negate struct")
-    Matrix(_, _, _, _) =>
-      raise WeslCompileError::Validation("cannot negate matrix")
-    Array(_, _, _) => raise WeslCompileError::Validation("cannot negate array")
+      raise Validation("cannot negate frexp result")
+    Struct(_, _) => raise Validation("cannot negate struct")
+    Matrix(_, _, _, _) => raise Validation("cannot negate matrix")
+    Array(_, _, _) => raise Validation("cannot negate array")
     Vector(width, _, elements) => {
       let values : Array[ConstEvalValue] = []
       for element in elements {
@@ -2378,7 +2222,7 @@ fn const_eval_unary_not(
       }
       const_eval_vector_from_elements(width, values, "logical not")
     }
-    _ => ConstEvalValue::Bool(!const_eval_require_bool(value, "logical not"))
+    _ => Bool(!const_eval_require_bool(value, "logical not"))
   }
 }
 
@@ -2387,39 +2231,22 @@ fn const_eval_unary_bit_not(
   value : ConstEvalValue,
 ) -> ConstEvalValue raise WeslCompileError {
   match value {
-    Bool(_) =>
-      raise WeslCompileError::Validation(
-        "cannot use unary operator `~` on type `bool`",
-      )
-    AbstractInt(number) => ConstEvalValue::AbstractInt(number.lnot())
+    Bool(_) => raise Validation("cannot use unary operator `~` on type `bool`")
+    AbstractInt(number) => AbstractInt(number.lnot())
     I32(number) =>
-      ConstEvalValue::I32(
-        const_eval_require_i32(
-          ConstEvalValue::AbstractInt(number.lnot()),
-          "bitwise complement",
-        ),
+      I32(
+        const_eval_require_i32(AbstractInt(number.lnot()), "bitwise complement"),
       )
-    U32(number) => ConstEvalValue::U32(CONST_EVAL_U32_MAX - number)
+    U32(number) => U32(CONST_EVAL_U32_MAX - number)
     AbstractFloat(_, _) =>
-      raise WeslCompileError::Validation(
-        "cannot use unary operator `~` on type `AbstractFloat`",
-      )
-    F32(_) =>
-      raise WeslCompileError::Validation(
-        "cannot use unary operator `~` on type `f32`",
-      )
+      raise Validation("cannot use unary operator `~` on type `AbstractFloat`")
+    F32(_) => raise Validation("cannot use unary operator `~` on type `f32`")
     FrexpAbstract(_, _) | FrexpF32(_, _) =>
-      raise WeslCompileError::Validation(
-        "cannot use unary operator `~` on type `frexp result`",
-      )
+      raise Validation("cannot use unary operator `~` on type `frexp result`")
     Struct(_, _) =>
-      raise WeslCompileError::Validation(
-        "cannot use unary operator `~` on struct type",
-      )
+      raise Validation("cannot use unary operator `~` on struct type")
     Matrix(_, _, _, _) | Array(_, _, _) =>
-      raise WeslCompileError::Validation(
-        "cannot use unary operator `~` on aggregate type",
-      )
+      raise Validation("cannot use unary operator `~` on aggregate type")
     Vector(width, _, elements) => {
       let values : Array[ConstEvalValue] = []
       for element in elements {
@@ -2437,36 +2264,24 @@ fn const_eval_to_abstract_float(
 ) -> Double raise WeslCompileError {
   match value {
     Bool(_) =>
-      raise WeslCompileError::Validation(
-        "cannot use bool with abstract float in \{context}",
-      )
+      raise Validation("cannot use bool with abstract float in \{context}")
     AbstractInt(number) => number.to_double()
     AbstractFloat(number, _) => number
     F32(number) => number.to_double()
     I32(_) =>
-      raise WeslCompileError::Validation(
-        "cannot use i32 with abstract float in \{context}",
-      )
+      raise Validation("cannot use i32 with abstract float in \{context}")
     U32(_) =>
-      raise WeslCompileError::Validation(
-        "cannot use u32 with abstract float in \{context}",
-      )
+      raise Validation("cannot use u32 with abstract float in \{context}")
     FrexpAbstract(_, _) | FrexpF32(_, _) =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "cannot use frexp result with abstract float in \{context}",
       )
     Struct(_, _) =>
-      raise WeslCompileError::Validation(
-        "cannot use struct with abstract float in \{context}",
-      )
+      raise Validation("cannot use struct with abstract float in \{context}")
     Matrix(_, _, _, _) | Array(_, _, _) =>
-      raise WeslCompileError::Validation(
-        "cannot use aggregate with abstract float in \{context}",
-      )
+      raise Validation("cannot use aggregate with abstract float in \{context}")
     Vector(_, _, _) =>
-      raise WeslCompileError::Validation(
-        "cannot use vector with abstract float in \{context}",
-      )
+      raise Validation("cannot use vector with abstract float in \{context}")
   }
 }
 
@@ -2483,7 +2298,7 @@ fn const_eval_binary_int(
     Div => lhs / rhs
     Mod => lhs % rhs
     _ =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "unsupported integer arithmetic operator `\{op.symbol()}`",
       )
   }
@@ -2502,9 +2317,7 @@ fn const_eval_binary_float(
     Div => lhs / rhs
     Mod => lhs - (lhs / rhs).trunc() * rhs
     _ =>
-      raise WeslCompileError::Validation(
-        "unsupported f32 arithmetic operator `\{op.symbol()}`",
-      )
+      raise Validation("unsupported f32 arithmetic operator `\{op.symbol()}`")
   }
 }
 
@@ -2521,7 +2334,7 @@ fn const_eval_binary_abstract_float(
     Div => lhs / rhs
     Mod => lhs - (lhs / rhs).trunc() * rhs
     _ =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "unsupported abstract float arithmetic operator `\{op.symbol()}`",
       )
   }
@@ -2538,9 +2351,7 @@ fn const_eval_bitwise_int(
     BitOr => lhs | rhs
     BitXor => lhs ^ rhs
     _ =>
-      raise WeslCompileError::Validation(
-        "unsupported integer bitwise operator `\{op.symbol()}`",
-      )
+      raise Validation("unsupported integer bitwise operator `\{op.symbol()}`")
   }
 }
 
@@ -2551,7 +2362,7 @@ fn const_eval_shift_count(
 ) -> Int raise WeslCompileError {
   let count = const_eval_require_u32(value, context)
   if count >= 64 {
-    raise WeslCompileError::Validation("shift count out of range in \{context}")
+    raise Validation("shift count out of range in \{context}")
   }
   count.to_int()
 }
@@ -2566,10 +2377,7 @@ fn const_eval_shift_int(
   match op {
     Shl => lhs << count
     Shr => lhs >> count
-    _ =>
-      raise WeslCompileError::Validation(
-        "unsupported shift operator `\{op.symbol()}`",
-      )
+    _ => raise Validation("unsupported shift operator `\{op.symbol()}`")
   }
 }
 
@@ -2595,10 +2403,7 @@ fn const_eval_compare_int(
     Le => lhs <= rhs
     Gt => lhs > rhs
     Ge => lhs >= rhs
-    _ =>
-      raise WeslCompileError::Validation(
-        "unsupported comparison operator `\{op.symbol()}`",
-      )
+    _ => raise Validation("unsupported comparison operator `\{op.symbol()}`")
   }
 }
 
@@ -2615,10 +2420,7 @@ fn const_eval_compare_float(
     Le => lhs <= rhs
     Gt => lhs > rhs
     Ge => lhs >= rhs
-    _ =>
-      raise WeslCompileError::Validation(
-        "unsupported comparison operator `\{op.symbol()}`",
-      )
+    _ => raise Validation("unsupported comparison operator `\{op.symbol()}`")
   }
 }
 
@@ -2637,10 +2439,7 @@ fn const_eval_compare_bool(
     Le => left <= right
     Gt => left > right
     Ge => left >= right
-    _ =>
-      raise WeslCompileError::Validation(
-        "unsupported comparison operator `\{op.symbol()}`",
-      )
+    _ => raise Validation("unsupported comparison operator `\{op.symbol()}`")
   }
 }
 
@@ -2650,7 +2449,7 @@ fn const_eval_binary_type_error(
   lhs : ConstEvalValue,
   rhs : ConstEvalValue,
 ) -> ConstEvalValue raise WeslCompileError {
-  raise WeslCompileError::Validation(
+  raise Validation(
     "cannot use binary operator `\{op.symbol()}` with operands `\{lhs.value_type().label()}` and `\{rhs.value_type().label()}`",
   )
 }
@@ -2697,7 +2496,7 @@ fn const_eval_vector_access(
   name : String,
 ) -> ConstEvalValue raise WeslCompileError {
   if name.length() == 0 || name.length() > 4 {
-    raise WeslCompileError::Validation("invalid vector swizzle `\{name}`")
+    raise Validation("invalid vector swizzle `\{name}`")
   }
   let values : Array[ConstEvalValue] = []
   let mut swizzle_space : String? = None
@@ -2705,20 +2504,17 @@ fn const_eval_vector_access(
     let part = name[index:index + 1].to_owned()
     let (component, part_namespace) = match const_eval_swizzle_component(part) {
       Some(value) => value
-      None =>
-        raise WeslCompileError::Validation("invalid vector swizzle `\{name}`")
+      None => raise Validation("invalid vector swizzle `\{name}`")
     }
     match swizzle_space {
       Some(current) =>
         if current != part_namespace {
-          raise WeslCompileError::Validation(
-            "cannot mix vector swizzle namespaces in `\{name}`",
-          )
+          raise Validation("cannot mix vector swizzle namespaces in `\{name}`")
         }
       None => swizzle_space = Some(part_namespace)
     }
     if component >= width {
-      raise WeslCompileError::Validation(
+      raise Validation(
         "vector swizzle `\{name}` is out of bounds for vec\{width}",
       )
     }
@@ -2727,7 +2523,7 @@ fn const_eval_vector_access(
   if values.length() == 1 {
     values[0]
   } else {
-    ConstEvalValue::Vector(values.length(), element, values)
+    Vector(values.length(), element, values)
   }
 }
 
@@ -2741,14 +2537,12 @@ fn const_eval_access(
       match const_eval_struct_field(fields, name) {
         Some(value) => value
         None =>
-          raise WeslCompileError::Validation(
-            "unknown field `\{name}` on struct `\{type_name}`",
-          )
+          raise Validation("unknown field `\{name}` on struct `\{type_name}`")
       }
     Vector(width, element, elements) =>
       const_eval_vector_access(width, element, elements, name)
     _ =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "cannot access member `\{name}` on `\{value.value_type().label()}`",
       )
   }
@@ -2763,18 +2557,18 @@ fn const_eval_index_to_int(
     AbstractInt(number) => number
     I32(number) =>
       if number < 0 {
-        raise WeslCompileError::Validation("negative index in \{context}")
+        raise Validation("negative index in \{context}")
       } else {
         number
       }
     U32(number) => number
     _ =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "cannot use `\{value.value_type().label()}` as index in \{context}",
       )
   }
   if index < 0L || index > 2147483647L {
-    raise WeslCompileError::Validation("index out of range in \{context}")
+    raise Validation("index out of range in \{context}")
   }
   index.to_int()
 }
@@ -2788,7 +2582,7 @@ fn const_eval_index(
   match value {
     Vector(width, _, elements) => {
       if index < 0 || index >= width {
-        raise WeslCompileError::Validation(
+        raise Validation(
           "vector index \{index} is out of bounds for vec\{width}",
         )
       }
@@ -2796,7 +2590,7 @@ fn const_eval_index(
     }
     Matrix(columns, _, _, column_values) => {
       if index < 0 || index >= columns {
-        raise WeslCompileError::Validation(
+        raise Validation(
           "matrix column index \{index} is out of bounds for \{columns} columns",
         )
       }
@@ -2808,16 +2602,13 @@ fn const_eval_index(
         None => elements.length()
       }
       if index < 0 || index >= length || index >= elements.length() {
-        raise WeslCompileError::Validation(
+        raise Validation(
           "array index \{index} is out of bounds for length \{length}",
         )
       }
       elements[index]
     }
-    _ =>
-      raise WeslCompileError::Validation(
-        "cannot index `\{value.value_type().label()}`",
-      )
+    _ => raise Validation("cannot index `\{value.value_type().label()}`")
   }
 }
 
@@ -2831,9 +2622,7 @@ fn const_eval_get_lvalue(
       match ctx.bindings.get(name) {
         Some(value) => value
         None =>
-          raise WeslCompileError::Validation(
-            "unknown const-eval assignment target `\{name}`",
-          )
+          raise Validation("unknown const-eval assignment target `\{name}`")
       }
     Field(base, name) =>
       const_eval_access(const_eval_get_lvalue(base, ctx), name)
@@ -2869,11 +2658,9 @@ fn const_eval_set_struct_field(
     }
   }
   if !found {
-    raise WeslCompileError::Validation(
-      "unknown field `\{name}` on struct `\{type_name}`",
-    )
+    raise Validation("unknown field `\{name}` on struct `\{type_name}`")
   }
-  ConstEvalValue::Struct(type_name, updated_fields)
+  Struct(type_name, updated_fields)
 }
 
 ///|
@@ -2885,17 +2672,16 @@ fn const_eval_set_vector_component(
   value : ConstEvalValue,
 ) -> ConstEvalValue raise WeslCompileError {
   if name.length() != 1 {
-    raise WeslCompileError::Validation(
+    raise Validation(
       "cannot assign to multi-component vector swizzle `\{name}`",
     )
   }
   let component = match const_eval_swizzle_component(name) {
     Some((component, _)) => component
-    None =>
-      raise WeslCompileError::Validation("unknown vector component `\{name}`")
+    None => raise Validation("unknown vector component `\{name}`")
   }
   if component >= width {
-    raise WeslCompileError::Validation(
+    raise Validation(
       "vector component `\{name}` is out of bounds for vec\{width}",
     )
   }
@@ -2907,7 +2693,7 @@ fn const_eval_set_vector_component(
       updated_elements.push(elements[index])
     }
   }
-  ConstEvalValue::Vector(width, element, updated_elements)
+  Vector(width, element, updated_elements)
 }
 
 ///|
@@ -2922,7 +2708,7 @@ fn const_eval_set_field(
     Vector(width, element, elements) =>
       const_eval_set_vector_component(width, element, elements, name, value)
     _ =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "cannot assign member `\{name}` on `\{base.value_type().label()}`",
       )
   }
@@ -2938,7 +2724,7 @@ fn const_eval_set_index(
   match base {
     Vector(width, element, elements) => {
       if index < 0 || index >= width {
-        raise WeslCompileError::Validation(
+        raise Validation(
           "vector index \{index} is out of bounds for vec\{width}",
         )
       }
@@ -2952,11 +2738,11 @@ fn const_eval_set_index(
           updated_elements.push(elements[i])
         }
       }
-      ConstEvalValue::Vector(width, element, updated_elements)
+      Vector(width, element, updated_elements)
     }
     Matrix(columns, rows, element, column_values) => {
       if index < 0 || index >= columns {
-        raise WeslCompileError::Validation(
+        raise Validation(
           "matrix column index \{index} is out of bounds for \{columns} columns",
         )
       }
@@ -2971,7 +2757,7 @@ fn const_eval_set_index(
           updated_columns.push(column_values[i])
         }
       }
-      ConstEvalValue::Matrix(columns, rows, element, updated_columns)
+      Matrix(columns, rows, element, updated_columns)
     }
     Array(element, count, elements) => {
       let length = match count {
@@ -2979,7 +2765,7 @@ fn const_eval_set_index(
         None => elements.length()
       }
       if index < 0 || index >= length || index >= elements.length() {
-        raise WeslCompileError::Validation(
+        raise Validation(
           "array index \{index} is out of bounds for length \{length}",
         )
       }
@@ -2993,12 +2779,10 @@ fn const_eval_set_index(
           updated_elements.push(elements[i])
         }
       }
-      ConstEvalValue::Array(element, count, updated_elements)
+      Array(element, count, updated_elements)
     }
     _ =>
-      raise WeslCompileError::Validation(
-        "cannot assign index on `\{base.value_type().label()}`",
-      )
+      raise Validation("cannot assign index on `\{base.value_type().label()}`")
   }
 }
 
@@ -3013,9 +2797,7 @@ fn const_eval_set_lvalue(
       let current = match ctx.bindings.get(name) {
         Some(value) => value
         None =>
-          raise WeslCompileError::Validation(
-            "unknown const-eval assignment target `\{name}`",
-          )
+          raise Validation("unknown const-eval assignment target `\{name}`")
       }
       ctx.bindings.set(
         name,
@@ -3048,14 +2830,13 @@ fn const_eval_array_length_lvalue(
   ctx : ConstEvalContext,
 ) -> ConstEvalValue raise WeslCompileError {
   match const_eval_get_lvalue(target, ctx) {
-    Array(_, None, elements) =>
-      ConstEvalValue::U32(elements.length().to_int64())
+    Array(_, None, elements) => U32(elements.length().to_int64())
     Array(_, Some(_), _) =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "`arrayLength` expects a pointer to a runtime-sized array",
       )
     value =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "`arrayLength` expects a pointer to a runtime-sized array, got `\{value.value_type().label()}`",
       )
   }
@@ -3069,11 +2850,10 @@ fn const_eval_array_length_call(
   match args {
     [AddressOf(target)] => const_eval_array_length_lvalue(target, ctx)
     [_] =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "`arrayLength` expects a pointer to a runtime-sized array",
       )
-    _ =>
-      raise WeslCompileError::Validation("`arrayLength` expects one argument")
+    _ => raise Validation("`arrayLength` expects one argument")
   }
 }
 
@@ -3086,21 +2866,11 @@ fn const_eval_step_value(
   let next = match value {
     AbstractInt(number) => ConstEvalValue::AbstractInt(number + delta)
     I32(number) =>
-      ConstEvalValue::I32(
-        const_eval_require_i32(
-          ConstEvalValue::AbstractInt(number + delta),
-          name,
-        ),
-      )
+      I32(const_eval_require_i32(AbstractInt(number + delta), name))
     U32(number) =>
-      ConstEvalValue::U32(
-        const_eval_require_u32(
-          ConstEvalValue::AbstractInt(number + delta),
-          name,
-        ),
-      )
+      U32(const_eval_require_u32(AbstractInt(number + delta), name))
     _ =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "cannot apply const-eval increment to `\{value.value_type().label()}`",
       )
   }
@@ -3121,7 +2891,7 @@ fn const_eval_switch_selector_matches(
     ) {
     Bool(value) => value
     value =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "const-eval switch selector comparison produced `\{const_eval_render_value(value)}`",
       )
   }
@@ -3139,12 +2909,8 @@ fn const_eval_execute_update(
     ContinueExecution => ContinueExecution
     ReturnVoid => ReturnVoid
     ReturnValue(value) => ReturnValue(value)
-    BreakLoop =>
-      raise WeslCompileError::Validation("const-eval break in for-loop update")
-    ContinueLoop =>
-      raise WeslCompileError::Validation(
-        "const-eval continue in for-loop update",
-      )
+    BreakLoop => raise Validation("const-eval break in for-loop update")
+    ContinueLoop => raise Validation("const-eval continue in for-loop update")
   }
 }
 
@@ -3160,9 +2926,7 @@ fn const_eval_vector_width_for_values(
         match width {
           Some(current) =>
             if current != value_width {
-              raise WeslCompileError::Validation(
-                "vector widths are incompatible in \{context}",
-              )
+              raise Validation("vector widths are incompatible in \{context}")
             }
           None => width = Some(value_width)
         }
@@ -3179,26 +2943,24 @@ fn const_eval_vector_from_elements(
   context : String,
 ) -> ConstEvalValue raise WeslCompileError {
   if elements.length() != width || width <= 0 {
-    raise WeslCompileError::Validation("invalid vector width in \{context}")
+    raise Validation("invalid vector width in \{context}")
   }
   let element = match elements[0].value_type() {
     Bool => ConstEvalType::Bool
-    I32 => ConstEvalType::I32
-    U32 => ConstEvalType::U32
-    F32 => ConstEvalType::F32
+    I32 => I32
+    U32 => U32
+    F32 => F32
     other =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "invalid vector element type `\{other.label()}` in \{context}",
       )
   }
   for value in elements {
     if value.value_type() != element {
-      raise WeslCompileError::Validation(
-        "vector element types are incompatible in \{context}",
-      )
+      raise Validation("vector element types are incompatible in \{context}")
     }
   }
-  ConstEvalValue::Vector(width, element, elements)
+  Vector(width, element, elements)
 }
 
 ///|
@@ -3238,8 +3000,8 @@ fn const_eval_apply_bitwise(
   match (lhs, rhs) {
     (Bool(left), Bool(right)) =>
       match op {
-        BitAnd => ConstEvalValue::Bool(left && right)
-        BitOr => ConstEvalValue::Bool(left || right)
+        BitAnd => Bool(left && right)
+        BitOr => Bool(left || right)
         _ => const_eval_binary_type_error(op, lhs, rhs)
       }
     (Bool(_), right) => const_eval_binary_type_error(op, lhs, right)
@@ -3268,12 +3030,7 @@ fn const_eval_apply_bitwise(
         left,
         const_eval_require_u32(right, "bitwise expression"),
       )
-      ConstEvalValue::U32(
-        const_eval_require_u32(
-          ConstEvalValue::AbstractInt(value),
-          "bitwise expression",
-        ),
-      )
+      U32(const_eval_require_u32(AbstractInt(value), "bitwise expression"))
     }
     (left, U32(right)) => {
       let value = const_eval_bitwise_int(
@@ -3281,12 +3038,7 @@ fn const_eval_apply_bitwise(
         const_eval_require_u32(left, "bitwise expression"),
         right,
       )
-      ConstEvalValue::U32(
-        const_eval_require_u32(
-          ConstEvalValue::AbstractInt(value),
-          "bitwise expression",
-        ),
-      )
+      U32(const_eval_require_u32(AbstractInt(value), "bitwise expression"))
     }
     (I32(left), right) => {
       let value = const_eval_bitwise_int(
@@ -3294,12 +3046,7 @@ fn const_eval_apply_bitwise(
         left,
         const_eval_require_i32(right, "bitwise expression"),
       )
-      ConstEvalValue::I32(
-        const_eval_require_i32(
-          ConstEvalValue::AbstractInt(value),
-          "bitwise expression",
-        ),
-      )
+      I32(const_eval_require_i32(AbstractInt(value), "bitwise expression"))
     }
     (left, I32(right)) => {
       let value = const_eval_bitwise_int(
@@ -3307,15 +3054,10 @@ fn const_eval_apply_bitwise(
         const_eval_require_i32(left, "bitwise expression"),
         right,
       )
-      ConstEvalValue::I32(
-        const_eval_require_i32(
-          ConstEvalValue::AbstractInt(value),
-          "bitwise expression",
-        ),
-      )
+      I32(const_eval_require_i32(AbstractInt(value), "bitwise expression"))
     }
     (AbstractInt(left), AbstractInt(right)) =>
-      ConstEvalValue::AbstractInt(const_eval_bitwise_int(op, left, right))
+      AbstractInt(const_eval_bitwise_int(op, left, right))
   }
 }
 
@@ -3335,19 +3077,18 @@ fn const_eval_apply_shift(
     Struct(_, _) => const_eval_binary_type_error(op, lhs, rhs)
     Matrix(_, _, _, _) | Array(_, _, _) =>
       const_eval_binary_type_error(op, lhs, rhs)
-    AbstractInt(left) =>
-      ConstEvalValue::AbstractInt(const_eval_shift_int(op, left, rhs))
+    AbstractInt(left) => AbstractInt(const_eval_shift_int(op, left, rhs))
     U32(left) =>
-      ConstEvalValue::U32(
+      U32(
         const_eval_require_u32(
-          ConstEvalValue::AbstractInt(const_eval_shift_int(op, left, rhs)),
+          AbstractInt(const_eval_shift_int(op, left, rhs)),
           "shift expression",
         ),
       )
     I32(left) =>
-      ConstEvalValue::I32(
+      I32(
         const_eval_require_i32(
-          ConstEvalValue::AbstractInt(const_eval_shift_int(op, left, rhs)),
+          AbstractInt(const_eval_shift_int(op, left, rhs)),
           "shift expression",
         ),
       )
@@ -3361,8 +3102,7 @@ fn const_eval_apply_comparison(
   rhs : ConstEvalValue,
 ) -> ConstEvalValue raise WeslCompileError {
   match (lhs, rhs) {
-    (Bool(left), Bool(right)) =>
-      ConstEvalValue::Bool(const_eval_compare_bool(op, left, right))
+    (Bool(left), Bool(right)) => Bool(const_eval_compare_bool(op, left, right))
     (Bool(_), right) => const_eval_binary_type_error(op, lhs, right)
     (left, Bool(_)) => const_eval_binary_type_error(op, left, rhs)
     (FrexpAbstract(_, _) | FrexpF32(_, _), right) =>
@@ -3378,7 +3118,7 @@ fn const_eval_apply_comparison(
     (left, Matrix(_, _, _, _) | Array(_, _, _)) =>
       const_eval_binary_type_error(op, left, rhs)
     (F32(left), right) =>
-      ConstEvalValue::Bool(
+      Bool(
         const_eval_compare_float(
           op,
           left.to_double(),
@@ -3386,7 +3126,7 @@ fn const_eval_apply_comparison(
         ),
       )
     (left, F32(right)) =>
-      ConstEvalValue::Bool(
+      Bool(
         const_eval_compare_float(
           op,
           const_eval_require_f32(left, "binary expression").to_double(),
@@ -3394,7 +3134,7 @@ fn const_eval_apply_comparison(
         ),
       )
     (AbstractFloat(left, _), right) =>
-      ConstEvalValue::Bool(
+      Bool(
         const_eval_compare_float(
           op,
           left,
@@ -3402,7 +3142,7 @@ fn const_eval_apply_comparison(
         ),
       )
     (left, AbstractFloat(right, _)) =>
-      ConstEvalValue::Bool(
+      Bool(
         const_eval_compare_float(
           op,
           const_eval_to_abstract_float(left, "binary expression"),
@@ -3412,7 +3152,7 @@ fn const_eval_apply_comparison(
     (U32(_), I32(_)) => const_eval_binary_type_error(op, lhs, rhs)
     (I32(_), U32(_)) => const_eval_binary_type_error(op, lhs, rhs)
     (U32(left), right) =>
-      ConstEvalValue::Bool(
+      Bool(
         const_eval_compare_int(
           op,
           left,
@@ -3420,7 +3160,7 @@ fn const_eval_apply_comparison(
         ),
       )
     (left, U32(right)) =>
-      ConstEvalValue::Bool(
+      Bool(
         const_eval_compare_int(
           op,
           const_eval_require_u32(left, "binary expression"),
@@ -3428,7 +3168,7 @@ fn const_eval_apply_comparison(
         ),
       )
     (I32(left), right) =>
-      ConstEvalValue::Bool(
+      Bool(
         const_eval_compare_int(
           op,
           left,
@@ -3436,7 +3176,7 @@ fn const_eval_apply_comparison(
         ),
       )
     (left, I32(right)) =>
-      ConstEvalValue::Bool(
+      Bool(
         const_eval_compare_int(
           op,
           const_eval_require_i32(left, "binary expression"),
@@ -3444,7 +3184,7 @@ fn const_eval_apply_comparison(
         ),
       )
     (AbstractInt(left), AbstractInt(right)) =>
-      ConstEvalValue::Bool(const_eval_compare_int(op, left, right))
+      Bool(const_eval_compare_int(op, left, right))
   }
 }
 
@@ -3479,16 +3219,10 @@ fn const_eval_apply_binary(
       const_eval_binary_type_error(op, lhs, rhs)
     (_, Matrix(_, _, _, _) | Array(_, _, _)) =>
       const_eval_binary_type_error(op, lhs, rhs)
-    (Bool(_), _) =>
-      raise WeslCompileError::Validation(
-        "cannot use bool in arithmetic expression",
-      )
-    (_, Bool(_)) =>
-      raise WeslCompileError::Validation(
-        "cannot use bool in arithmetic expression",
-      )
+    (Bool(_), _) => raise Validation("cannot use bool in arithmetic expression")
+    (_, Bool(_)) => raise Validation("cannot use bool in arithmetic expression")
     (F32(left), right) =>
-      ConstEvalValue::F32(
+      F32(
         const_eval_binary_float(
           op,
           left,
@@ -3496,7 +3230,7 @@ fn const_eval_apply_binary(
         ),
       )
     (left, F32(right)) =>
-      ConstEvalValue::F32(
+      F32(
         const_eval_binary_float(
           op,
           const_eval_require_f32(left, "binary expression"),
@@ -3504,7 +3238,7 @@ fn const_eval_apply_binary(
         ),
       )
     (AbstractFloat(left, left_lossless), right) =>
-      ConstEvalValue::AbstractFloat(
+      AbstractFloat(
         const_eval_binary_abstract_float(
           op,
           left,
@@ -3513,7 +3247,7 @@ fn const_eval_apply_binary(
         left_lossless,
       )
     (left, AbstractFloat(right, right_lossless)) =>
-      ConstEvalValue::AbstractFloat(
+      AbstractFloat(
         const_eval_binary_abstract_float(
           op,
           const_eval_to_abstract_float(left, "binary expression"),
@@ -3521,22 +3255,15 @@ fn const_eval_apply_binary(
         ),
         right_lossless,
       )
-    (U32(_), I32(_)) =>
-      raise WeslCompileError::Validation("cannot mix i32 and u32")
-    (I32(_), U32(_)) =>
-      raise WeslCompileError::Validation("cannot mix i32 and u32")
+    (U32(_), I32(_)) => raise Validation("cannot mix i32 and u32")
+    (I32(_), U32(_)) => raise Validation("cannot mix i32 and u32")
     (U32(left), right) => {
       let value = const_eval_binary_int(
         op,
         left,
         const_eval_require_u32(right, "binary expression"),
       )
-      ConstEvalValue::U32(
-        const_eval_require_u32(
-          ConstEvalValue::AbstractInt(value),
-          "binary expression",
-        ),
-      )
+      U32(const_eval_require_u32(AbstractInt(value), "binary expression"))
     }
     (left, U32(right)) => {
       let value = const_eval_binary_int(
@@ -3544,12 +3271,7 @@ fn const_eval_apply_binary(
         const_eval_require_u32(left, "binary expression"),
         right,
       )
-      ConstEvalValue::U32(
-        const_eval_require_u32(
-          ConstEvalValue::AbstractInt(value),
-          "binary expression",
-        ),
-      )
+      U32(const_eval_require_u32(AbstractInt(value), "binary expression"))
     }
     (I32(left), right) => {
       let value = const_eval_binary_int(
@@ -3557,12 +3279,7 @@ fn const_eval_apply_binary(
         left,
         const_eval_require_i32(right, "binary expression"),
       )
-      ConstEvalValue::I32(
-        const_eval_require_i32(
-          ConstEvalValue::AbstractInt(value),
-          "binary expression",
-        ),
-      )
+      I32(const_eval_require_i32(AbstractInt(value), "binary expression"))
     }
     (left, I32(right)) => {
       let value = const_eval_binary_int(
@@ -3570,15 +3287,10 @@ fn const_eval_apply_binary(
         const_eval_require_i32(left, "binary expression"),
         right,
       )
-      ConstEvalValue::I32(
-        const_eval_require_i32(
-          ConstEvalValue::AbstractInt(value),
-          "binary expression",
-        ),
-      )
+      I32(const_eval_require_i32(AbstractInt(value), "binary expression"))
     }
     (AbstractInt(left), AbstractInt(right)) =>
-      ConstEvalValue::AbstractInt(const_eval_binary_int(op, left, right))
+      AbstractInt(const_eval_binary_int(op, left, right))
   }
 }
 
@@ -3592,34 +3304,28 @@ fn const_eval_eval_expr(
     Binding(name) =>
       match ctx.bindings.get(name) {
         Some(value) => value
-        None =>
-          raise WeslCompileError::Validation(
-            "unknown const-eval binding `\{name}`",
-          )
+        None => raise Validation("unknown const-eval binding `\{name}`")
       }
     UnaryNeg(inner) => const_eval_unary_neg(const_eval_eval_expr(inner, ctx))
     UnaryNot(inner) => const_eval_unary_not(const_eval_eval_expr(inner, ctx))
     UnaryBitNot(inner) =>
       const_eval_unary_bit_not(const_eval_eval_expr(inner, ctx))
-    AddressOf(_) =>
-      raise WeslCompileError::Validation(
-        "cannot evaluate pointer value directly",
-      )
+    AddressOf(_) => raise Validation("cannot evaluate pointer value directly")
     Binary(LogicalAnd, lhs, rhs) => {
       let left = const_eval_eval_expr(lhs, ctx)
       if !const_eval_require_bool(left, "logical and") {
-        return ConstEvalValue::Bool(false)
+        return Bool(false)
       }
-      ConstEvalValue::Bool(
+      Bool(
         const_eval_require_bool(const_eval_eval_expr(rhs, ctx), "logical and"),
       )
     }
     Binary(LogicalOr, lhs, rhs) => {
       let left = const_eval_eval_expr(lhs, ctx)
       if const_eval_require_bool(left, "logical or") {
-        return ConstEvalValue::Bool(true)
+        return Bool(true)
       }
-      ConstEvalValue::Bool(
+      Bool(
         const_eval_require_bool(const_eval_eval_expr(rhs, ctx), "logical or"),
       )
     }
@@ -3654,10 +3360,7 @@ fn const_eval_eval_expr(
                 values,
                 ctx.new_call_scope(),
               )
-            None =>
-              raise WeslCompileError::Validation(
-                "unsupported const-eval call `\{name}`",
-              )
+            None => raise Validation("unsupported const-eval call `\{name}`")
           }
       }
     }
@@ -3749,7 +3452,7 @@ fn const_eval_execute_function(
   ctx : ConstEvalContext,
 ) -> ConstEvalValue? raise WeslCompileError {
   if args.length() != function.params.length() {
-    raise WeslCompileError::Validation(
+    raise Validation(
       "const-eval function `\{function.name}` expects \{function.params.length()} arguments, got \{args.length()}",
     )
   }
@@ -3772,21 +3475,16 @@ fn const_eval_execute_function(
       match function.return_type {
         Void => None
         _ =>
-          raise WeslCompileError::Validation(
+          raise Validation(
             "const-eval function `\{function.name}` returned without a value",
           )
       }
-    BreakLoop =>
-      raise WeslCompileError::Validation("const-eval break outside loop")
-    ContinueLoop =>
-      raise WeslCompileError::Validation("const-eval continue outside loop")
+    BreakLoop => raise Validation("const-eval break outside loop")
+    ContinueLoop => raise Validation("const-eval continue outside loop")
     ContinueExecution =>
       match function.return_type {
         Void => None
-        _ =>
-          raise WeslCompileError::Validation(
-            "const-eval function did not return",
-          )
+        _ => raise Validation("const-eval function did not return")
       }
   }
 }
@@ -3800,7 +3498,7 @@ fn const_eval_execute_function_value(
   match const_eval_execute_function(function, args, ctx) {
     Some(value) => value
     None =>
-      raise WeslCompileError::Validation(
+      raise Validation(
         "const-eval function `\{function.name}` did not return a value",
       )
   }
@@ -3914,9 +3612,7 @@ fn const_eval_execute_statement(
       while true {
         iterations += 1
         if iterations > 1048576 {
-          raise WeslCompileError::Validation(
-            "const-eval loop exceeded iteration limit",
-          )
+          raise Validation("const-eval loop exceeded iteration limit")
         }
         let run_continuing = match
           const_eval_execute_statements(body, ctx, return_type, function_name) {
@@ -3937,9 +3633,7 @@ fn const_eval_execute_statement(
               ) {
               ContinueExecution => ()
               ContinueLoop =>
-                raise WeslCompileError::Validation(
-                  "const-eval continue inside continuing block",
-                )
+                raise Validation("const-eval continue inside continuing block")
               ReturnVoid => return ReturnVoid
               ReturnValue(value) => return ReturnValue(value)
               BreakLoop => break
@@ -3957,9 +3651,7 @@ fn const_eval_execute_statement(
             ) {
         iterations += 1
         if iterations > 1048576 {
-          raise WeslCompileError::Validation(
-            "const-eval while loop exceeded iteration limit",
-          )
+          raise Validation("const-eval while loop exceeded iteration limit")
         }
         match
           const_eval_execute_statements(body, ctx, return_type, function_name) {
@@ -3997,9 +3689,7 @@ fn const_eval_execute_statement(
             }) {
         iterations += 1
         if iterations > 1048576 {
-          raise WeslCompileError::Validation(
-            "const-eval for loop exceeded iteration limit",
-          )
+          raise Validation("const-eval for loop exceeded iteration limit")
         }
         let should_update = match
           const_eval_execute_statements(body, ctx, return_type, function_name) {
@@ -4040,7 +3730,7 @@ fn const_eval_execute_statement(
       match return_type {
         Void => ReturnVoid
         _ =>
-          raise WeslCompileError::Validation(
+          raise Validation(
             "const-eval function `\{function_name}` returned without a value",
           )
       }
@@ -4077,16 +3767,11 @@ fn const_eval_validate_target(
   let parser = ConstEvalParser::new(tokens)
   let expr = parser.parse_expression()
   if !parser.view().is_empty() {
-    raise WeslCompileError::Validation(
-      "unsupported const-eval target `\{source}`",
-    )
+    raise Validation("unsupported const-eval target `\{source}`")
   }
   match expr {
     Call(name, args) if name == function_name => args
-    _ =>
-      raise WeslCompileError::Validation(
-        "unsupported const-eval target `\{source}`",
-      )
+    _ => raise Validation("unsupported const-eval target `\{source}`")
   }
 }
 

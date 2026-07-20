@@ -27,19 +27,19 @@ parse_module_path
   ;
 
 absolute_path
-  : "package" tail_segments      { ModulePathParseNode::{ origin: ModulePathParseOrigin::Absolute, components: $2 } }
+  : "package" tail_segments      { { origin: Absolute, components: $2 } }
   ;
 
 self_path
-  : "self" tail_segments         { ModulePathParseNode::{ origin: ModulePathParseOrigin::Relative(0), components: $2 } }
+  : "self" tail_segments         { { origin: Relative(0), components: $2 } }
   ;
 
 super_path
-  : super_prefix tail_segments   { ModulePathParseNode::{ origin: ModulePathParseOrigin::Relative($1), components: $2 } }
+  : super_prefix tail_segments   { { origin: Relative($1), components: $2 } }
   ;
 
 package_path
-  : SEGMENT tail_segments        { ModulePathParseNode::{ origin: ModulePathParseOrigin::Package($1), components: $2 } }
+  : SEGMENT tail_segments        { { origin: Package($1), components: $2 } }
   ;
 
 super_prefix

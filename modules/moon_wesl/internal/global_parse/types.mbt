@@ -181,10 +181,7 @@ fn global_parse_lex(source : String) -> GlobalLexResult {
       if next == 42 {
         let (end_, closed) = global_parse_skip_block_comment(source, index + 2)
         if !closed {
-          return LexFailed(GlobalParseDiagnostic::{
-            offset: index,
-            incomplete: true,
-          })
+          return LexFailed({ offset: index, incomplete: true })
         }
         index = end_
         continue
@@ -205,10 +202,7 @@ fn global_parse_lex(source : String) -> GlobalLexResult {
           41,
         )
         if !closed {
-          return LexFailed(GlobalParseDiagnostic::{
-            offset: start,
-            incomplete: true,
-          })
+          return LexFailed({ offset: start, incomplete: true })
         }
         index = end_
       }
@@ -220,10 +214,7 @@ fn global_parse_lex(source : String) -> GlobalLexResult {
       let start = index
       let (template, end_, closed) = global_parse_template(source, index + 1)
       if !closed {
-        return LexFailed(GlobalParseDiagnostic::{
-          offset: start,
-          incomplete: true,
-        })
+        return LexFailed({ offset: start, incomplete: true })
       }
       tokens.push((VAR_TEMPLATE(template), start, end_))
       index = end_
@@ -257,13 +248,13 @@ pub fn parse_global_header_source(source : String) -> GlobalParseResult {
     LexFailed(diagnostic) => return Failed(diagnostic)
   }
   if tokens.is_empty() {
-    return Parsed(GlobalParseHeader::Other)
+    return Parsed(Other)
   }
   let header = parse_global_header(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed(GlobalParseDiagnostic::{ offset: start, incomplete: false })
+      return Failed({ offset: start, incomplete: false })
     UnexpectedEndOfInput(start, _) =>
-      return Failed(GlobalParseDiagnostic::{ offset: start, incomplete: true })
+      return Failed({ offset: start, incomplete: true })
   }
   Parsed(header)
 }

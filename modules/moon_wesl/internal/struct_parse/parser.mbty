@@ -17,7 +17,7 @@
 
 parse_struct_decl
   : "struct" IDENT "{" members "}" opt_semi
-                                { StructParseNode::{ name: $2, members: $4 } }
+                                { { name: $2, members: $4 } }
   ;
 
 members

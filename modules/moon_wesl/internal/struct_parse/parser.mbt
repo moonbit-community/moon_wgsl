@@ -76,7 +76,7 @@ fn init {
 
 // file:///./parser.mbty
 // 19|    "struct" IDENT "{" members "}" opt_semi
-// 20|                                { StructParseNode::{ name: $2, members: $4 } }
+// 20|                                { { name: $2, members: $4 } }
 
 ///|
 fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -85,7 +85,7 @@ fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_StructParseNode(
     {
       ()
-      StructParseNode::{ name: _dollar2, members: _dollar4 }
+      { name: _dollar2, members: _dollar4 }
     },
   )
 }

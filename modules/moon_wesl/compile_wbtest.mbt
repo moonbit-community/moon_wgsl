@@ -23,7 +23,7 @@ fn compile_test_module(
 fn compile_test_named_items(
   names : Array[String],
 ) -> @hashmap.HashMap[String, Int] {
-  let items : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
+  let items : @hashmap.HashMap[String, Int] = HashMap([])
   for i in 0..<names.length() {
     items.set(names[i], i)
   }
@@ -38,7 +38,7 @@ fn compile_test_ast_refs(
   wesl_collect_ast_item_references(
     header,
     compile_test_named_items(names),
-    @hashmap.HashMap([]),
+    HashMap([]),
     [],
     try! parse_module_path("root"),
   )
@@ -50,7 +50,7 @@ fn compile_test_module_item_refs(
   names : Array[String],
 ) -> Array[ModuleItemRef] {
   wesl_collect_module_item_references(
-    ModuleItem::{
+    {
       name: decl.ident(),
       kind: wesl_item_kind(decl.header),
       header: decl.header,
@@ -62,7 +62,7 @@ fn compile_test_module_item_refs(
       references: [],
     },
     compile_test_named_items(names),
-    @hashmap.HashMap([]),
+    HashMap([]),
     [],
     try! parse_module_path("root"),
   )
@@ -85,11 +85,11 @@ fn compile_test_ast_refs_with_import(
       end_line: 1,
     },
   ]
-  let import_by_local : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
+  let import_by_local : @hashmap.HashMap[String, Int] = HashMap([])
   import_by_local.set(local_name, 0)
   wesl_collect_ast_item_references(
     header,
-    @hashmap.HashMap([]),
+    HashMap([]),
     import_by_local,
     imports,
     try! parse_module_path("root"),
@@ -113,9 +113,9 @@ test "compile: AST reference collector follows attribute expression refs" {
     "GROUP_SIZE", "INPUT_LOCATION", "OUTPUT_LOCATION", "main",
   ])
   inspect(refs.length(), content="3")
-  inspect(refs[0] == ModuleItemRef::Local("GROUP_SIZE"), content="true")
-  inspect(refs[1] == ModuleItemRef::Local("INPUT_LOCATION"), content="true")
-  inspect(refs[2] == ModuleItemRef::Local("OUTPUT_LOCATION"), content="true")
+  inspect(refs[0] == Local("GROUP_SIZE"), content="true")
+  inspect(refs[1] == Local("INPUT_LOCATION"), content="true")
+  inspect(refs[2] == Local("OUTPUT_LOCATION"), content="true")
 }
 
 ///|
@@ -134,7 +134,7 @@ test "compile: AST reference collector follows structured expression and type re
     "Payload", "make_payload",
   ])
   inspect(refs.length(), content="1")
-  inspect(refs[0] == ModuleItemRef::Local("Payload"), content="true")
+  inspect(refs[0] == Local("Payload"), content="true")
 }
 
 ///|
@@ -152,7 +152,7 @@ test "compile: AST reference collector follows function return type refs" {
     "Payload", "make_payload",
   ])
   inspect(refs.length(), content="1")
-  inspect(refs[0] == ModuleItemRef::Local("Payload"), content="true")
+  inspect(refs[0] == Local("Payload"), content="true")
 }
 
 ///|
@@ -170,7 +170,7 @@ test "compile: AST reference collector does not bind parameters inside type list
     "Payload", "consume",
   ])
   inspect(refs.length(), content="1")
-  inspect(refs[0] == ModuleItemRef::Local("Payload"), content="true")
+  inspect(refs[0] == Local("Payload"), content="true")
 }
 
 ///|
@@ -201,7 +201,7 @@ test "compile: AST reference collector follows global const_assert refs" {
     "expected",
   ])
   inspect(refs.length(), content="1")
-  inspect(refs[0] == ModuleItemRef::Local("expected"), content="true")
+  inspect(refs[0] == Local("expected"), content="true")
 }
 
 ///|
@@ -220,11 +220,7 @@ test "compile: AST reference collector follows qualified import paths" {
   inspect(refs.length(), content="1")
   inspect(
     refs[0] ==
-    ModuleItemRef::Qualified(
-      "util::Payload",
-      try! parse_module_path("/pkg/util"),
-      "Payload",
-    ),
+    Qualified("util::Payload", try! parse_module_path("/pkg/util"), "Payload"),
     content="true",
   )
 }
@@ -247,7 +243,7 @@ test "compile: sourcemap records loaded imports before failure" {
     compile_with_mangler_kind_and_sourcemap(
       root_path,
       resolver,
-      ManglerKind::Escape,
+      Escape,
       CompileOptions::default(),
       true,
       source_map,
@@ -259,7 +255,7 @@ test "compile: sourcemap records loaded imports before failure" {
   }
 
   match result {
-    Err(WeslCompileError::MissingDecl(path, item)) => {
+    Err(MissingDecl(path, item)) => {
       inspect(path.to_string(), content="package::shaders::util")
       inspect(item, content="missing")
       debug_inspect(
@@ -271,9 +267,7 @@ test "compile: sourcemap records loaded imports before failure" {
         content="Some(\"fn helper() -> f32 {\\n  return 1.0;\\n}\\n\")",
       )
       match
-        source_map.get_decl(
-          ManglerKind::mangle(ManglerKind::Escape, util_path, "helper"),
-        ) {
+        source_map.get_decl(ManglerKind::mangle(Escape, util_path, "helper")) {
         Some((decl_path, decl_name)) => {
           inspect(decl_path.to_string(), content="package::shaders::util")
           inspect(decl_name, content="helper")

@@ -1,6 +1,6 @@
 # Enforce conceptual ownership and deep interfaces
 
-The physical workspace split is necessary but not sufficient. A module owns a concept only when its interface and implementation can change for that concept without forcing an unrelated lower-level module to change. The workspace therefore adopts the following final seams and treats deviations as migration debt tracked by ISS-034.
+The physical workspace split is necessary but not sufficient. A module owns a concept only when its interface and implementation can change for that concept without forcing an unrelated lower-level module to change. The workspace therefore adopts the following final seams and rejects deviations in the architecture gate.
 
 ## WGSL Core
 
@@ -82,6 +82,6 @@ The architecture manifest records:
 - forbidden concept families by owning path
 - complete facade type method inventories, following re-exported types
 - source symlink ownership
-- issue-linked migration exceptions
+- strict package and source ownership without migration exceptions
 
-An exception is valid only while its issue is unresolved. Once the violating code disappears, the exception becomes stale and must be removed. A closed issue with a remaining exception or violation fails the architecture gate.
+The architecture manifest has no migration-exception mechanism. Ownership violations must be fixed in the code or reflected as an intentional final architecture change.

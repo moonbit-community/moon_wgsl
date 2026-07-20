@@ -70,71 +70,71 @@ expression
 short_circuit_or
   : short_circuit_and             { $1 }
   | short_circuit_or "||" short_circuit_and
-                                  { ExpressionParseNode::Binary(ExpressionBinaryOperator::ShortCircuitOr, $1, $3) }
+                                  { Binary(ShortCircuitOr, $1, $3) }
   ;
 
 short_circuit_and
   : bitwise_or                    { $1 }
   | short_circuit_and "&&" bitwise_or
-                                  { ExpressionParseNode::Binary(ExpressionBinaryOperator::ShortCircuitAnd, $1, $3) }
+                                  { Binary(ShortCircuitAnd, $1, $3) }
   ;
 
 bitwise_or
   : bitwise_xor                   { $1 }
-  | bitwise_or "|" bitwise_xor    { ExpressionParseNode::Binary(ExpressionBinaryOperator::BitwiseOr, $1, $3) }
+  | bitwise_or "|" bitwise_xor    { Binary(BitwiseOr, $1, $3) }
   ;
 
 bitwise_xor
   : bitwise_and                   { $1 }
-  | bitwise_xor "^" bitwise_and   { ExpressionParseNode::Binary(ExpressionBinaryOperator::BitwiseXor, $1, $3) }
+  | bitwise_xor "^" bitwise_and   { Binary(BitwiseXor, $1, $3) }
   ;
 
 bitwise_and
   : equality                      { $1 }
-  | bitwise_and "&" equality      { ExpressionParseNode::Binary(ExpressionBinaryOperator::BitwiseAnd, $1, $3) }
+  | bitwise_and "&" equality      { Binary(BitwiseAnd, $1, $3) }
   ;
 
 equality
   : relational                    { $1 }
-  | equality "==" relational      { ExpressionParseNode::Binary(ExpressionBinaryOperator::Equality, $1, $3) }
-  | equality "!=" relational      { ExpressionParseNode::Binary(ExpressionBinaryOperator::Inequality, $1, $3) }
+  | equality "==" relational      { Binary(Equality, $1, $3) }
+  | equality "!=" relational      { Binary(Inequality, $1, $3) }
   ;
 
 relational
   : shift                         { $1 }
-  | relational "<" shift          { ExpressionParseNode::Binary(ExpressionBinaryOperator::LessThan, $1, $3) }
-  | relational "<=" shift         { ExpressionParseNode::Binary(ExpressionBinaryOperator::LessThanEqual, $1, $3) }
-  | relational ">" shift          { ExpressionParseNode::Binary(ExpressionBinaryOperator::GreaterThan, $1, $3) }
-  | relational ">=" shift         { ExpressionParseNode::Binary(ExpressionBinaryOperator::GreaterThanEqual, $1, $3) }
+  | relational "<" shift          { Binary(LessThan, $1, $3) }
+  | relational "<=" shift         { Binary(LessThanEqual, $1, $3) }
+  | relational ">" shift          { Binary(GreaterThan, $1, $3) }
+  | relational ">=" shift         { Binary(GreaterThanEqual, $1, $3) }
   ;
 
 shift
   : additive                      { $1 }
-  | shift "<<" additive           { ExpressionParseNode::Binary(ExpressionBinaryOperator::ShiftLeft, $1, $3) }
-  | shift ">>" additive           { ExpressionParseNode::Binary(ExpressionBinaryOperator::ShiftRight, $1, $3) }
+  | shift "<<" additive           { Binary(ShiftLeft, $1, $3) }
+  | shift ">>" additive           { Binary(ShiftRight, $1, $3) }
   ;
 
 additive
   : multiplicative                { $1 }
-  | additive "+" multiplicative   { ExpressionParseNode::Binary(ExpressionBinaryOperator::Addition, $1, $3) }
-  | additive "-" multiplicative   { ExpressionParseNode::Binary(ExpressionBinaryOperator::Subtraction, $1, $3) }
-  | additive "--" multiplicative  { ExpressionParseNode::Binary(ExpressionBinaryOperator::Subtraction, $1, ExpressionParseNode::Unary(ExpressionUnaryOperator::Negation, $3)) }
+  | additive "+" multiplicative   { Binary(Addition, $1, $3) }
+  | additive "-" multiplicative   { Binary(Subtraction, $1, $3) }
+  | additive "--" multiplicative  { Binary(Subtraction, $1, Unary(Negation, $3)) }
   ;
 
 multiplicative
   : unary                         { $1 }
-  | multiplicative "*" unary      { ExpressionParseNode::Binary(ExpressionBinaryOperator::Multiplication, $1, $3) }
-  | multiplicative "/" unary      { ExpressionParseNode::Binary(ExpressionBinaryOperator::Division, $1, $3) }
-  | multiplicative "%" unary      { ExpressionParseNode::Binary(ExpressionBinaryOperator::Remainder, $1, $3) }
+  | multiplicative "*" unary      { Binary(Multiplication, $1, $3) }
+  | multiplicative "/" unary      { Binary(Division, $1, $3) }
+  | multiplicative "%" unary      { Binary(Remainder, $1, $3) }
   ;
 
 unary
   : postfix                       { $1 }
-  | "-" unary                     { ExpressionParseNode::Unary(ExpressionUnaryOperator::Negation, $2) }
-  | "!" unary                     { ExpressionParseNode::Unary(ExpressionUnaryOperator::LogicalNegation, $2) }
-  | "~" unary                     { ExpressionParseNode::Unary(ExpressionUnaryOperator::BitwiseComplement, $2) }
-  | "*" unary                     { ExpressionParseNode::Unary(ExpressionUnaryOperator::Indirection, $2) }
-  | "&" unary                     { ExpressionParseNode::Unary(ExpressionUnaryOperator::AddressOf, $2) }
+  | "-" unary                     { Unary(Negation, $2) }
+  | "!" unary                     { Unary(LogicalNegation, $2) }
+  | "~" unary                     { Unary(BitwiseComplement, $2) }
+  | "*" unary                     { Unary(Indirection, $2) }
+  | "&" unary                     { Unary(AddressOf, $2) }
   ;
 
 postfix
@@ -143,18 +143,18 @@ postfix
   ;
 
 postfix_suffix
-  : "[" expression "]"            { ExpressionPostfixSuffix::Indexing($2) }
-  | "." IDENT                     { ExpressionPostfixSuffix::NamedComponent($2) }
+  : "[" expression "]"            { Indexing($2) }
+  | "." IDENT                     { NamedComponent($2) }
   ;
 
 primary
   : literal                       { $1 }
-  | path_ident                    { ExpressionParseNode::TypeOrIdentifier($1) }
+  | path_ident                    { TypeOrIdentifier($1) }
   | path_ident "(" opt_arguments ")"
-                                  { ExpressionParseNode::FunctionCall(ExpressionFunctionCallParseNode::{ callee: $1, arguments: $3 }) }
+                                  { FunctionCall({ callee: $1, arguments: $3 }) }
   | path_ident TEMPLATE "(" opt_arguments ")"
-                                  { ExpressionParseNode::FunctionCall(ExpressionFunctionCallParseNode::{ callee: $1.with_template($2), arguments: $4 }) }
-  | "(" expression ")"            { ExpressionParseNode::Parenthesized($2) }
+                                  { FunctionCall({ callee: $1.with_template($2), arguments: $4 }) }
+  | "(" expression ")"            { Parenthesized($2) }
   ;
 
 path_ident
@@ -174,7 +174,7 @@ argument_list
   ;
 
 literal
-  : NUMBER                       { ExpressionParseNode::Literal($1) }
-  | "true"                       { ExpressionParseNode::Bool(true) }
-  | "false"                      { ExpressionParseNode::Bool(false) }
+  : NUMBER                       { Literal($1) }
+  | "true"                       { Bool(true) }
+  | "false"                      { Bool(false) }
   ;

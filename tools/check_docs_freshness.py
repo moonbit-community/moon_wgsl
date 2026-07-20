@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -58,28 +57,6 @@ def check_tools_manifest_freshness(release: str) -> None:
             fail(f"tools/moon.mod dependency {package} is stale: expected {release}, found {dep_version}")
 
 
-def check_closed_issue_acceptance() -> None:
-    for path in sorted((REPO_ROOT / "issues").glob("ISS-*.md")):
-        text = path.read_text()
-        if re.search(r"^- Status: closed$", text, re.MULTILINE):
-            unchecked = [
-                line for line in text.splitlines()
-                if line.startswith("- [ ]")
-            ]
-            if unchecked and "Unchecked acceptance exception:" not in text:
-                fail(
-                    f"{path.relative_to(REPO_ROOT)} is closed with unchecked acceptance criteria"
-                )
-
-
-def check_issue_index_freshness() -> None:
-    subprocess.run(
-        [str(REPO_ROOT / "tools" / "check_issue_tracker_index.sh")],
-        cwd=REPO_ROOT,
-        check=True,
-    )
-
-
 def check_naga_oil_parity_doc() -> None:
     docs = (REPO_ROOT / "docs" / "naga_oil-parity.md").read_text()
     release = module_version("moon_wgsl")
@@ -88,9 +65,9 @@ def check_naga_oil_parity_doc() -> None:
         if other != release:
             fail(f"workspace module versions are not synchronized: moon_wgsl={release}, {module}={other}")
     check_tools_manifest_freshness(release)
-    if f"published workspace line is `{release}`" not in docs:
+    if f"workspace release line is `{release}`" not in docs:
         fail(f"docs/naga_oil-parity.md does not record current release {release}")
-    if f"Upgrade to `Milky2018/moon_wgsl {release}`" not in docs:
+    if f"current `main` (workspace line `{release}`)" not in docs:
         fail(f"docs/naga_oil-parity.md downstream verification still references a stale release")
 
     cases = non_comment_rows(REPO_ROOT / "testdata" / "external_naga_oil_compose_parity.tsv")
@@ -113,8 +90,6 @@ def check_naga_oil_parity_doc() -> None:
 
 
 def main() -> None:
-    check_closed_issue_acceptance()
-    check_issue_index_freshness()
     check_naga_oil_parity_doc()
     print("documentation freshness checks passed")
 

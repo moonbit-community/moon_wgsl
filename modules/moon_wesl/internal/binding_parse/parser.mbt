@@ -85,7 +85,7 @@ fn init {
 
 // file:///./parser.mbty
 // 28|    "alias" IDENT "=" TYPE_TEXT opt_semi
-// 29|                                  { BindingParseNode::{ kind: BindingParseKind::Alias, name: Some($2), var_template: None, type_text: Some($4), initializer: None } }
+// 29|                                  { { kind: Alias, name: Some($2), var_template: None, type_text: Some($4), initializer: None } }
 
 ///|
 fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -94,8 +94,8 @@ fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_BindingParseNode(
     {
       ()
-      BindingParseNode::{
-        kind: BindingParseKind::Alias,
+      {
+        kind: Alias,
         name: Some(_dollar2),
         var_template: None,
         type_text: Some(_dollar4),
@@ -107,7 +107,7 @@ fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 // file:///./parser.mbty
 // 30|    binding_kind IDENT opt_type opt_init opt_semi
-// 31|                                  { BindingParseNode::{ kind: $1, name: Some($2), var_template: None, type_text: $3, initializer: $4 } }
+// 31|                                  { { kind: $1, name: Some($2), var_template: None, type_text: $3, initializer: $4 } }
 
 ///|
 fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -118,7 +118,7 @@ fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_BindingParseNode(
     {
       ()
-      BindingParseNode::{
+      {
         kind: _dollar1,
         name: Some(_dollar2),
         var_template: None,
@@ -131,7 +131,7 @@ fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 // file:///./parser.mbty
 // 32|    "var" opt_var_template IDENT opt_type opt_init opt_semi
-// 33|                                  { BindingParseNode::{ kind: BindingParseKind::Var, name: Some($3), var_template: $2, type_text: $4, initializer: $5 } }
+// 33|                                  { { kind: Var, name: Some($3), var_template: $2, type_text: $4, initializer: $5 } }
 
 ///|
 fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -142,8 +142,8 @@ fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_BindingParseNode(
     {
       ()
-      BindingParseNode::{
-        kind: BindingParseKind::Var,
+      {
+        kind: Var,
         name: Some(_dollar3),
         var_template: _dollar2,
         type_text: _dollar4,
@@ -261,40 +261,40 @@ fn yy_action_10(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./parser.mbty
-// 37|    "const"                       { BindingParseKind::Const }
+// 37|    "const"                       { Const }
 
 ///|
 fn yy_action_11(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_BindingParseKind(
     {
       ()
-      BindingParseKind::Const
+      Const
     },
   )
 }
 
 // file:///./parser.mbty
-// 38|    "override"                    { BindingParseKind::Override }
+// 38|    "override"                    { Override }
 
 ///|
 fn yy_action_12(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_BindingParseKind(
     {
       ()
-      BindingParseKind::Override
+      Override
     },
   )
 }
 
 // file:///./parser.mbty
-// 39|    "let"                         { BindingParseKind::Let }
+// 39|    "let"                         { Let }
 
 ///|
 fn yy_action_13(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_BindingParseKind(
     {
       ()
-      BindingParseKind::Let
+      Let
     },
   )
 }

@@ -402,10 +402,7 @@ fn statement_parse_lex(source : String) -> StatementLexResult {
   while index < source.length() {
     let (start, ok) = statement_parse_skip_layout(source, index)
     if !ok {
-      return LexFailed(StatementParseDiagnostic::{
-        offset: index,
-        incomplete: true,
-      })
+      return LexFailed({ offset: index, incomplete: true })
     }
     index = start
     if index >= source.length() {
@@ -413,15 +410,12 @@ fn statement_parse_lex(source : String) -> StatementLexResult {
     }
     let (end_, ok) = statement_parse_statement_end(source, index)
     if !ok {
-      return LexFailed(StatementParseDiagnostic::{
-        offset: index,
-        incomplete: true,
-      })
+      return LexFailed({ offset: index, incomplete: true })
     }
     let text = source[index:end_].trim().to_owned()
     tokens.push(
       (
-        STATEMENT(StatementParseNode::{
+        STATEMENT({
           kind: statement_parse_kind(source, index, end_),
           source: text,
         }),
@@ -441,19 +435,13 @@ pub fn parse_function_body_source(source : String) -> StatementParseResult {
     LexFailed(diagnostic) => return Failed(diagnostic)
   }
   if tokens.is_empty() {
-    return Parsed(FunctionBodyParseNode::{ statements: [] })
+    return Parsed({ statements: [] })
   }
   let parsed = parse_function_body(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed(StatementParseDiagnostic::{
-        offset: start,
-        incomplete: false,
-      })
+      return Failed({ offset: start, incomplete: false })
     UnexpectedEndOfInput(start, _) =>
-      return Failed(StatementParseDiagnostic::{
-        offset: start,
-        incomplete: true,
-      })
+      return Failed({ offset: start, incomplete: true })
   }
   Parsed(parsed)
 }

@@ -56,9 +56,9 @@ fn module_path_parse_problem_for_segment(
   segment : String,
 ) -> ModulePathParseProblem? {
   match segment {
-    "package" => Some(ModulePathParseProblem::MisplacedPackage)
-    "self" => Some(ModulePathParseProblem::MisplacedSelf)
-    "super" => Some(ModulePathParseProblem::MisplacedSuper)
+    "package" => Some(MisplacedPackage)
+    "self" => Some(MisplacedSelf)
+    "super" => Some(MisplacedSuper)
     _ => None
   }
 }
@@ -76,10 +76,10 @@ fn module_path_parse_token_for_segment(segment : String) -> Token {
 ///|
 fn module_path_parse_problem_for_token(token : Token) -> ModulePathParseProblem {
   match token {
-    PACKAGE => ModulePathParseProblem::MisplacedPackage
-    SELF => ModulePathParseProblem::MisplacedSelf
-    SUPER => ModulePathParseProblem::MisplacedSuper
-    _ => ModulePathParseProblem::Empty
+    PACKAGE => MisplacedPackage
+    SELF => MisplacedSelf
+    SUPER => MisplacedSuper
+    _ => Empty
   }
 }
 
@@ -87,10 +87,7 @@ fn module_path_parse_problem_for_token(token : Token) -> ModulePathParseProblem 
 fn module_path_parse_lex(source : String) -> ModulePathLexResult {
   let text = source.trim()
   if text.length() == 0 {
-    return LexFailed(ModulePathParseDiagnostic::{
-      offset: 0,
-      problem: ModulePathParseProblem::Empty,
-    })
+    return LexFailed({ offset: 0, problem: Empty })
   }
   let tokens : Array[(Token, Int, Int)] = []
   let mut index = 0
@@ -108,10 +105,7 @@ fn module_path_parse_lex(source : String) -> ModulePathLexResult {
         index += 1
       }
       if start == index {
-        return LexFailed(ModulePathParseDiagnostic::{
-          offset: start,
-          problem: ModulePathParseProblem::Empty,
-        })
+        return LexFailed({ offset: start, problem: Empty })
       }
       let segment = text[start:index].to_owned()
       tokens.push((module_path_parse_token_for_segment(segment), start, index))
@@ -126,16 +120,10 @@ fn module_path_parse_lex(source : String) -> ModulePathLexResult {
       expect_segment = true
       continue
     }
-    return LexFailed(ModulePathParseDiagnostic::{
-      offset: index,
-      problem: ModulePathParseProblem::Empty,
-    })
+    return LexFailed({ offset: index, problem: Empty })
   }
   if expect_segment {
-    return LexFailed(ModulePathParseDiagnostic::{
-      offset: text.length(),
-      problem: ModulePathParseProblem::Empty,
-    })
+    return LexFailed({ offset: text.length(), problem: Empty })
   }
   Lexed(tokens)
 }
@@ -148,20 +136,16 @@ pub fn parse_module_path_source(source : String) -> ModulePathParseResult {
   }
   let path = parse_module_path(tokens) catch {
     UnexpectedToken(token, (start, _), _) =>
-      return Failed(ModulePathParseDiagnostic::{
+      return Failed({
         offset: start,
         problem: module_path_parse_problem_for_token(token),
       })
     UnexpectedEndOfInput(start, _) =>
-      return Failed(ModulePathParseDiagnostic::{
-        offset: start,
-        problem: ModulePathParseProblem::Empty,
-      })
+      return Failed({ offset: start, problem: Empty })
   }
   for component in path.components {
     match module_path_parse_problem_for_segment(component) {
-      Some(problem) =>
-        return Failed(ModulePathParseDiagnostic::{ offset: 0, problem })
+      Some(problem) => return Failed({ offset: 0, problem })
       None => ()
     }
   }

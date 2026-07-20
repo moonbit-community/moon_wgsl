@@ -106,7 +106,7 @@ fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 // file:///./parser.mbty
 // 34|    path_segments opt_alias
-// 35|                                 { ImportParseNode::{ path_segments: $1, rename: $2, children: [] } }
+// 35|                                 { { path_segments: $1, rename: $2, children: [] } }
 
 ///|
 fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -115,11 +115,7 @@ fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_ImportParseNode(
     {
       ()
-      ImportParseNode::{
-        path_segments: _dollar1,
-        rename: _dollar2,
-        children: [],
-      }
+      { path_segments: _dollar1, rename: _dollar2, children: [] }
     },
   )
 }
@@ -171,7 +167,7 @@ fn yy_action_5(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 // file:///./parser.mbty
 // 36|    path_segments "::" "{" import_item_list "}"
-// 37|                                 { ImportParseNode::{ path_segments: $1, rename: None, children: $4 } }
+// 37|                                 { { path_segments: $1, rename: None, children: $4 } }
 
 ///|
 fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -180,11 +176,7 @@ fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_ImportParseNode(
     {
       ()
-      ImportParseNode::{
-        path_segments: _dollar1,
-        rename: None,
-        children: _dollar4,
-      }
+      { path_segments: _dollar1, rename: None, children: _dollar4 }
     },
   )
 }

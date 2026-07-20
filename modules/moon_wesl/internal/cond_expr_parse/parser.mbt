@@ -92,7 +92,7 @@ fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./parser.mbty
-// 33|    and_expr "&&" not_expr       { CondExprNode::And($1, $3) }
+// 33|    and_expr "&&" not_expr       { And($1, $3) }
 
 ///|
 fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -101,13 +101,13 @@ fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_CondExprNode(
     {
       ()
-      CondExprNode::And(_dollar1, _dollar3)
+      And(_dollar1, _dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
-// 28|    or_expr "||" and_expr        { CondExprNode::Or($1, $3) }
+// 28|    or_expr "||" and_expr        { Or($1, $3) }
 
 ///|
 fn yy_action_3(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -116,7 +116,7 @@ fn yy_action_3(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_CondExprNode(
     {
       ()
-      CondExprNode::Or(_dollar1, _dollar3)
+      Or(_dollar1, _dollar3)
     },
   )
 }
@@ -164,7 +164,7 @@ fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./parser.mbty
-// 38|    "!" not_expr                 { CondExprNode::Not($2) }
+// 38|    "!" not_expr                 { Not($2) }
 
 ///|
 fn yy_action_7(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -172,13 +172,13 @@ fn yy_action_7(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_CondExprNode(
     {
       ()
-      CondExprNode::Not(_dollar2)
+      Not(_dollar2)
     },
   )
 }
 
 // file:///./parser.mbty
-// 42|    IDENT                        { CondExprNode::Feature($1) }
+// 42|    IDENT                        { Feature($1) }
 
 ///|
 fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -186,33 +186,33 @@ fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_CondExprNode(
     {
       ()
-      CondExprNode::Feature(_dollar1)
+      Feature(_dollar1)
     },
   )
 }
 
 // file:///./parser.mbty
-// 43|    "true"                       { CondExprNode::Literal(true) }
+// 43|    "true"                       { Literal(true) }
 
 ///|
 fn yy_action_9(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_CondExprNode(
     {
       ()
-      CondExprNode::Literal(true)
+      Literal(true)
     },
   )
 }
 
 // file:///./parser.mbty
-// 44|    "false"                      { CondExprNode::Literal(false) }
+// 44|    "false"                      { Literal(false) }
 
 ///|
 fn yy_action_10(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_CondExprNode(
     {
       ()
-      CondExprNode::Literal(false)
+      Literal(false)
     },
   )
 }

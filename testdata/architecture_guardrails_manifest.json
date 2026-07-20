@@ -238,6 +238,23 @@
         "pub fn wgsl_ir_expression_origin_retains_generated_import_denominator",
         "pub fn wgsl_ir_function_expression_is_synthetic_local_reference"
       ]
+    },
+    "modules/moon_wesl/pkg.generated.mbti": {
+      "required": [
+        "pub fn\\[R : Resolver\\] compile\\(",
+        "pub fn\\[R : Resolver\\] compile_sourcemap\\(",
+        "pub fn parse_translation_unit\\(",
+        "pub fn validate_wesl\\(",
+        "pub struct CompileOptions",
+        "pub struct CompileResult",
+        "pub\\(all\\) struct ModulePath",
+        "pub\\(open\\) trait Resolver",
+        "pub struct Wesl\\[R\\]"
+      ],
+      "forbidden": [
+        "pub fn validate_wgsl\\(",
+        "internal/wgsl_validation"
+      ]
     }
   },
   "module_packages": {
@@ -248,14 +265,12 @@
         "ir",
         "lex",
         "parser"
-      ],
-      "exceptions": {}
+      ]
     },
     "modules/moon_wgsl_naga": {
       "allowed": [
         "."
-      ],
-      "exceptions": {}
+      ]
     },
     "modules/moon_wgsl_naga_oil": {
       "allowed": [
@@ -274,14 +289,12 @@
         "internal/import_substitution",
         "internal/source_rewrite",
         "internal/transform"
-      ],
-      "exceptions": {}
+      ]
     },
     "modules/moon_wgsl": {
       "allowed": [
         "."
-      ],
-      "exceptions": {}
+      ]
     },
     "modules/moon_wesl": {
       "allowed": [
@@ -303,8 +316,7 @@
         "internal/struct_parse",
         "internal/type_parse",
         "internal/wgsl_validation"
-      ],
-      "exceptions": {}
+      ]
     }
   },
   "internal_package_roots": [
@@ -430,12 +442,5 @@
       ]
     }
   ],
-  "forbid_unlisted_source_symlinks": true,
-  "source_symlink_exceptions": [
-    {
-      "path": "modules/moon_wesl/README.md",
-      "target": "README.mbt.md",
-      "issue": "ISS-043"
-    }
-  ]
+  "forbid_unlisted_source_symlinks": true
 }

@@ -204,8 +204,7 @@ fn wgsl_ir_predeclared_result_type_from_name(name : String) -> PredeclaredType? 
   if name.has_prefix(atomic_prefix) && name.has_suffix("_") {
     let scalar_name = name[atomic_prefix.length():name.length() - 1].to_owned()
     return match wgsl_ir_predeclared_scalar_from_name(scalar_name) {
-      Some(scalar) =>
-        Some(PredeclaredType::AtomicCompareExchangeWeakResult(scalar))
+      Some(scalar) => Some(AtomicCompareExchangeWeakResult(scalar))
       None => None
     }
   }
@@ -213,7 +212,7 @@ fn wgsl_ir_predeclared_result_type_from_name(name : String) -> PredeclaredType? 
   if name.has_prefix(modf_prefix) && name.has_suffix("_") {
     let numeric_name = name[modf_prefix.length():name.length() - 1].to_owned()
     return match wgsl_ir_predeclared_numeric_from_name(numeric_name) {
-      Some((size, scalar)) => Some(PredeclaredType::ModfResult(size, scalar))
+      Some((size, scalar)) => Some(ModfResult(size, scalar))
       None => None
     }
   }
@@ -221,7 +220,7 @@ fn wgsl_ir_predeclared_result_type_from_name(name : String) -> PredeclaredType? 
   if name.has_prefix(frexp_prefix) && name.has_suffix("_") {
     let numeric_name = name[frexp_prefix.length():name.length() - 1].to_owned()
     return match wgsl_ir_predeclared_numeric_from_name(numeric_name) {
-      Some((size, scalar)) => Some(PredeclaredType::FrexpResult(size, scalar))
+      Some((size, scalar)) => Some(FrexpResult(size, scalar))
       None => None
     }
   }
@@ -271,9 +270,9 @@ fn wgsl_ir_predeclared_numeric_from_name(
 ///|
 fn wgsl_ir_predeclared_vector_size_from_name(name : String) -> VectorSize? {
   match name {
-    "Vec2" => Some(VectorSize::Bi)
-    "Vec3" => Some(VectorSize::Tri)
-    "Vec4" => Some(VectorSize::Quad)
+    "Vec2" => Some(Bi)
+    "Vec3" => Some(Tri)
+    "Vec4" => Some(Quad)
     _ => None
   }
 }
@@ -310,11 +309,11 @@ fn wgsl_ir_predeclared_scalar_from_parts(
 ) -> Scalar? {
   let kind = match kind_name {
     "Sint" => Some(ScalarKind::Sint)
-    "Uint" => Some(ScalarKind::Uint)
-    "Float" => Some(ScalarKind::Float)
-    "Bool" => Some(ScalarKind::Bool)
-    "AbstractInt" => Some(ScalarKind::AbstractInt)
-    "AbstractFloat" => Some(ScalarKind::AbstractFloat)
+    "Uint" => Some(Uint)
+    "Float" => Some(Float)
+    "Bool" => Some(Bool)
+    "AbstractInt" => Some(AbstractInt)
+    "AbstractFloat" => Some(AbstractFloat)
     _ => None
   }
   let width = match width_name {
@@ -325,7 +324,7 @@ fn wgsl_ir_predeclared_scalar_from_parts(
     _ => None
   }
   match (kind, width) {
-    (Some(kind), Some(width)) => Some(Scalar::Scalar(kind, width))
+    (Some(kind), Some(width)) => Some(Scalar(kind, width))
     _ => None
   }
 }

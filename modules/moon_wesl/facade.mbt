@@ -22,8 +22,8 @@ pub struct Wesl[R] {
 
 ///|
 pub fn Wesl::new_barebones() -> Wesl[NoResolver] {
-  Wesl::{
-    options: CompileOptions::{
+  {
+    options: {
       imports: false,
       condcomp: false,
       generics: false,
@@ -38,13 +38,13 @@ pub fn Wesl::new_barebones() -> Wesl[NoResolver] {
     },
     use_sourcemap: false,
     resolver: NoResolver::new(),
-    mangler: ManglerKind::None,
+    mangler: None,
   }
 }
 
 ///|
 pub fn Wesl::new_virtual(resolver : VirtualResolver) -> Wesl[VirtualResolver] {
-  Wesl::{
+  {
     options: CompileOptions::default(),
     use_sourcemap: true,
     resolver,
@@ -54,7 +54,7 @@ pub fn Wesl::new_virtual(resolver : VirtualResolver) -> Wesl[VirtualResolver] {
 
 ///|
 pub fn Wesl::new(base : String) -> Wesl[StandardResolver] {
-  Wesl::{
+  {
     options: CompileOptions::default(),
     use_sourcemap: true,
     resolver: StandardResolver::new(base),
@@ -64,7 +64,7 @@ pub fn Wesl::new(base : String) -> Wesl[StandardResolver] {
 
 ///|
 pub fn Wesl::new_experimental(base : String) -> Wesl[StandardResolver] {
-  Wesl::{
+  {
     options: CompileOptions::default().with_generics(true).with_lower(true),
     use_sourcemap: true,
     resolver: StandardResolver::new(base),
@@ -77,12 +77,12 @@ pub fn[R] Wesl::set_options(
   self : Wesl[R],
   options : CompileOptions,
 ) -> Wesl[R] {
-  Wesl::{ ..self, options, }
+  { ..self, options, }
 }
 
 ///|
 pub fn[R] Wesl::set_mangler(self : Wesl[R], kind : ManglerKind) -> Wesl[R] {
-  Wesl::{ ..self, mangler: kind }
+  { ..self, mangler: kind }
 }
 
 ///|
@@ -90,7 +90,7 @@ pub fn[R, CustomResolver] Wesl::set_custom_resolver(
   self : Wesl[R],
   resolver : CustomResolver,
 ) -> Wesl[CustomResolver] {
-  Wesl::{
+  {
     options: self.options,
     use_sourcemap: self.use_sourcemap,
     resolver,
@@ -100,22 +100,22 @@ pub fn[R, CustomResolver] Wesl::set_custom_resolver(
 
 ///|
 pub fn[R] Wesl::use_sourcemap(self : Wesl[R], value : Bool) -> Wesl[R] {
-  Wesl::{ ..self, use_sourcemap: value }
+  { ..self, use_sourcemap: value }
 }
 
 ///|
 pub fn[R] Wesl::use_imports(self : Wesl[R], value : Bool) -> Wesl[R] {
-  Wesl::{ ..self, options: self.options.with_imports(value) }
+  { ..self, options: self.options.with_imports(value) }
 }
 
 ///|
 pub fn[R] Wesl::use_condcomp(self : Wesl[R], value : Bool) -> Wesl[R] {
-  Wesl::{ ..self, options: self.options.with_condcomp(value) }
+  { ..self, options: self.options.with_condcomp(value) }
 }
 
 ///|
 pub fn[R] Wesl::use_generics(self : Wesl[R], value : Bool) -> Wesl[R] {
-  Wesl::{ ..self, options: self.options.with_generics(value) }
+  { ..self, options: self.options.with_generics(value) }
 }
 
 ///|
@@ -124,7 +124,7 @@ pub fn[R] Wesl::set_feature(
   feature : String,
   value : Feature,
 ) -> Wesl[R] {
-  Wesl::{ ..self, options: self.options.set_feature(feature, value) }
+  { ..self, options: self.options.set_feature(feature, value) }
 }
 
 ///|
@@ -132,7 +132,7 @@ pub fn[R] Wesl::set_features(
   self : Wesl[R],
   features : Array[(String, Feature)],
 ) -> Wesl[R] {
-  let flags : @hashmap.HashMap[String, Feature] = @hashmap.HashMap([])
+  let flags : @hashmap.HashMap[String, Feature] = HashMap([])
   for entry in self.options.features.flags.iter() {
     let (name, value) = entry
     flags.set(name, value)
@@ -141,30 +141,24 @@ pub fn[R] Wesl::set_features(
     let (name, value) = entry
     flags.set(name, value)
   }
-  Wesl::{
+  {
     ..self,
-    options: CompileOptions::{
-      ..self.options,
-      features: Features::{ ..self.options.features, flags, },
-    },
+    options: { ..self.options, features: { ..self.options.features, flags, } },
   }
 }
 
 ///|
 pub fn[R] Wesl::unset_feature(self : Wesl[R], feature : String) -> Wesl[R] {
-  let flags : @hashmap.HashMap[String, Feature] = @hashmap.HashMap([])
+  let flags : @hashmap.HashMap[String, Feature] = HashMap([])
   for entry in self.options.features.flags.iter() {
     let (name, value) = entry
     if name != feature {
       flags.set(name, value)
     }
   }
-  Wesl::{
+  {
     ..self,
-    options: CompileOptions::{
-      ..self.options,
-      features: Features::{ ..self.options.features, flags, },
-    },
+    options: { ..self.options, features: { ..self.options.features, flags, } },
   }
 }
 
@@ -173,17 +167,17 @@ pub fn[R] Wesl::set_missing_feature_behavior(
   self : Wesl[R],
   value : Feature,
 ) -> Wesl[R] {
-  Wesl::{ ..self, options: self.options.set_missing_feature_behavior(value) }
+  { ..self, options: self.options.set_missing_feature_behavior(value) }
 }
 
 ///|
 pub fn[R] Wesl::use_stripping(self : Wesl[R], value : Bool) -> Wesl[R] {
-  Wesl::{ ..self, options: self.options.with_strip(value) }
+  { ..self, options: self.options.with_strip(value) }
 }
 
 ///|
 pub fn[R] Wesl::use_lower(self : Wesl[R], value : Bool) -> Wesl[R] {
-  Wesl::{ ..self, options: self.options.with_lower(value) }
+  { ..self, options: self.options.with_lower(value) }
 }
 
 ///|
@@ -191,12 +185,12 @@ pub fn[R] Wesl::keep_declarations(
   self : Wesl[R],
   keep : Array[String],
 ) -> Wesl[R] {
-  Wesl::{ ..self, options: self.options.keep_declarations(keep) }
+  { ..self, options: self.options.keep_declarations(keep) }
 }
 
 ///|
 pub fn[R] Wesl::keep_all_entrypoints(self : Wesl[R]) -> Wesl[R] {
-  Wesl::{ ..self, options: CompileOptions::{ ..self.options, keep: None } }
+  { ..self, options: { ..self.options, keep: None } }
 }
 
 ///|

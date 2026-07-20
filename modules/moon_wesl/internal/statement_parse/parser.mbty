@@ -10,7 +10,7 @@
 %%
 
 parse_function_body
-  : statements                    { FunctionBodyParseNode::{ statements: $1 } }
+  : statements                    { { statements: $1 } }
   ;
 
 statements

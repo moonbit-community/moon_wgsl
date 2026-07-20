@@ -48,12 +48,12 @@ pub fn ModulePath::new(
   origin : PathOrigin,
   components : Array[String],
 ) -> ModulePath {
-  ModulePath::{ origin, components }
+  { origin, components }
 }
 
 ///|
 pub fn ModulePath::new_root() -> ModulePath {
-  ModulePath::new(PathOrigin::Absolute, [])
+  ModulePath::new(Absolute, [])
 }
 
 ///|
@@ -130,30 +130,27 @@ pub fn ModulePath::from_path(path : String) -> ModulePath {
   let absolute = normalized.has_prefix("/")
   let parts = module_path_split_non_empty(normalized, "/")
   if absolute {
-    return ModulePath::new(PathOrigin::Absolute, parts)
+    return ModulePath::new(Absolute, parts)
   }
   if parts.length() == 0 {
     abort("path must contain at least one named component")
   }
   match parts[0] {
     "." =>
-      ModulePath::new(
-        PathOrigin::Relative(0),
-        module_path_slice(parts, 1, parts.length()),
-      )
+      ModulePath::new(Relative(0), module_path_slice(parts, 1, parts.length()))
     ".." => {
       let mut levels = 1
       while levels < parts.length() && parts[levels] == ".." {
         levels = levels + 1
       }
       ModulePath::new(
-        PathOrigin::Relative(levels),
+        Relative(levels),
         module_path_slice(parts, levels, parts.length()),
       )
     }
     package_name =>
       ModulePath::new(
-        PathOrigin::Package(package_name),
+        Package(package_name),
         module_path_slice(parts, 1, parts.length()),
       )
   }
@@ -187,7 +184,7 @@ pub fn ModulePath::join(
   for item in suffix {
     components.push(item)
   }
-  ModulePath::{ origin: self.origin, components }
+  { origin: self.origin, components }
 }
 
 ///|
@@ -200,8 +197,7 @@ pub fn ModulePath::join_path(
       match self.origin {
         Absolute => suffix
         Relative(_) => suffix
-        Package(_) =>
-          ModulePath::{ origin: self.origin, components: suffix.components }
+        Package(_) => { origin: self.origin, components: suffix.components }
       }
     Relative(levels) => {
       let to_keep = if self.components.length() > levels {
@@ -225,14 +221,14 @@ pub fn ModulePath::join_path(
           Relative(self_levels + extra_levels)
         }
       }
-      ModulePath::{ origin, components }
+      { origin, components }
     }
     Package(suffix_pkg) =>
       match self.origin {
         Absolute => suffix
         Relative(_) => suffix
         Package(self_pkg) =>
-          ModulePath::{
+          {
             origin: Package("\{self_pkg}/\{suffix_pkg}"),
             components: suffix.components,
           }
@@ -326,19 +322,19 @@ pub fn parse_module_path(
 ) -> ModulePath raise ModulePathParseError {
   let parsed = @module_path_parse.parse_module_path_source(text)
   let path = match parsed {
-    @module_path_parse.Parsed(path) => path
-    @module_path_parse.Failed(diagnostic) =>
+    Parsed(path) => path
+    Failed(diagnostic) =>
       match diagnostic.problem {
-        @module_path_parse.Empty => raise Empty
-        @module_path_parse.MisplacedPackage => raise MisplacedPackage
-        @module_path_parse.MisplacedSelf => raise MisplacedSelf
-        @module_path_parse.MisplacedSuper => raise MisplacedSuper
+        Empty => raise Empty
+        MisplacedPackage => raise MisplacedPackage
+        MisplacedSelf => raise MisplacedSelf
+        MisplacedSuper => raise MisplacedSuper
       }
   }
   let origin = match path.origin {
-    @module_path_parse.Absolute => Absolute
-    @module_path_parse.Relative(levels) => Relative(levels)
-    @module_path_parse.Package(name) => Package(name)
+    Absolute => Absolute
+    Relative(levels) => Relative(levels)
+    Package(name) => Package(name)
   }
   ModulePath::new(origin, path.components)
 }

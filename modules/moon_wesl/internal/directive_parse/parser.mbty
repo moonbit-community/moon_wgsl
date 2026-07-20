@@ -19,11 +19,11 @@
 
 parse_directive
   : "enable" item_list opt_semi
-                                 { DirectiveParseNode::{ kind: DirectiveParseKind::Enable, arguments: $2 } }
+                                 { { kind: Enable, arguments: $2 } }
   | "requires" item_list opt_semi
-                                 { DirectiveParseNode::{ kind: DirectiveParseKind::Requires, arguments: $2 } }
+                                 { { kind: Requires, arguments: $2 } }
   | "diagnostic" "(" item_list ")" opt_semi
-                                 { DirectiveParseNode::{ kind: DirectiveParseKind::Diagnostic, arguments: $3 } }
+                                 { { kind: Diagnostic, arguments: $3 } }
   ;
 
 item_list

@@ -79,7 +79,7 @@ fn init {
 
 // file:///./parser.mbty
 // 22|    "fn" IDENT opt_generics "(" params ")" opt_return BODY
-// 23|                                  { FunctionParseNode::{ name: $2, generic_parameters: $3, parameters: $5, return_type: $7, body_text: $8 } }
+// 23|                                  { { name: $2, generic_parameters: $3, parameters: $5, return_type: $7, body_text: $8 } }
 
 ///|
 fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -91,7 +91,7 @@ fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_FunctionParseNode(
     {
       ()
-      FunctionParseNode::{
+      {
         name: _dollar2,
         generic_parameters: _dollar3,
         parameters: _dollar5,

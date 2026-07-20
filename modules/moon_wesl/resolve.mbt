@@ -41,7 +41,7 @@ pub(open) trait Resolver {
 impl Resolver with fn resolve_module(self, path) {
   let source = Self::resolve_source(self, path)
   parse_translation_unit(path, source, true) catch {
-    err => raise ResolveError::Error(err.message())
+    err => raise Error(err.message())
   }
 }
 
@@ -72,6 +72,7 @@ pub fn[R : Resolver] emit_rerun_if_changed(
 pub struct NoResolver {}
 
 ///|
+#warnings("-unnecessary_annotation")
 pub fn NoResolver::new() -> NoResolver {
   NoResolver::{  }
 }
@@ -83,7 +84,7 @@ pub fn NoResolver::default() -> NoResolver {
 
 ///|
 pub impl Resolver for NoResolver with fn resolve_source(_self, path) {
-  raise ResolveError::ModuleNotFound(
+  raise ModuleNotFound(
     path, "no module resolver, imports are effectively disabled here",
   )
 }
@@ -95,7 +96,7 @@ pub struct VirtualResolver {
 
 ///|
 pub fn VirtualResolver::new() -> VirtualResolver {
-  VirtualResolver::{ files: @hashmap.HashMap([]) }
+  { files: HashMap([]) }
 }
 
 ///|
@@ -128,7 +129,7 @@ pub fn VirtualResolver::get_module(
 ) -> String raise ResolveError {
   match self.files.get(path) {
     Some(source) => source
-    None => raise ResolveError::ModuleNotFound(path, "virtual module")
+    None => raise ModuleNotFound(path, "virtual module")
   }
 }
 
@@ -162,6 +163,7 @@ pub(open) trait ModulePreprocessor {
 pub struct IdentityPreprocessor {}
 
 ///|
+#warnings("-unnecessary_annotation")
 pub fn IdentityPreprocessor::new() -> IdentityPreprocessor {
   IdentityPreprocessor::{  }
 }
@@ -186,7 +188,7 @@ pub fn[R, P] Preprocessor::new(
   resolver : R,
   preprocess : P,
 ) -> Preprocessor[R, P] {
-  Preprocessor::{ resolver, preprocess }
+  { resolver, preprocess }
 }
 
 ///|
@@ -238,7 +240,7 @@ pub struct CodegenPkg {
 
 ///|
 pub fn CodegenModule::new(name : String, source : String) -> CodegenModule {
-  CodegenModule::{ name, source, submodules: [] }
+  { name, source, submodules: [] }
 }
 
 ///|
@@ -246,7 +248,7 @@ pub fn CodegenModule::with_submodules(
   self : CodegenModule,
   submodules : Array[CodegenModule],
 ) -> CodegenModule {
-  CodegenModule::{ ..self, submodules, }
+  { ..self, submodules, }
 }
 
 ///|
@@ -259,7 +261,7 @@ pub fn CodegenModule::add_submodule(
 
 ///|
 pub fn CodegenPkg::new(crate_name : String, root : CodegenModule) -> CodegenPkg {
-  CodegenPkg::{ crate_name, root, dependencies: [] }
+  { crate_name, root, dependencies: [] }
 }
 
 ///|
@@ -267,7 +269,7 @@ pub fn CodegenPkg::with_dependencies(
   self : CodegenPkg,
   dependencies : Array[CodegenPkg],
 ) -> CodegenPkg {
-  CodegenPkg::{ ..self, dependencies, }
+  { ..self, dependencies, }
 }
 
 ///|
@@ -309,7 +311,7 @@ pub(all) struct Pkg {
 
 ///|
 pub fn PkgBuilder::new(name : String) -> PkgBuilder {
-  PkgBuilder::{ name: name.replace_all(old="-", new="_"), dependencies: [] }
+  { name: name.replace_all(old="-", new="_"), dependencies: [] }
 }
 
 ///|
@@ -319,7 +321,7 @@ pub fn PkgBuilder::add_package(
 ) -> PkgBuilder {
   let dependencies = self.dependencies.copy()
   dependencies.push(pkg)
-  PkgBuilder::{ ..self, dependencies, }
+  { ..self, dependencies, }
 }
 
 ///|
@@ -331,7 +333,7 @@ pub fn PkgBuilder::add_packages(
   for pkg in pkgs {
     dependencies.push(pkg)
   }
-  PkgBuilder::{ ..self, dependencies, }
+  { ..self, dependencies, }
 }
 
 ///|
@@ -466,7 +468,7 @@ fn pkg_scan_unique_stems(
   dir : String,
 ) -> Array[String] raise ScanDirectoryError {
   let entries = @fs.read_dir(dir) catch {
-    err => raise ScanDirectoryError::Io(@debug.to_string(err))
+    err => raise Io(@debug.to_string(err))
   }
   let stems : Array[String] = []
   for entry in entries {
@@ -493,18 +495,18 @@ fn pkg_scan_process_path(
     return None
   }
   if pkg_scan_is_reserved_mod_name(name) {
-    raise ScanDirectoryError::ReservedModName(name)
+    raise ReservedModName(name)
   }
   if !pkg_scan_is_mod_ident(name) {
     return None
   }
   let source = if has_wesl {
     @fs.read_file_to_string(path_with_wesl) catch {
-      err => raise ScanDirectoryError::Io(@debug.to_string(err))
+      err => raise Io(@debug.to_string(err))
     }
   } else if has_wgsl {
     @fs.read_file_to_string(path_with_wgsl) catch {
-      err => raise ScanDirectoryError::Io(@debug.to_string(err))
+      err => raise Io(@debug.to_string(err))
     }
   } else {
     ""
@@ -521,7 +523,7 @@ fn pkg_scan_process_path(
   if source == "" && submodules.length() == 0 {
     return None
   }
-  Some(CodegenModule::{ name, source, submodules })
+  Some({ name, source, submodules })
 }
 
 ///|
@@ -531,18 +533,18 @@ pub fn PkgBuilder::scan_root(
 ) -> Pkg raise ScanDirectoryError {
   match pkg_scan_process_path(path) {
     Some(module_) =>
-      Pkg::{
+      {
         crate_name: self.name,
-        root: CodegenModule::{ ..module_, name: self.name },
+        root: { ..module_, name: self.name },
         dependencies: self.dependencies,
       }
-    None => raise ScanDirectoryError::RootNotFound(path)
+    None => raise RootNotFound(path)
   }
 }
 
 ///|
 pub fn Pkg::to_codegen_pkg(self : Pkg) -> CodegenPkg {
-  CodegenPkg::{
+  {
     crate_name: self.crate_name,
     root: self.root,
     dependencies: self.dependencies,
@@ -615,7 +617,7 @@ pub fn Pkg::build_artifact(
   path : String,
 ) -> Unit raise ScanDirectoryError {
   @fs.write_string_to_file(path, self.codegen()) catch {
-    err => raise ScanDirectoryError::Io(@debug.to_string(err))
+    err => raise Io(@debug.to_string(err))
   }
 }
 
@@ -626,7 +628,7 @@ pub struct PkgResolver {
 
 ///|
 pub fn PkgResolver::new() -> PkgResolver {
-  PkgResolver::{ packages: [] }
+  { packages: [] }
 }
 
 ///|
@@ -680,7 +682,7 @@ fn pkg_resolver_resolve_package_path(
     match pkg_resolver_find_package(current.dependencies, parts[index]) {
       Some(next) => current = next
       None =>
-        raise ResolveError::ModuleNotFound(
+        raise ModuleNotFound(
           full_path,
           "dependency `\{parts[index]}` not found in package path `\{package_path}`",
         )
@@ -693,22 +695,15 @@ fn pkg_resolver_resolve_package_path(
 pub impl Resolver for PkgResolver with fn resolve_source(self, path) {
   let package_path = match path.origin {
     Package(name) => name
-    _ =>
-      raise ResolveError::ModuleNotFound(
-        path, "resolver can only resolve package imports",
-      )
+    _ => raise ModuleNotFound(path, "resolver can only resolve package imports")
   }
   let package_parts = module_path_split_non_empty(package_path, "/")
   guard package_parts.get(0) is Some(root_name) else {
-    raise ResolveError::ModuleNotFound(path, "empty package path")
+    raise ModuleNotFound(path, "empty package path")
   }
   let root_package = match pkg_resolver_find_package(self.packages, root_name) {
     Some(pkg) => pkg
-    None =>
-      raise ResolveError::ModuleNotFound(
-        path,
-        "dependency `\{package_path}` not found",
-      )
+    None => raise ModuleNotFound(path, "dependency `\{package_path}` not found")
   }
   let pkg = pkg_resolver_resolve_package_path(root_package, package_path, path)
   let mut current = pkg.root
@@ -716,7 +711,7 @@ pub impl Resolver for PkgResolver with fn resolve_source(self, path) {
     match pkg_resolver_find_submodule(current, component) {
       Some(submodule) => current = submodule
       None =>
-        raise ResolveError::ModuleNotFound(
+        raise ModuleNotFound(
           path,
           "in module `\{current.name}`, no submodule named `\{component}`",
         )
@@ -738,12 +733,12 @@ pub struct FileResolver {
 
 ///|
 pub fn FileResolver::new(base : String) -> FileResolver {
-  FileResolver::{ base, extension: "wesl" }
+  { base, extension: "wesl" }
 }
 
 ///|
 pub fn FileResolver::default() -> FileResolver {
-  FileResolver::{ base: "", extension: "" }
+  { base: "", extension: "" }
 }
 
 ///|
@@ -751,7 +746,7 @@ pub fn FileResolver::set_extension(
   self : FileResolver,
   extension : String,
 ) -> FileResolver {
-  FileResolver::{ ..self, extension, }
+  { ..self, extension, }
 }
 
 ///|
@@ -771,7 +766,7 @@ pub fn FileResolver::file_path(
   path : ModulePath,
 ) -> String raise ResolveError {
   if path.is_package() {
-    raise ResolveError::ModuleNotFound(
+    raise ModuleNotFound(
       path, "this is an external package import, not a file import. Use `package::` or `super::` for file imports.",
     )
   }
@@ -793,10 +788,10 @@ pub impl Resolver for FileResolver with fn resolve_source(self, path) {
       if self.extension == "wesl" {
         let fallback_path = self.set_extension("wgsl").file_path(path)
         @fs.read_file_to_string(fallback_path) catch {
-          _ => raise ResolveError::FileNotFound(fs_path, "physical file")
+          _ => raise FileNotFound(fs_path, "physical file")
         }
       } else {
-        raise ResolveError::FileNotFound(fs_path, "physical file")
+        raise FileNotFound(fs_path, "physical file")
       }
   }
 }
@@ -824,10 +819,10 @@ pub struct StandardResolver {
 
 ///|
 pub fn StandardResolver::new(base : String) -> StandardResolver {
-  StandardResolver::{
+  {
     pkg: PkgResolver::new(),
     files: FileResolver::new(base),
-    constants: @hashmap.HashMap([]),
+    constants: HashMap([]),
   }
 }
 
@@ -986,7 +981,7 @@ pub struct Router {
 
 ///|
 pub fn Router::new() -> Router {
-  Router::{ mount_points: [], fallback: None }
+  { mount_points: [], fallback: None }
 }
 
 ///|
@@ -1081,7 +1076,7 @@ fn Router::route(
     None =>
       match self.fallback {
         Some((prefix, resolver)) => (resolver, router_suffix_path(path, prefix))
-        None => raise ResolveError::ModuleNotFound(path, "no mount point")
+        None => raise ModuleNotFound(path, "no mount point")
       }
   }
 }

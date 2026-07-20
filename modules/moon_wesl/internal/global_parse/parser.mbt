@@ -84,7 +84,7 @@ fn init {
 
 // file:///./parser.mbty
 // 33|    attributes "fn" IDENT tail
-// 34|                                 { GlobalParseHeader::Function($3) }
+// 34|                                 { Function($3) }
 
 ///|
 fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -92,14 +92,14 @@ fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_GlobalParseHeader(
     {
       ()
-      GlobalParseHeader::Function(_dollar3)
+      Function(_dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
 // 35|    attributes "struct" IDENT tail
-// 36|                                 { GlobalParseHeader::Struct($3) }
+// 36|                                 { Struct($3) }
 
 ///|
 fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -107,14 +107,14 @@ fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_GlobalParseHeader(
     {
       ()
-      GlobalParseHeader::Struct(_dollar3)
+      Struct(_dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
 // 37|    attributes "alias" IDENT tail
-// 38|                                 { GlobalParseHeader::Alias($3) }
+// 38|                                 { Alias($3) }
 
 ///|
 fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -122,14 +122,14 @@ fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_GlobalParseHeader(
     {
       ()
-      GlobalParseHeader::Alias(_dollar3)
+      Alias(_dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
 // 39|    attributes "const" IDENT tail
-// 40|                                 { GlobalParseHeader::Const($3) }
+// 40|                                 { Const($3) }
 
 ///|
 fn yy_action_3(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -137,14 +137,14 @@ fn yy_action_3(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_GlobalParseHeader(
     {
       ()
-      GlobalParseHeader::Const(_dollar3)
+      Const(_dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
 // 41|    attributes "override" IDENT tail
-// 42|                                 { GlobalParseHeader::Override($3) }
+// 42|                                 { Override($3) }
 
 ///|
 fn yy_action_4(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -152,14 +152,14 @@ fn yy_action_4(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_GlobalParseHeader(
     {
       ()
-      GlobalParseHeader::Override(_dollar3)
+      Override(_dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
 // 43|    attributes "let" IDENT tail
-// 44|                                 { GlobalParseHeader::Let($3) }
+// 44|                                 { Let($3) }
 
 ///|
 fn yy_action_5(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -167,14 +167,14 @@ fn yy_action_5(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_GlobalParseHeader(
     {
       ()
-      GlobalParseHeader::Let(_dollar3)
+      Let(_dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
 // 45|    attributes "var" opt_var_template IDENT tail
-// 46|                                 { GlobalParseHeader::Var(GlobalParseVar::{ name: Some($4), template_arguments: $3 }) }
+// 46|                                 { Var({ name: Some($4), template_arguments: $3 }) }
 
 ///|
 fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -183,10 +183,7 @@ fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_GlobalParseHeader(
     {
       ()
-      GlobalParseHeader::Var(GlobalParseVar::{
-        name: Some(_dollar4),
-        template_arguments: _dollar3,
-      })
+      Var({ name: Some(_dollar4), template_arguments: _dollar3 })
     },
   )
 }
@@ -220,66 +217,66 @@ fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 // file:///./parser.mbty
 // 47|    attributes "const_assert" tail
-// 48|                                 { GlobalParseHeader::ConstAssert }
+// 48|                                 { ConstAssert }
 
 ///|
 fn yy_action_9(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_GlobalParseHeader(
     {
       ()
-      GlobalParseHeader::ConstAssert
+      ConstAssert
     },
   )
 }
 
 // file:///./parser.mbty
-// 49|    attributes "enable" tail      { GlobalParseHeader::EnableDirective }
+// 49|    attributes "enable" tail      { EnableDirective }
 
 ///|
 fn yy_action_10(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_GlobalParseHeader(
     {
       ()
-      GlobalParseHeader::EnableDirective
+      EnableDirective
     },
   )
 }
 
 // file:///./parser.mbty
-// 50|    attributes "requires" tail    { GlobalParseHeader::RequiresDirective }
+// 50|    attributes "requires" tail    { RequiresDirective }
 
 ///|
 fn yy_action_11(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_GlobalParseHeader(
     {
       ()
-      GlobalParseHeader::RequiresDirective
+      RequiresDirective
     },
   )
 }
 
 // file:///./parser.mbty
-// 51|    attributes "diagnostic" tail  { GlobalParseHeader::DiagnosticDirective }
+// 51|    attributes "diagnostic" tail  { DiagnosticDirective }
 
 ///|
 fn yy_action_12(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_GlobalParseHeader(
     {
       ()
-      GlobalParseHeader::DiagnosticDirective
+      DiagnosticDirective
     },
   )
 }
 
 // file:///./parser.mbty
-// 52|    attributes other_global       { GlobalParseHeader::Other }
+// 52|    attributes other_global       { Other }
 
 ///|
 fn yy_action_13(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_GlobalParseHeader(
     {
       ()
-      GlobalParseHeader::Other
+      Other
     },
   )
 }

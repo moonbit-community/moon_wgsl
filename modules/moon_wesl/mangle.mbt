@@ -29,6 +29,7 @@ pub fn ManglerKind::default() -> ManglerKind {
 }
 
 ///|
+#warnings("-unnecessary_annotation")
 pub fn EscapeMangler::default() -> EscapeMangler {
   EscapeMangler::{  }
 }
@@ -123,14 +124,14 @@ pub fn EscapeMangler::unmangle(
   let mut cursor = 1
   let origin = match parts[0] {
     "package" => PathOrigin::Absolute
-    "self" => PathOrigin::Relative(0)
+    "self" => Relative(0)
     "super" => {
       let mut levels = 1
       while cursor < parts.length() && parts[cursor] == "super" {
         levels = levels + 1
         cursor = cursor + 1
       }
-      PathOrigin::Relative(levels)
+      Relative(levels)
     }
     "import" => {
       guard cursor < parts.length() else { return None }
@@ -145,7 +146,7 @@ pub fn EscapeMangler::unmangle(
         package_parts.push(component)
         cursor = next_cursor
       }
-      PathOrigin::Package(package_parts.join("/"))
+      Package(package_parts.join("/"))
     }
     _ => {
       guard escape_mangler_unescape_component(parts, 0)
@@ -153,7 +154,7 @@ pub fn EscapeMangler::unmangle(
         return None
       }
       cursor = next_cursor
-      PathOrigin::Package(package_name)
+      Package(package_name)
     }
   }
   let components : Array[String] = []

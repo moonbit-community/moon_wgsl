@@ -25,22 +25,22 @@ parse_cond_expr
 
 or_expr
   : and_expr                     { $1 }
-  | or_expr "||" and_expr        { CondExprNode::Or($1, $3) }
+  | or_expr "||" and_expr        { Or($1, $3) }
   ;
 
 and_expr
   : not_expr                     { $1 }
-  | and_expr "&&" not_expr       { CondExprNode::And($1, $3) }
+  | and_expr "&&" not_expr       { And($1, $3) }
   ;
 
 not_expr
   : primary_expr                 { $1 }
-  | "!" not_expr                 { CondExprNode::Not($2) }
+  | "!" not_expr                 { Not($2) }
   ;
 
 primary_expr
-  : IDENT                        { CondExprNode::Feature($1) }
-  | "true"                       { CondExprNode::Literal(true) }
-  | "false"                      { CondExprNode::Literal(false) }
+  : IDENT                        { Feature($1) }
+  | "true"                       { Literal(true) }
+  | "false"                      { Literal(false) }
   | "(" or_expr ")"             { $2 }
   ;

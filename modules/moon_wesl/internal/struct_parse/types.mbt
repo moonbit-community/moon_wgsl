@@ -245,12 +245,12 @@ fn struct_parse_lex(source : String) -> StructLexResult {
   let mut index = 0
   let (start_index, ok) = struct_parse_skip_layout(source, index)
   if !ok {
-    return LexFailed(StructParseDiagnostic::{ offset: index, incomplete: true })
+    return LexFailed({ offset: index, incomplete: true })
   }
   index = start_index
   let (after_attrs, ok) = struct_parse_skip_attributes(source, index)
   if !ok {
-    return LexFailed(StructParseDiagnostic::{ offset: index, incomplete: true })
+    return LexFailed({ offset: index, incomplete: true })
   }
   index = after_attrs
   match struct_parse_read_ident(source, index) {
@@ -258,15 +258,11 @@ fn struct_parse_lex(source : String) -> StructLexResult {
       struct_parse_push(tokens, struct_parse_keyword_token(name), index, end_)
       index = end_
     }
-    None =>
-      return LexFailed(StructParseDiagnostic::{
-        offset: index,
-        incomplete: false,
-      })
+    None => return LexFailed({ offset: index, incomplete: false })
   }
   let (after_struct, ok) = struct_parse_skip_layout(source, index)
   if !ok {
-    return LexFailed(StructParseDiagnostic::{ offset: index, incomplete: true })
+    return LexFailed({ offset: index, incomplete: true })
   }
   index = after_struct
   match struct_parse_read_ident(source, index) {
@@ -274,39 +270,26 @@ fn struct_parse_lex(source : String) -> StructLexResult {
       struct_parse_push(tokens, IDENT(name), index, end_)
       index = end_
     }
-    None =>
-      return LexFailed(StructParseDiagnostic::{
-        offset: index,
-        incomplete: false,
-      })
+    None => return LexFailed({ offset: index, incomplete: false })
   }
   let (after_name, ok) = struct_parse_skip_layout(source, index)
   if !ok {
-    return LexFailed(StructParseDiagnostic::{ offset: index, incomplete: true })
+    return LexFailed({ offset: index, incomplete: true })
   }
   index = after_name
   if index >= source.length() || source.code_unit_at(index).to_int() != 123 {
-    return LexFailed(StructParseDiagnostic::{
-      offset: index,
-      incomplete: index >= source.length(),
-    })
+    return LexFailed({ offset: index, incomplete: index >= source.length() })
   }
   struct_parse_push(tokens, LEFT_BRACE, index, index + 1)
   index += 1
   while true {
     let (after_layout, ok) = struct_parse_skip_layout(source, index)
     if !ok {
-      return LexFailed(StructParseDiagnostic::{
-        offset: index,
-        incomplete: true,
-      })
+      return LexFailed({ offset: index, incomplete: true })
     }
     index = after_layout
     if index >= source.length() {
-      return LexFailed(StructParseDiagnostic::{
-        offset: index,
-        incomplete: true,
-      })
+      return LexFailed({ offset: index, incomplete: true })
     }
     if source.code_unit_at(index).to_int() == 125 {
       struct_parse_push(tokens, RIGHT_BRACE, index, index + 1)
@@ -316,31 +299,21 @@ fn struct_parse_lex(source : String) -> StructLexResult {
     let attr_start = index
     let (after_attrs, ok) = struct_parse_skip_attributes(source, index)
     if !ok {
-      return LexFailed(StructParseDiagnostic::{
-        offset: index,
-        incomplete: true,
-      })
+      return LexFailed({ offset: index, incomplete: true })
     }
     index = after_attrs
     let (member_name, after_member_name) = match
       struct_parse_read_ident(source, index) {
       Some(item) => item
-      None =>
-        return LexFailed(StructParseDiagnostic::{
-          offset: index,
-          incomplete: false,
-        })
+      None => return LexFailed({ offset: index, incomplete: false })
     }
     let (after_member, ok) = struct_parse_skip_layout(source, after_member_name)
     if !ok {
-      return LexFailed(StructParseDiagnostic::{
-        offset: after_member_name,
-        incomplete: true,
-      })
+      return LexFailed({ offset: after_member_name, incomplete: true })
     }
     if after_member >= source.length() ||
       source.code_unit_at(after_member).to_int() != 58 {
-      return LexFailed(StructParseDiagnostic::{
+      return LexFailed({
         offset: after_member,
         incomplete: after_member >= source.length(),
       })
@@ -350,14 +323,11 @@ fn struct_parse_lex(source : String) -> StructLexResult {
       after_member + 1,
     )
     if !ok || type_text == "" {
-      return LexFailed(StructParseDiagnostic::{
-        offset: after_member + 1,
-        incomplete: !ok,
-      })
+      return LexFailed({ offset: after_member + 1, incomplete: !ok })
     }
     struct_parse_push(
       tokens,
-      MEMBER(StructMemberParseNode::{
+      MEMBER({
         name: member_name,
         type_text,
         attributes: source[attr_start:after_attrs].trim().to_owned(),
@@ -372,7 +342,7 @@ fn struct_parse_lex(source : String) -> StructLexResult {
   }
   let (after_body, ok) = struct_parse_skip_layout(source, index)
   if !ok {
-    return LexFailed(StructParseDiagnostic::{ offset: index, incomplete: true })
+    return LexFailed({ offset: index, incomplete: true })
   }
   index = after_body
   if index < source.length() && source.code_unit_at(index).to_int() == 59 {
@@ -389,9 +359,9 @@ pub fn parse_struct_source(source : String) -> StructParseResult {
   }
   let parsed = parse_struct_decl(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed(StructParseDiagnostic::{ offset: start, incomplete: false })
+      return Failed({ offset: start, incomplete: false })
     UnexpectedEndOfInput(start, _) =>
-      return Failed(StructParseDiagnostic::{ offset: start, incomplete: true })
+      return Failed({ offset: start, incomplete: true })
   }
   Parsed(parsed)
 }

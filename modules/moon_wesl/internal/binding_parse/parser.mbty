@@ -26,17 +26,17 @@
 
 parse_binding_decl
   : "alias" IDENT "=" TYPE_TEXT opt_semi
-                                  { BindingParseNode::{ kind: BindingParseKind::Alias, name: Some($2), var_template: None, type_text: Some($4), initializer: None } }
+                                  { { kind: Alias, name: Some($2), var_template: None, type_text: Some($4), initializer: None } }
   | binding_kind IDENT opt_type opt_init opt_semi
-                                  { BindingParseNode::{ kind: $1, name: Some($2), var_template: None, type_text: $3, initializer: $4 } }
+                                  { { kind: $1, name: Some($2), var_template: None, type_text: $3, initializer: $4 } }
   | "var" opt_var_template IDENT opt_type opt_init opt_semi
-                                  { BindingParseNode::{ kind: BindingParseKind::Var, name: Some($3), var_template: $2, type_text: $4, initializer: $5 } }
+                                  { { kind: Var, name: Some($3), var_template: $2, type_text: $4, initializer: $5 } }
   ;
 
 binding_kind
-  : "const"                       { BindingParseKind::Const }
-  | "override"                    { BindingParseKind::Override }
-  | "let"                         { BindingParseKind::Let }
+  : "const"                       { Const }
+  | "override"                    { Override }
+  | "let"                         { Let }
   ;
 
 opt_var_template

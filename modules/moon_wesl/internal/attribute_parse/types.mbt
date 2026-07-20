@@ -187,10 +187,7 @@ fn attribute_parse_lex(source : String) -> AttributeLexResult {
           line,
         )
         if !closed {
-          return LexFailed(AttributeParseDiagnostic::{
-            offset: index,
-            incomplete: true,
-          })
+          return LexFailed({ offset: index, incomplete: true })
         }
         index = end_
         line = end_line
@@ -205,10 +202,7 @@ fn attribute_parse_lex(source : String) -> AttributeLexResult {
     index += 1
     if index >= source.length() ||
       !attribute_parse_is_identifier_start(source.code_unit_at(index).to_int()) {
-      return LexFailed(AttributeParseDiagnostic::{
-        offset: index,
-        incomplete: index >= source.length(),
-      })
+      return LexFailed({ offset: index, incomplete: index >= source.length() })
     }
     let name_start = index
     index += 1
@@ -228,10 +222,7 @@ fn attribute_parse_lex(source : String) -> AttributeLexResult {
         line,
       )
       if !closed {
-        return LexFailed(AttributeParseDiagnostic::{
-          offset: attr_start,
-          incomplete: true,
-        })
+        return LexFailed({ offset: attr_start, incomplete: true })
       }
       arguments = Some(args)
       index = end_
@@ -241,7 +232,7 @@ fn attribute_parse_lex(source : String) -> AttributeLexResult {
     consumed_offset = index
     tokens.push(
       (
-        ATTRIBUTE(AttributeParseNode::{
+        ATTRIBUTE({
           name,
           arguments,
           start_line,
@@ -263,19 +254,13 @@ pub fn parse_attributes_source(source : String) -> AttributeParseResult {
     LexFailed(diagnostic) => return Failed(diagnostic)
   }
   if tokens.is_empty() {
-    return Parsed(AttributeParseSuccess::{ attributes: [], consumed_offset })
+    return Parsed({ attributes: [], consumed_offset })
   }
   let attributes = parse_attributes(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed(AttributeParseDiagnostic::{
-        offset: start,
-        incomplete: false,
-      })
+      return Failed({ offset: start, incomplete: false })
     UnexpectedEndOfInput(start, _) =>
-      return Failed(AttributeParseDiagnostic::{
-        offset: start,
-        incomplete: true,
-      })
+      return Failed({ offset: start, incomplete: true })
   }
-  Parsed(AttributeParseSuccess::{ attributes, consumed_offset })
+  Parsed({ attributes, consumed_offset })
 }

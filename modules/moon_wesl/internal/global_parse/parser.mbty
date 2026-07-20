@@ -31,25 +31,25 @@
 
 parse_global_header
   : attributes "fn" IDENT tail
-                                 { GlobalParseHeader::Function($3) }
+                                 { Function($3) }
   | attributes "struct" IDENT tail
-                                 { GlobalParseHeader::Struct($3) }
+                                 { Struct($3) }
   | attributes "alias" IDENT tail
-                                 { GlobalParseHeader::Alias($3) }
+                                 { Alias($3) }
   | attributes "const" IDENT tail
-                                 { GlobalParseHeader::Const($3) }
+                                 { Const($3) }
   | attributes "override" IDENT tail
-                                 { GlobalParseHeader::Override($3) }
+                                 { Override($3) }
   | attributes "let" IDENT tail
-                                 { GlobalParseHeader::Let($3) }
+                                 { Let($3) }
   | attributes "var" opt_var_template IDENT tail
-                                 { GlobalParseHeader::Var(GlobalParseVar::{ name: Some($4), template_arguments: $3 }) }
+                                 { Var({ name: Some($4), template_arguments: $3 }) }
   | attributes "const_assert" tail
-                                 { GlobalParseHeader::ConstAssert }
-  | attributes "enable" tail      { GlobalParseHeader::EnableDirective }
-  | attributes "requires" tail    { GlobalParseHeader::RequiresDirective }
-  | attributes "diagnostic" tail  { GlobalParseHeader::DiagnosticDirective }
-  | attributes other_global       { GlobalParseHeader::Other }
+                                 { ConstAssert }
+  | attributes "enable" tail      { EnableDirective }
+  | attributes "requires" tail    { RequiresDirective }
+  | attributes "diagnostic" tail  { DiagnosticDirective }
+  | attributes other_global       { Other }
   ;
 
 attributes

@@ -5,12 +5,16 @@ import {
 extern "js" fn js_valid_version(version : String) -> Bool =
   #| (version) => /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-+][0-9A-Za-z.-]+)?$/.test(version)
 
-extern "js" fn js_update_module_manifest(path : String, version : String) -> Unit =
-  #| (path, version) => {
+extern "js" fn js_update_module_manifest(
+  path : String,
+  version : String,
+  dependency_version : String,
+) -> Unit =
+  #| (path, version, dependencyVersion) => {
   #|   const fs = require("node:fs");
   #|   const text = fs.readFileSync(path, "utf8");
   #|   let next = text.replace(/^version = "[^"]+"/m, `version = "${version}"`);
-  #|   next = next.replace(/"Milky2018\/(wgsl|moon_wgsl_naga|moon_wgsl_naga_oil)@[^"]+"/g, (_, name) => `"Milky2018/${name}@${version}"`);
+  #|   next = next.replace(/"Milky2018\/(wgsl|moon_wgsl_naga|moon_wgsl_naga_oil)@[^"]+"/g, (_, name) => `"Milky2018/${name}@${dependencyVersion}"`);
   #|   fs.writeFileSync(path, next);
   #| }
 
@@ -21,12 +25,18 @@ extern "js" fn js_run(command : String) -> Unit =
   #| }
 
 fn usage() -> Unit {
-  println("usage: moon run --target js publish.mbtx <version>")
-  println("example: moon run --target js publish.mbtx 1.2.3")
+  println(
+    "usage: moon run --target js publish.mbtx <workspace-version> <wesl-version>",
+  )
+  println("example: moon run --target js publish.mbtx 0.16.1 0.2.0")
 }
 
-fn update_manifest(path : String, version : String) -> Unit {
-  js_update_module_manifest(path, version)
+fn update_manifest(
+  path : String,
+  version : String,
+  dependency_version : String,
+) -> Unit {
+  js_update_module_manifest(path, version, dependency_version)
   println("updated " + path)
 }
 
@@ -40,26 +50,53 @@ fn refresh_registry_metadata() -> Unit {
 
 fn main {
   let args = @sys.get_cli_args()
-  if args.length() != 2 {
+  if args.length() != 3 {
     usage()
     @sys.exit(2)
   }
-  let version = args[1]
-  if !js_valid_version(version) {
-    println("invalid version: " + version)
+  let workspace_version = args[1]
+  let wesl_version = args[2]
+  if !js_valid_version(workspace_version) {
+    println("invalid workspace version: " + workspace_version)
+    usage()
+    @sys.exit(2)
+  }
+  if !js_valid_version(wesl_version) {
+    println("invalid WESL version: " + wesl_version)
     usage()
     @sys.exit(2)
   }
 
-  update_manifest("modules/wgsl/moon.mod", version)
-  update_manifest("modules/moon_wgsl_naga/moon.mod", version)
-  update_manifest("modules/moon_wgsl_naga_oil/moon.mod", version)
-  update_manifest("modules/moon_wgsl/moon.mod", version)
-  update_manifest("tools/moon.mod", version)
+  update_manifest(
+    "modules/wgsl/moon.mod",
+    workspace_version,
+    workspace_version,
+  )
+  update_manifest(
+    "modules/moon_wgsl_naga/moon.mod",
+    workspace_version,
+    workspace_version,
+  )
+  update_manifest(
+    "modules/moon_wgsl_naga_oil/moon.mod",
+    workspace_version,
+    workspace_version,
+  )
+  update_manifest(
+    "modules/moon_wgsl/moon.mod",
+    workspace_version,
+    workspace_version,
+  )
+  update_manifest("tools/moon.mod", workspace_version, workspace_version)
+  update_manifest(
+    "modules/moon_wesl/moon.mod",
+    wesl_version,
+    workspace_version,
+  )
 
   js_run("moon fmt")
   js_run("moon info --target all")
-  js_run("moon check --target all --deny-warn")
+  js_run("moon check --target all --warn-list +73 --deny-warn")
   js_run("moon test --target all")
 
   publish_module("modules/wgsl")
@@ -69,4 +106,6 @@ fn main {
   publish_module("modules/moon_wgsl_naga_oil")
   refresh_registry_metadata()
   publish_module("modules/moon_wgsl")
+  refresh_registry_metadata()
+  publish_module("modules/moon_wesl")
 }

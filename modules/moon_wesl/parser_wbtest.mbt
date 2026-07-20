@@ -15,8 +15,8 @@
 ///|
 fn parse_expression(source : String) -> Unit raise WeslCompileError {
   match @expression_parse.parse_expression_source(source) {
-    @expression_parse.Parsed(_) => ()
-    @expression_parse.Failed(diagnostic) => {
+    Parsed(_) => ()
+    Failed(diagnostic) => {
       let message = match diagnostic.message {
         Some(message) => message
         None =>
@@ -26,7 +26,7 @@ fn parse_expression(source : String) -> Unit raise WeslCompileError {
             "unsupported expression syntax"
           }
       }
-      raise WeslCompileError::Parse("\{message}: `\{source}`")
+      raise Parse("\{message}: `\{source}`")
     }
   }
 }
@@ -36,8 +36,8 @@ fn parse_expression_ast(
   source : String,
 ) -> @expression_parse.ExpressionParseNode raise WeslCompileError {
   match @expression_parse.parse_expression_source(source) {
-    @expression_parse.Parsed(node) => node
-    @expression_parse.Failed(diagnostic) => {
+    Parsed(node) => node
+    Failed(diagnostic) => {
       let message = match diagnostic.message {
         Some(message) => message
         None =>
@@ -47,7 +47,7 @@ fn parse_expression_ast(
             "unsupported expression syntax"
           }
       }
-      raise WeslCompileError::Parse("\{message}: `\{source}`")
+      raise Parse("\{message}: `\{source}`")
     }
   }
 }
@@ -55,8 +55,8 @@ fn parse_expression_ast(
 ///|
 fn parse_type_specifier(source : String) -> Unit raise WeslCompileError {
   match @type_parse.parse_type_source(source) {
-    @type_parse.Parsed(_) => ()
-    @type_parse.Failed(diagnostic) => {
+    Parsed(_) => ()
+    Failed(diagnostic) => {
       let message = match diagnostic.message {
         Some(message) => message
         None =>
@@ -66,7 +66,7 @@ fn parse_type_specifier(source : String) -> Unit raise WeslCompileError {
             "unsupported type syntax"
           }
       }
-      raise WeslCompileError::Parse("\{message}: `\{source}`")
+      raise Parse("\{message}: `\{source}`")
     }
   }
 }
@@ -76,8 +76,8 @@ fn parse_type_ast(
   source : String,
 ) -> @type_parse.TypeSpecifierParseNode raise WeslCompileError {
   match @type_parse.parse_type_source(source) {
-    @type_parse.Parsed(node) => node
-    @type_parse.Failed(diagnostic) => {
+    Parsed(node) => node
+    Failed(diagnostic) => {
       let message = match diagnostic.message {
         Some(message) => message
         None =>
@@ -87,7 +87,7 @@ fn parse_type_ast(
             "unsupported type syntax"
           }
       }
-      raise WeslCompileError::Parse("\{message}: `\{source}`")
+      raise Parse("\{message}: `\{source}`")
     }
   }
 }

@@ -134,7 +134,7 @@ fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 // file:///./parser.mbty
 // 153|    path_ident "(" opt_arguments ")"
-// 154|                                  { ExpressionParseNode::FunctionCall(ExpressionFunctionCallParseNode::{ callee: $1, arguments: $3 }) }
+// 154|                                  { FunctionCall({ callee: $1, arguments: $3 }) }
 
 ///|
 fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -143,17 +143,14 @@ fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::FunctionCall(ExpressionFunctionCallParseNode::{
-        callee: _dollar1,
-        arguments: _dollar3,
-      })
+      FunctionCall({ callee: _dollar1, arguments: _dollar3 })
     },
   )
 }
 
 // file:///./parser.mbty
 // 155|    path_ident TEMPLATE "(" opt_arguments ")"
-// 156|                                  { ExpressionParseNode::FunctionCall(ExpressionFunctionCallParseNode::{ callee: $1.with_template($2), arguments: $4 }) }
+// 156|                                  { FunctionCall({ callee: $1.with_template($2), arguments: $4 }) }
 
 ///|
 fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -163,7 +160,7 @@ fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::FunctionCall(ExpressionFunctionCallParseNode::{
+      FunctionCall({
         callee: _dollar1.with_template(_dollar2),
         arguments: _dollar4,
       })
@@ -188,7 +185,7 @@ fn yy_action_3(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 // file:///./parser.mbty
 // 72|    short_circuit_or "||" short_circuit_and
-// 73|                                  { ExpressionParseNode::Binary(ExpressionBinaryOperator::ShortCircuitOr, $1, $3) }
+// 73|                                  { Binary(ShortCircuitOr, $1, $3) }
 
 ///|
 fn yy_action_4(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -197,11 +194,7 @@ fn yy_action_4(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::ShortCircuitOr,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(ShortCircuitOr, _dollar1, _dollar3)
     },
   )
 }
@@ -222,7 +215,7 @@ fn yy_action_5(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 // file:///./parser.mbty
 // 78|    short_circuit_and "&&" bitwise_or
-// 79|                                  { ExpressionParseNode::Binary(ExpressionBinaryOperator::ShortCircuitAnd, $1, $3) }
+// 79|                                  { Binary(ShortCircuitAnd, $1, $3) }
 
 ///|
 fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -231,11 +224,7 @@ fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::ShortCircuitAnd,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(ShortCircuitAnd, _dollar1, _dollar3)
     },
   )
 }
@@ -255,7 +244,7 @@ fn yy_action_7(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./parser.mbty
-// 84|    bitwise_or "|" bitwise_xor    { ExpressionParseNode::Binary(ExpressionBinaryOperator::BitwiseOr, $1, $3) }
+// 84|    bitwise_or "|" bitwise_xor    { Binary(BitwiseOr, $1, $3) }
 
 ///|
 fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -264,11 +253,7 @@ fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::BitwiseOr,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(BitwiseOr, _dollar1, _dollar3)
     },
   )
 }
@@ -288,7 +273,7 @@ fn yy_action_9(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./parser.mbty
-// 89|    bitwise_xor "^" bitwise_and   { ExpressionParseNode::Binary(ExpressionBinaryOperator::BitwiseXor, $1, $3) }
+// 89|    bitwise_xor "^" bitwise_and   { Binary(BitwiseXor, $1, $3) }
 
 ///|
 fn yy_action_10(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -297,11 +282,7 @@ fn yy_action_10(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::BitwiseXor,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(BitwiseXor, _dollar1, _dollar3)
     },
   )
 }
@@ -321,7 +302,7 @@ fn yy_action_11(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./parser.mbty
-// 94|    bitwise_and "&" equality      { ExpressionParseNode::Binary(ExpressionBinaryOperator::BitwiseAnd, $1, $3) }
+// 94|    bitwise_and "&" equality      { Binary(BitwiseAnd, $1, $3) }
 
 ///|
 fn yy_action_12(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -330,11 +311,7 @@ fn yy_action_12(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::BitwiseAnd,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(BitwiseAnd, _dollar1, _dollar3)
     },
   )
 }
@@ -354,7 +331,7 @@ fn yy_action_13(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./parser.mbty
-// 99|    equality "==" relational      { ExpressionParseNode::Binary(ExpressionBinaryOperator::Equality, $1, $3) }
+// 99|    equality "==" relational      { Binary(Equality, $1, $3) }
 
 ///|
 fn yy_action_14(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -363,17 +340,13 @@ fn yy_action_14(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::Equality,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(Equality, _dollar1, _dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
-// 100|    equality "!=" relational      { ExpressionParseNode::Binary(ExpressionBinaryOperator::Inequality, $1, $3) }
+// 100|    equality "!=" relational      { Binary(Inequality, $1, $3) }
 
 ///|
 fn yy_action_15(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -382,11 +355,7 @@ fn yy_action_15(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::Inequality,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(Inequality, _dollar1, _dollar3)
     },
   )
 }
@@ -406,7 +375,7 @@ fn yy_action_16(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./parser.mbty
-// 105|    relational "<" shift          { ExpressionParseNode::Binary(ExpressionBinaryOperator::LessThan, $1, $3) }
+// 105|    relational "<" shift          { Binary(LessThan, $1, $3) }
 
 ///|
 fn yy_action_17(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -415,17 +384,13 @@ fn yy_action_17(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::LessThan,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(LessThan, _dollar1, _dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
-// 106|    relational "<=" shift         { ExpressionParseNode::Binary(ExpressionBinaryOperator::LessThanEqual, $1, $3) }
+// 106|    relational "<=" shift         { Binary(LessThanEqual, $1, $3) }
 
 ///|
 fn yy_action_18(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -434,17 +399,13 @@ fn yy_action_18(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::LessThanEqual,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(LessThanEqual, _dollar1, _dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
-// 107|    relational ">" shift          { ExpressionParseNode::Binary(ExpressionBinaryOperator::GreaterThan, $1, $3) }
+// 107|    relational ">" shift          { Binary(GreaterThan, $1, $3) }
 
 ///|
 fn yy_action_19(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -453,17 +414,13 @@ fn yy_action_19(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::GreaterThan,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(GreaterThan, _dollar1, _dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
-// 108|    relational ">=" shift         { ExpressionParseNode::Binary(ExpressionBinaryOperator::GreaterThanEqual, $1, $3) }
+// 108|    relational ">=" shift         { Binary(GreaterThanEqual, $1, $3) }
 
 ///|
 fn yy_action_20(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -472,11 +429,7 @@ fn yy_action_20(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::GreaterThanEqual,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(GreaterThanEqual, _dollar1, _dollar3)
     },
   )
 }
@@ -496,7 +449,7 @@ fn yy_action_21(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./parser.mbty
-// 113|    shift "<<" additive           { ExpressionParseNode::Binary(ExpressionBinaryOperator::ShiftLeft, $1, $3) }
+// 113|    shift "<<" additive           { Binary(ShiftLeft, $1, $3) }
 
 ///|
 fn yy_action_22(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -505,17 +458,13 @@ fn yy_action_22(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::ShiftLeft,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(ShiftLeft, _dollar1, _dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
-// 114|    shift ">>" additive           { ExpressionParseNode::Binary(ExpressionBinaryOperator::ShiftRight, $1, $3) }
+// 114|    shift ">>" additive           { Binary(ShiftRight, $1, $3) }
 
 ///|
 fn yy_action_23(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -524,11 +473,7 @@ fn yy_action_23(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::ShiftRight,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(ShiftRight, _dollar1, _dollar3)
     },
   )
 }
@@ -548,7 +493,7 @@ fn yy_action_24(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./parser.mbty
-// 119|    additive "+" multiplicative   { ExpressionParseNode::Binary(ExpressionBinaryOperator::Addition, $1, $3) }
+// 119|    additive "+" multiplicative   { Binary(Addition, $1, $3) }
 
 ///|
 fn yy_action_25(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -557,17 +502,13 @@ fn yy_action_25(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::Addition,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(Addition, _dollar1, _dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
-// 120|    additive "-" multiplicative   { ExpressionParseNode::Binary(ExpressionBinaryOperator::Subtraction, $1, $3) }
+// 120|    additive "-" multiplicative   { Binary(Subtraction, $1, $3) }
 
 ///|
 fn yy_action_26(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -576,17 +517,13 @@ fn yy_action_26(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::Subtraction,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(Subtraction, _dollar1, _dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
-// 121|    additive "--" multiplicative  { ExpressionParseNode::Binary(ExpressionBinaryOperator::Subtraction, $1, ExpressionParseNode::Unary(ExpressionUnaryOperator::Negation, $3)) }
+// 121|    additive "--" multiplicative  { Binary(Subtraction, $1, Unary(Negation, $3)) }
 
 ///|
 fn yy_action_27(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -595,11 +532,7 @@ fn yy_action_27(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::Subtraction,
-        _dollar1,
-        ExpressionParseNode::Unary(ExpressionUnaryOperator::Negation, _dollar3),
-      )
+      Binary(Subtraction, _dollar1, Unary(Negation, _dollar3))
     },
   )
 }
@@ -619,7 +552,7 @@ fn yy_action_28(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./parser.mbty
-// 126|    multiplicative "*" unary      { ExpressionParseNode::Binary(ExpressionBinaryOperator::Multiplication, $1, $3) }
+// 126|    multiplicative "*" unary      { Binary(Multiplication, $1, $3) }
 
 ///|
 fn yy_action_29(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -628,17 +561,13 @@ fn yy_action_29(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::Multiplication,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(Multiplication, _dollar1, _dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
-// 127|    multiplicative "/" unary      { ExpressionParseNode::Binary(ExpressionBinaryOperator::Division, $1, $3) }
+// 127|    multiplicative "/" unary      { Binary(Division, $1, $3) }
 
 ///|
 fn yy_action_30(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -647,17 +576,13 @@ fn yy_action_30(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::Division,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(Division, _dollar1, _dollar3)
     },
   )
 }
 
 // file:///./parser.mbty
-// 128|    multiplicative "%" unary      { ExpressionParseNode::Binary(ExpressionBinaryOperator::Remainder, $1, $3) }
+// 128|    multiplicative "%" unary      { Binary(Remainder, $1, $3) }
 
 ///|
 fn yy_action_31(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -666,11 +591,7 @@ fn yy_action_31(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Binary(
-        ExpressionBinaryOperator::Remainder,
-        _dollar1,
-        _dollar3,
-      )
+      Binary(Remainder, _dollar1, _dollar3)
     },
   )
 }
@@ -704,7 +625,7 @@ fn yy_action_33(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./parser.mbty
-// 146|    "[" expression "]"            { ExpressionPostfixSuffix::Indexing($2) }
+// 146|    "[" expression "]"            { Indexing($2) }
 
 ///|
 fn yy_action_34(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -712,13 +633,13 @@ fn yy_action_34(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionPostfixSuffix(
     {
       ()
-      ExpressionPostfixSuffix::Indexing(_dollar2)
+      Indexing(_dollar2)
     },
   )
 }
 
 // file:///./parser.mbty
-// 147|    "." IDENT                     { ExpressionPostfixSuffix::NamedComponent($2) }
+// 147|    "." IDENT                     { NamedComponent($2) }
 
 ///|
 fn yy_action_35(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -726,7 +647,7 @@ fn yy_action_35(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionPostfixSuffix(
     {
       ()
-      ExpressionPostfixSuffix::NamedComponent(_dollar2)
+      NamedComponent(_dollar2)
     },
   )
 }
@@ -746,7 +667,7 @@ fn yy_action_36(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./parser.mbty
-// 133|    "-" unary                     { ExpressionParseNode::Unary(ExpressionUnaryOperator::Negation, $2) }
+// 133|    "-" unary                     { Unary(Negation, $2) }
 
 ///|
 fn yy_action_37(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -754,13 +675,13 @@ fn yy_action_37(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Unary(ExpressionUnaryOperator::Negation, _dollar2)
+      Unary(Negation, _dollar2)
     },
   )
 }
 
 // file:///./parser.mbty
-// 134|    "!" unary                     { ExpressionParseNode::Unary(ExpressionUnaryOperator::LogicalNegation, $2) }
+// 134|    "!" unary                     { Unary(LogicalNegation, $2) }
 
 ///|
 fn yy_action_38(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -768,16 +689,13 @@ fn yy_action_38(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Unary(
-        ExpressionUnaryOperator::LogicalNegation,
-        _dollar2,
-      )
+      Unary(LogicalNegation, _dollar2)
     },
   )
 }
 
 // file:///./parser.mbty
-// 135|    "~" unary                     { ExpressionParseNode::Unary(ExpressionUnaryOperator::BitwiseComplement, $2) }
+// 135|    "~" unary                     { Unary(BitwiseComplement, $2) }
 
 ///|
 fn yy_action_39(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -785,16 +703,13 @@ fn yy_action_39(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Unary(
-        ExpressionUnaryOperator::BitwiseComplement,
-        _dollar2,
-      )
+      Unary(BitwiseComplement, _dollar2)
     },
   )
 }
 
 // file:///./parser.mbty
-// 136|    "*" unary                     { ExpressionParseNode::Unary(ExpressionUnaryOperator::Indirection, $2) }
+// 136|    "*" unary                     { Unary(Indirection, $2) }
 
 ///|
 fn yy_action_40(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -802,13 +717,13 @@ fn yy_action_40(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Unary(ExpressionUnaryOperator::Indirection, _dollar2)
+      Unary(Indirection, _dollar2)
     },
   )
 }
 
 // file:///./parser.mbty
-// 137|    "&" unary                     { ExpressionParseNode::Unary(ExpressionUnaryOperator::AddressOf, $2) }
+// 137|    "&" unary                     { Unary(AddressOf, $2) }
 
 ///|
 fn yy_action_41(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -816,7 +731,7 @@ fn yy_action_41(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Unary(ExpressionUnaryOperator::AddressOf, _dollar2)
+      Unary(AddressOf, _dollar2)
     },
   )
 }
@@ -936,7 +851,7 @@ fn yy_action_49(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./parser.mbty
-// 152|    path_ident                    { ExpressionParseNode::TypeOrIdentifier($1) }
+// 152|    path_ident                    { TypeOrIdentifier($1) }
 
 ///|
 fn yy_action_50(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -944,13 +859,13 @@ fn yy_action_50(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::TypeOrIdentifier(_dollar1)
+      TypeOrIdentifier(_dollar1)
     },
   )
 }
 
 // file:///./parser.mbty
-// 157|    "(" expression ")"            { ExpressionParseNode::Parenthesized($2) }
+// 157|    "(" expression ")"            { Parenthesized($2) }
 
 ///|
 fn yy_action_51(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -958,7 +873,7 @@ fn yy_action_51(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Parenthesized(_dollar2)
+      Parenthesized(_dollar2)
     },
   )
 }
@@ -978,7 +893,7 @@ fn yy_action_52(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./parser.mbty
-// 177|    NUMBER                       { ExpressionParseNode::Literal($1) }
+// 177|    NUMBER                       { Literal($1) }
 
 ///|
 fn yy_action_53(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -986,33 +901,33 @@ fn yy_action_53(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Literal(_dollar1)
+      Literal(_dollar1)
     },
   )
 }
 
 // file:///./parser.mbty
-// 178|    "true"                       { ExpressionParseNode::Bool(true) }
+// 178|    "true"                       { Bool(true) }
 
 ///|
 fn yy_action_54(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Bool(true)
+      Bool(true)
     },
   )
 }
 
 // file:///./parser.mbty
-// 179|    "false"                      { ExpressionParseNode::Bool(false) }
+// 179|    "false"                      { Bool(false) }
 
 ///|
 fn yy_action_55(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_ExpressionParseNode(
     {
       ()
-      ExpressionParseNode::Bool(false)
+      Bool(false)
     },
   )
 }

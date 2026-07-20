@@ -2,17 +2,14 @@ import {
   "moonbitlang/core/list",
 }
 
-options(
-  "pre-build": [
-    {
-      "command": "bash tools/run-moonyacc.sh $input --mode only-tokens -o $output && moonfmt -w $output",
-      "input": "parser.mbty",
-      "output": "parser_tokens.mbt",
-    },
-    {
-      "command": "bash tools/run-moonyacc.sh $input --external-tokens --input-mode array -o $output && moonfmt -w $output",
-      "input": "parser.mbty",
-      "output": "parser.mbt",
-    },
-  ],
+dev_build(
+  rule: "moonyacc-tokens",
+  input: "parser.mbty",
+  output: "parser_tokens.mbt",
+)
+
+dev_build(
+  rule: "moonyacc-external-array",
+  input: "parser.mbty",
+  output: "parser.mbt",
 )

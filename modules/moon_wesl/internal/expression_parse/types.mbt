@@ -96,11 +96,7 @@ pub fn ExpressionTypeParseNode::from_path(
   for index in 0..<(path.length() - 1) {
     prefix.push(path[index])
   }
-  ExpressionTypeParseNode::{
-    path: prefix,
-    ident: path[path.length() - 1],
-    template_text: None,
-  }
+  { path: prefix, ident: path[path.length() - 1], template_text: None }
 }
 
 ///|
@@ -108,11 +104,7 @@ pub fn ExpressionTypeParseNode::with_template(
   self : ExpressionTypeParseNode,
   template_text : String,
 ) -> ExpressionTypeParseNode {
-  ExpressionTypeParseNode::{
-    path: self.path,
-    ident: self.ident,
-    template_text: Some(template_text),
-  }
+  { path: self.path, ident: self.ident, template_text: Some(template_text) }
 }
 
 ///|
@@ -125,7 +117,7 @@ pub fn ExpressionTypeParseNode::qualified_child(
     path.push(segment)
   }
   path.push(self.ident)
-  ExpressionTypeParseNode::{ path, ident, template_text: None }
+  { path, ident, template_text: None }
 }
 
 ///|
@@ -134,9 +126,8 @@ pub fn ExpressionParseNode::apply_postfix(
   suffix : ExpressionPostfixSuffix,
 ) -> ExpressionParseNode {
   match suffix {
-    NamedComponent(component) =>
-      ExpressionParseNode::NamedComponent(self, component)
-    Indexing(index) => ExpressionParseNode::Indexing(self, index)
+    NamedComponent(component) => NamedComponent(self, component)
+    Indexing(index) => Indexing(self, index)
   }
 }
 
@@ -348,7 +339,7 @@ fn expression_parse_lex(source : String) -> ExpressionLexResult {
           index + 2,
         )
         if !closed {
-          return LexFailed(ExpressionParseDiagnostic::{
+          return LexFailed({
             offset: index,
             incomplete: true,
             message: Some("unterminated block comment"),
@@ -381,7 +372,7 @@ fn expression_parse_lex(source : String) -> ExpressionLexResult {
       let start = index
       let (end_, valid) = expression_parse_number_end(source, index)
       if !valid {
-        return LexFailed(ExpressionParseDiagnostic::{
+        return LexFailed({
           offset: start,
           incomplete: false,
           message: Some("invalid numeric literal"),
@@ -450,7 +441,7 @@ fn expression_parse_lex(source : String) -> ExpressionLexResult {
       61 if next == 61 =>
         expression_parse_push_operator(tokens, EQUAL_EQUAL, index, 2)
       _ =>
-        return LexFailed(ExpressionParseDiagnostic::{
+        return LexFailed({
           offset: index,
           incomplete: false,
           message: Some("unsupported expression token"),
@@ -468,7 +459,7 @@ pub fn parse_expression_source(source : String) -> ExpressionParseResult {
     LexFailed(diagnostic) => return Failed(diagnostic)
   }
   if tokens.is_empty() {
-    return Failed(ExpressionParseDiagnostic::{
+    return Failed({
       offset: 0,
       incomplete: true,
       message: Some("empty expression"),
@@ -476,17 +467,9 @@ pub fn parse_expression_source(source : String) -> ExpressionParseResult {
   }
   let parsed = parse_expression(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed(ExpressionParseDiagnostic::{
-        offset: start,
-        incomplete: false,
-        message: None,
-      })
+      return Failed({ offset: start, incomplete: false, message: None })
     UnexpectedEndOfInput(start, _) =>
-      return Failed(ExpressionParseDiagnostic::{
-        offset: start,
-        incomplete: true,
-        message: None,
-      })
+      return Failed({ offset: start, incomplete: true, message: None })
   }
   Parsed(parsed)
 }

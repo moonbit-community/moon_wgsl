@@ -32,9 +32,9 @@ import_item_list
 
 import_item
   : path_segments opt_alias
-                                 { ImportParseNode::{ path_segments: $1, rename: $2, children: [] } }
+                                 { { path_segments: $1, rename: $2, children: [] } }
   | path_segments "::" "{" import_item_list "}"
-                                 { ImportParseNode::{ path_segments: $1, rename: None, children: $4 } }
+                                 { { path_segments: $1, rename: None, children: $4 } }
   ;
 
 path_segments

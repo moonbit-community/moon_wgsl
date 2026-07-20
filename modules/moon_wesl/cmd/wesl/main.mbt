@@ -41,8 +41,8 @@ struct CliCompArgs {
 
 ///|
 fn CliCompArgs::default() -> CliCompArgs {
-  CliCompArgs::{
-    mangler: @moon_wesl.ManglerKind::Escape,
+  {
+    mangler: Escape,
     sourcemap: true,
     imports: true,
     condcomp: true,
@@ -54,7 +54,7 @@ fn CliCompArgs::default() -> CliCompArgs {
     mangle_root: false,
     keep: None,
     keep_root: false,
-    feature_default: @moon_wesl.Feature::Disable,
+    feature_default: Disable,
     features: [],
     base: None,
   }
@@ -88,22 +88,17 @@ fn CliCompArgs::compile_options(
 
 ///|
 fn cli_ok(stdout : String) -> CliRunResult {
-  CliRunResult::{ status: 0, stdout, stdout_bytes: None, stderr: "" }
+  { status: 0, stdout, stdout_bytes: None, stderr: "" }
 }
 
 ///|
 fn cli_ok_bytes(stdout : Bytes) -> CliRunResult {
-  CliRunResult::{
-    status: 0,
-    stdout: "",
-    stdout_bytes: Some(stdout),
-    stderr: "",
-  }
+  { status: 0, stdout: "", stdout_bytes: Some(stdout), stderr: "" }
 }
 
 ///|
 fn cli_err(message : String) -> CliRunResult {
-  CliRunResult::{ status: 1, stdout: "", stdout_bytes: None, stderr: message }
+  { status: 1, stdout: "", stdout_bytes: None, stderr: message }
 }
 
 ///|
@@ -139,10 +134,10 @@ fn cli_package_usage() -> String {
 ///|
 fn cli_parse_mangler(value : String) -> Result[@moon_wesl.ManglerKind, String] {
   match value {
-    "escape" => Ok(@moon_wesl.ManglerKind::Escape)
-    "hash" => Ok(@moon_wesl.ManglerKind::Hash)
-    "unicode" => Ok(@moon_wesl.ManglerKind::Unicode)
-    "none" => Ok(@moon_wesl.ManglerKind::None)
+    "escape" => Ok(Escape)
+    "hash" => Ok(Hash)
+    "unicode" => Ok(Unicode)
+    "none" => Ok(None)
     _ => Err("invalid mangler `\{value}`")
   }
 }
@@ -150,10 +145,10 @@ fn cli_parse_mangler(value : String) -> Result[@moon_wesl.ManglerKind, String] {
 ///|
 fn cli_parse_feature(value : String) -> Result[@moon_wesl.Feature, String] {
   match value {
-    "enable" | "true" => Ok(@moon_wesl.Feature::Enable)
-    "disable" | "false" => Ok(@moon_wesl.Feature::Disable)
-    "keep" => Ok(@moon_wesl.Feature::Keep)
-    "error" => Ok(@moon_wesl.Feature::Error)
+    "enable" | "true" => Ok(Enable)
+    "disable" | "false" => Ok(Disable)
+    "keep" => Ok(Keep)
+    "error" => Ok(Error)
     _ => Err("invalid feature value `\{value}`")
   }
 }
@@ -170,7 +165,7 @@ fn cli_parse_feature_assignment(
     }
   }
   if eq < 0 {
-    Ok((text, @moon_wesl.Feature::Enable))
+    Ok((text, Enable))
   } else {
     let name = text[:eq].to_owned()
     let value_text = text[eq + 1:].to_owned()
@@ -200,7 +195,7 @@ fn cli_parse_override_assignment(
     if name.trim().to_owned() == "" || value.trim().to_owned() == "" {
       Err("expected override assignment NAME=EXPRESSION")
     } else {
-      Ok(@moon_wesl.OverrideValue::{ name, value })
+      Ok({ name, value })
     }
   }
 }
@@ -230,7 +225,7 @@ fn cli_parse_resource_binding(
   let data = @fs.read_file_to_bytes(parts[3]) catch {
     err => return Err(@debug.to_string(err))
   }
-  Ok(@moon_wesl.ResourceBinding::{ group, binding, kind, data })
+  Ok({ group, binding, kind, data })
 }
 
 ///|
@@ -267,43 +262,43 @@ fn cli_parse_common_args(
           Ok(value) => value
           Err(err) => return Err(err)
         }
-        opts = CliCompArgs::{ ..opts, mangler, }
+        opts = { ..opts, mangler, }
         index = index + 2
       }
       "--no-sourcemap" => {
-        opts = CliCompArgs::{ ..opts, sourcemap: false }
+        opts = { ..opts, sourcemap: false }
         index = index + 1
       }
       "--no-imports" => {
-        opts = CliCompArgs::{ ..opts, imports: false }
+        opts = { ..opts, imports: false }
         index = index + 1
       }
       "--no-cond-comp" => {
-        opts = CliCompArgs::{ ..opts, condcomp: false }
+        opts = { ..opts, condcomp: false }
         index = index + 1
       }
       "--generics" => {
-        opts = CliCompArgs::{ ..opts, generics: true }
+        opts = { ..opts, generics: true }
         index = index + 1
       }
       "--no-strip" => {
-        opts = CliCompArgs::{ ..opts, strip: false }
+        opts = { ..opts, strip: false }
         index = index + 1
       }
       "--lower" => {
-        opts = CliCompArgs::{ ..opts, lower: true }
+        opts = { ..opts, lower: true }
         index = index + 1
       }
       "--no-validate" => {
-        opts = CliCompArgs::{ ..opts, validate: false }
+        opts = { ..opts, validate: false }
         index = index + 1
       }
       "--eager" => {
-        opts = CliCompArgs::{ ..opts, lazy_resolution: false }
+        opts = { ..opts, lazy_resolution: false }
         index = index + 1
       }
       "--mangle-root" => {
-        opts = CliCompArgs::{ ..opts, mangle_root: true }
+        opts = { ..opts, mangle_root: true }
         index = index + 1
       }
       "--keep" => {
@@ -314,7 +309,7 @@ fn cli_parse_common_args(
         index = index + 2
       }
       "--keep-root" => {
-        opts = CliCompArgs::{ ..opts, keep_root: true }
+        opts = { ..opts, keep_root: true }
         index = index + 1
       }
       "-D" | "--feature" => {
@@ -337,12 +332,12 @@ fn cli_parse_common_args(
           Ok(value) => value
           Err(err) => return Err(err)
         }
-        opts = CliCompArgs::{ ..opts, feature_default, }
+        opts = { ..opts, feature_default, }
         index = index + 2
       }
       "--base" => {
         match cli_take_arg(args, index, arg) {
-          Ok(value) => opts = CliCompArgs::{ ..opts, base: Some(value) }
+          Ok(value) => opts = { ..opts, base: Some(value) }
           Err(err) => return Err(err)
         }
         index = index + 2
@@ -358,10 +353,10 @@ fn cli_parse_common_args(
     }
   }
   if keep.length() > 0 {
-    opts = CliCompArgs::{ ..opts, keep: Some(keep) }
+    opts = { ..opts, keep: Some(keep) }
   }
   if features.length() > 0 {
-    opts = CliCompArgs::{ ..opts, features, }
+    opts = { ..opts, features, }
   }
   Ok((opts, positionals))
 }
@@ -484,7 +479,7 @@ fn cli_check_source(
           @moon_wesl.CompileOptions::default().with_strip(false),
         )
       catch {
-        @moon_wesl.WeslCompileError::Resolve(_) => ()
+        Resolve(_) => ()
         err => return Err(cli_check_diagnostic(err, path, display_name, source))
       } noraise {
         _ => ()
@@ -496,7 +491,7 @@ fn cli_check_source(
         err =>
           return Err(
             cli_check_diagnostic(
-              @moon_wesl.WeslCompileError::Validation(err.message()),
+              Validation(err.message()),
               path,
               display_name,
               source,

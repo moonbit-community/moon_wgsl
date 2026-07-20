@@ -81,6 +81,16 @@ The result contains the final emitted syntax tree in `result.syntax`; call
 `result.to_string()` for the WGSL text. Loaded module order is available in
 `result.modules`.
 
+## Migration from 0.1.x
+
+Version 0.2.0 moves official WGSL parsing and semantic validation to
+`Milky2018/wgsl`. The former public `validate_wgsl(...)` helper has been
+removed. Code that validates standalone WGSL should parse it with
+`@ir.parse_wgsl_module_to_ir(...)` and validate the result with
+`@ir.validate_wgsl_ir_module(...)` from `Milky2018/wgsl/ir`. Normal
+`compile(...)` users do not need to change calls: validation remains enabled by
+default and now runs through WGSL Core after WESL assembly.
+
 For build-script style workflows, `CompileResult::write_artifact(...)` and
 `Wesl::build_artifact(...)` write `<artifact>.wgsl` into `OUT_DIR` by default,
 matching the upstream `include_wesl!` artifact convention. Tests and MoonBit

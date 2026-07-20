@@ -182,7 +182,7 @@ fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./parser.mbty
-// 51|    type_specifier                { TypeTemplateArgumentParseNode::Type($1) }
+// 51|    type_specifier                { Type($1) }
 
 ///|
 fn yy_action_7(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -190,13 +190,13 @@ fn yy_action_7(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_TypeTemplateArgumentParseNode(
     {
       ()
-      TypeTemplateArgumentParseNode::Type(_dollar1)
+      Type(_dollar1)
     },
   )
 }
 
 // file:///./parser.mbty
-// 52|    shift_literal                 { TypeTemplateArgumentParseNode::Literal($1) }
+// 52|    shift_literal                 { Literal($1) }
 
 ///|
 fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -204,7 +204,7 @@ fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_TypeTemplateArgumentParseNode(
     {
       ()
-      TypeTemplateArgumentParseNode::Literal(_dollar1)
+      Literal(_dollar1)
     },
   )
 }

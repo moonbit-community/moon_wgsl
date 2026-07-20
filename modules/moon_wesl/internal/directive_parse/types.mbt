@@ -217,28 +217,18 @@ fn directive_parse_lex(source : String) -> DirectiveLexResult {
   let mut index = 0
   let (start_index, ok) = directive_parse_skip_layout(source, index)
   if !ok {
-    return LexFailed(DirectiveParseDiagnostic::{
-      offset: index,
-      incomplete: true,
-    })
+    return LexFailed({ offset: index, incomplete: true })
   }
   index = start_index
   let (after_attrs, ok) = directive_parse_skip_attributes(source, index)
   if !ok {
-    return LexFailed(DirectiveParseDiagnostic::{
-      offset: index,
-      incomplete: true,
-    })
+    return LexFailed({ offset: index, incomplete: true })
   }
   index = after_attrs
   let (keyword, after_keyword) = match
     directive_parse_read_item(source, index) {
     Some(item) => item
-    None =>
-      return LexFailed(DirectiveParseDiagnostic::{
-        offset: index,
-        incomplete: false,
-      })
+    None => return LexFailed({ offset: index, incomplete: false })
   }
   directive_parse_push(
     tokens,
@@ -250,10 +240,7 @@ fn directive_parse_lex(source : String) -> DirectiveLexResult {
   while true {
     let (after_layout, ok) = directive_parse_skip_layout(source, index)
     if !ok {
-      return LexFailed(DirectiveParseDiagnostic::{
-        offset: index,
-        incomplete: true,
-      })
+      return LexFailed({ offset: index, incomplete: true })
     }
     index = after_layout
     if index >= source.length() {
@@ -285,11 +272,7 @@ fn directive_parse_lex(source : String) -> DirectiveLexResult {
         directive_parse_push(tokens, ITEM(item), index, end_)
         index = end_
       }
-      None =>
-        return LexFailed(DirectiveParseDiagnostic::{
-          offset: index,
-          incomplete: false,
-        })
+      None => return LexFailed({ offset: index, incomplete: false })
     }
   }
   Lexed(tokens)
@@ -303,15 +286,9 @@ pub fn parse_directive_source(source : String) -> DirectiveParseResult {
   }
   let parsed = parse_directive(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed(DirectiveParseDiagnostic::{
-        offset: start,
-        incomplete: false,
-      })
+      return Failed({ offset: start, incomplete: false })
     UnexpectedEndOfInput(start, _) =>
-      return Failed(DirectiveParseDiagnostic::{
-        offset: start,
-        incomplete: true,
-      })
+      return Failed({ offset: start, incomplete: true })
   }
   Parsed(parsed)
 }

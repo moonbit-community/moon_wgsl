@@ -78,7 +78,7 @@ pub struct Features {
 
 ///|
 pub fn Features::default() -> Features {
-  Features::{ default: Feature::default(), flags: @hashmap.HashMap([]) }
+  { default: Feature::default(), flags: HashMap([]) }
 }
 
 ///|
@@ -100,10 +100,7 @@ fn Features::eval_cond(
     Enable => Known(true)
     Disable => Known(false)
     Keep => Unknown
-    Error =>
-      raise WeslCompileError::InvalidExpression(
-        "unexpected feature flag: `\{name}`",
-      )
+    Error => raise InvalidExpression("unexpected feature flag: `\{name}`")
   }
 }
 
@@ -124,7 +121,7 @@ pub struct CompileOptions {
 
 ///|
 pub fn CompileOptions::default() -> CompileOptions {
-  CompileOptions::{
+  {
     imports: true,
     condcomp: true,
     generics: false,
@@ -144,7 +141,7 @@ pub fn CompileOptions::with_imports(
   self : CompileOptions,
   imports : Bool,
 ) -> CompileOptions {
-  CompileOptions::{ ..self, imports, }
+  { ..self, imports, }
 }
 
 ///|
@@ -152,7 +149,7 @@ pub fn CompileOptions::with_condcomp(
   self : CompileOptions,
   condcomp : Bool,
 ) -> CompileOptions {
-  CompileOptions::{ ..self, condcomp, }
+  { ..self, condcomp, }
 }
 
 ///|
@@ -160,7 +157,7 @@ pub fn CompileOptions::with_lower(
   self : CompileOptions,
   lower : Bool,
 ) -> CompileOptions {
-  CompileOptions::{ ..self, lower, }
+  { ..self, lower, }
 }
 
 ///|
@@ -168,7 +165,7 @@ pub fn CompileOptions::with_generics(
   self : CompileOptions,
   generics : Bool,
 ) -> CompileOptions {
-  CompileOptions::{ ..self, generics, }
+  { ..self, generics, }
 }
 
 ///|
@@ -176,7 +173,7 @@ pub fn CompileOptions::with_strip(
   self : CompileOptions,
   strip : Bool,
 ) -> CompileOptions {
-  CompileOptions::{ ..self, strip, }
+  { ..self, strip, }
 }
 
 ///|
@@ -184,7 +181,7 @@ pub fn CompileOptions::with_lazy(
   self : CompileOptions,
   enabled : Bool,
 ) -> CompileOptions {
-  CompileOptions::{ ..self, lazy_resolution: enabled }
+  { ..self, lazy_resolution: enabled }
 }
 
 ///|
@@ -192,7 +189,7 @@ pub fn CompileOptions::with_validate(
   self : CompileOptions,
   validate : Bool,
 ) -> CompileOptions {
-  CompileOptions::{ ..self, validate, }
+  { ..self, validate, }
 }
 
 ///|
@@ -200,7 +197,7 @@ pub fn CompileOptions::with_mangle_root(
   self : CompileOptions,
   mangle_root : Bool,
 ) -> CompileOptions {
-  CompileOptions::{ ..self, mangle_root, }
+  { ..self, mangle_root, }
 }
 
 ///|
@@ -208,7 +205,7 @@ pub fn CompileOptions::with_keep_root(
   self : CompileOptions,
   keep_root : Bool,
 ) -> CompileOptions {
-  CompileOptions::{ ..self, keep_root, }
+  { ..self, keep_root, }
 }
 
 ///|
@@ -216,7 +213,7 @@ pub fn CompileOptions::keep_declarations(
   self : CompileOptions,
   keep : Array[String],
 ) -> CompileOptions {
-  CompileOptions::{ ..self, keep: Some(keep) }
+  { ..self, keep: Some(keep) }
 }
 
 ///|
@@ -234,7 +231,7 @@ pub fn CompileOptions::set_feature(
   name : String,
   value : Feature,
 ) -> CompileOptions {
-  CompileOptions::{ ..self, features: self.features.with_feature(name, value) }
+  { ..self, features: self.features.with_feature(name, value) }
 }
 
 ///|
@@ -242,10 +239,7 @@ pub fn CompileOptions::set_missing_feature_behavior(
   self : CompileOptions,
   value : Feature,
 ) -> CompileOptions {
-  CompileOptions::{
-    ..self,
-    features: Features::{ ..self.features, default: value },
-  }
+  { ..self, features: { ..self.features, default: value } }
 }
 
 ///|
@@ -277,10 +271,10 @@ impl SourceMap with fn unmangle_text(_self, text) {
 
 ///|
 pub fn BasicSourceMap::default() -> BasicSourceMap {
-  BasicSourceMap::{
+  {
     root: ModulePath::new_root(),
-    mappings: @hashmap.HashMap([]),
-    sources: @hashmap.HashMap([]),
+    mappings: HashMap([]),
+    sources: HashMap([]),
     default_source: None,
   }
 }
@@ -435,6 +429,7 @@ pub impl SourceMap for BasicSourceMap with fn unmangle_text(self, text) {
 pub struct NoSourceMap {}
 
 ///|
+#warnings("-unnecessary_annotation")
 pub fn NoSourceMap::new() -> NoSourceMap {
   NoSourceMap::{  }
 }
@@ -478,12 +473,7 @@ pub fn[R] SourceMapper::new(
   resolver : R,
   mangler : ManglerKind,
 ) -> SourceMapper[R] {
-  SourceMapper::{
-    root,
-    resolver,
-    mangler,
-    sourcemap: BasicSourceMap::{ ..BasicSourceMap::default(), root, },
-  }
+  { root, resolver, mangler, sourcemap: { ..BasicSourceMap::default(), root, } }
 }
 
 ///|
@@ -581,11 +571,7 @@ pub struct CompileResult {
 
 ///|
 pub fn CompileResult::default() -> CompileResult {
-  CompileResult::{
-    syntax: TranslationUnit::default(),
-    sourcemap: None,
-    modules: [],
-  }
+  { syntax: TranslationUnit::default(), sourcemap: None, modules: [] }
 }
 
 ///|
@@ -605,7 +591,7 @@ pub fn CompileResult::write_to_file(
 ) -> Unit raise WeslCompileError {
   @fs.write_string_to_file(path, self.to_string()) catch {
     err =>
-      raise WeslCompileError::Artifact(
+      raise Artifact(
         "failed to write output shader `\{path}`: \{@debug.to_string(err)}",
       )
   }
@@ -617,12 +603,12 @@ fn wesl_artifact_output_path(
   out_dir : String?,
 ) -> String raise WeslCompileError {
   if artifact_name == "" {
-    raise WeslCompileError::Artifact("artifact name cannot be empty")
+    raise Artifact("artifact name cannot be empty")
   }
   for i in 0..<artifact_name.length() {
     let code = artifact_name.code_unit_at(i).to_int()
     if code == 47 || code == 92 || code == 46 {
-      raise WeslCompileError::Artifact(
+      raise Artifact(
         "`artifact_name` cannot contain path separators or file extension",
       )
     }
@@ -632,10 +618,7 @@ fn wesl_artifact_output_path(
     None =>
       match @env.get_env_var("OUT_DIR") {
         Some(value) => value
-        None =>
-          raise WeslCompileError::Artifact(
-            "OUT_DIR environment variable is not defined",
-          )
+        None => raise Artifact("OUT_DIR environment variable is not defined")
       }
   }
   if dirname == "" {
@@ -734,9 +717,9 @@ fn wesl_has_conditional_compile_attr(attributes : Array[Attribute]) -> Bool {
 ///|
 fn wesl_duplicate_error(name : String, context : String) -> WeslCompileError {
   if context == name {
-    WeslCompileError::Validate(ValidateError::Duplicate(name))
+    Validate(Duplicate(name))
   } else {
-    WeslCompileError::DuplicateSymbol(context)
+    DuplicateSymbol(context)
   }
 }
 
@@ -749,14 +732,14 @@ fn wesl_parse_loaded_translation_unit(
   let imports : Array[ImportItem] = []
   let import_conditional : Array[Bool] = []
   let parsed_items : Array[ModuleItem] = []
-  let named_items : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
-  let duplicate_names : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
+  let named_items : @hashmap.HashMap[String, Int] = HashMap([])
+  let duplicate_names : @hashmap.HashMap[String, Int] = HashMap([])
   for statement in translation_unit.imports {
     let conditional_import = wesl_has_conditional_compile_attr(
       statement.attributes,
     )
     for imported_name in statement.flatten_items(path) {
-      imports.push(ImportItem::{
+      imports.push({
         export_module_path: imported_name.export_module_path,
         export_name: imported_name.export_name,
         namespace_path: imported_name.namespace_path,
@@ -791,7 +774,7 @@ fn wesl_parse_loaded_translation_unit(
       }
       None => ()
     }
-    parsed_items.push(ModuleItem::{
+    parsed_items.push({
       name: decl.ident(),
       kind: wesl_item_kind(decl.header),
       header: decl.header,
@@ -803,7 +786,7 @@ fn wesl_parse_loaded_translation_unit(
       references: [],
     })
   }
-  let import_by_local : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
+  let import_by_local : @hashmap.HashMap[String, Int] = HashMap([])
   for i in 0..<imports.length() {
     let import_item = imports[i]
     let skip_duplicate = skip_conditional_duplicates && import_conditional[i]
@@ -832,15 +815,9 @@ fn wesl_parse_loaded_translation_unit(
     let references = wesl_collect_module_item_references(
       parsed, named_items, import_by_local, imports, path,
     )
-    parsed_items[i] = ModuleItem::{ ..parsed, references, }
+    parsed_items[i] = { ..parsed, references, }
   }
-  ParsedModule::{
-    path,
-    imports,
-    import_by_local,
-    items: parsed_items,
-    named_items,
-  }
+  { path, imports, import_by_local, items: parsed_items, named_items }
 }
 
 ///|
@@ -914,7 +891,7 @@ fn wesl_find_matching_delim(
     }
     i = i + 1
   }
-  raise WeslCompileError::Parse("unclosed delimiter in WESL source")
+  raise Parse("unclosed delimiter in WESL source")
 }
 
 ///|
@@ -923,15 +900,14 @@ fn wesl_eval_cond_expr_node(
   features : Features,
 ) -> CondValue raise WeslCompileError {
   match node {
-    @cond_expr_parse.Literal(value) => Known(value)
-    @cond_expr_parse.Feature(name) => features.eval_cond(name)
-    @cond_expr_parse.Not(inner) =>
-      wesl_eval_cond_expr_node(inner, features).not()
-    @cond_expr_parse.And(left, right) =>
+    Literal(value) => Known(value)
+    Feature(name) => features.eval_cond(name)
+    Not(inner) => wesl_eval_cond_expr_node(inner, features).not()
+    And(left, right) =>
       wesl_eval_cond_expr_node(left, features).and_value(
         wesl_eval_cond_expr_node(right, features),
       )
-    @cond_expr_parse.Or(left, right) =>
+    Or(left, right) =>
       wesl_eval_cond_expr_node(left, features).or_value(
         wesl_eval_cond_expr_node(right, features),
       )
@@ -965,9 +941,8 @@ fn wesl_parse_if_value(
 ) -> CondValue raise WeslCompileError {
   let source = expr.trim().to_owned()
   match @cond_expr_parse.parse_cond_expr_source(source) {
-    @cond_expr_parse.Parsed(node) => wesl_eval_cond_expr_node(node, features)
-    @cond_expr_parse.Failed(_) =>
-      raise WeslCompileError::InvalidExpression(expr)
+    Parsed(node) => wesl_eval_cond_expr_node(node, features)
+    Failed(_) => raise InvalidExpression(expr)
   }
 }
 
@@ -1004,7 +979,7 @@ fn wesl_find_condcomp_block(
     }
     index += 1
   }
-  raise WeslCompileError::Parse("missing block after conditional attribute")
+  raise Parse("missing block after conditional attribute")
 }
 
 ///|
@@ -1014,9 +989,7 @@ fn wesl_find_condcomp_region(
 ) -> (Int, Int) raise WeslCompileError {
   let region_start = wesl_skip_layout(source, start)
   if region_start >= source.length() {
-    raise WeslCompileError::Parse(
-      "missing declaration after conditional attribute",
-    )
+    raise Parse("missing declaration after conditional attribute")
   }
   let first_code = source.code_unit_at(region_start).to_int()
   if first_code == 123 {
@@ -1101,9 +1074,7 @@ fn wesl_apply_condcomp(
       let expr_start = wesl_skip_layout(source, index + 3)
       if expr_start >= source.length() ||
         source.code_unit_at(expr_start).to_int() != 40 {
-        raise WeslCompileError::InvalidExpression(
-          source[index:source.length()].to_owned(),
-        )
+        raise InvalidExpression(source[index:source.length()].to_owned())
       }
       let expr_end = wesl_find_matching_delim(source, expr_start, 40, 41)
       let expr = source[expr_start + 1:expr_end].to_owned()
@@ -1136,7 +1107,7 @@ fn wesl_apply_condcomp(
           let elif_expr_start = wesl_skip_layout(source, attr_start + 5)
           if elif_expr_start >= source.length() ||
             source.code_unit_at(elif_expr_start).to_int() != 40 {
-            raise WeslCompileError::InvalidExpression(
+            raise InvalidExpression(
               source[attr_start:source.length()].to_owned(),
             )
           }
@@ -1190,7 +1161,7 @@ fn wesl_apply_condcomp(
           let elif_expr_start = wesl_skip_layout(source, tail_start + 2)
           if elif_expr_start >= source.length() ||
             source.code_unit_at(elif_expr_start).to_int() != 40 {
-            raise WeslCompileError::InvalidExpression(
+            raise InvalidExpression(
               source[attr_start:source.length()].to_owned(),
             )
           }
@@ -1268,7 +1239,7 @@ priv struct CondCompEvalState {
 
 ///|
 fn CondCompEvalState::new() -> CondCompEvalState {
-  CondCompEvalState::{ has_if: false, is_true: false, removed: false }
+  { has_if: false, is_true: false, removed: false }
 }
 
 ///|
@@ -1285,7 +1256,7 @@ fn wesl_single_condcomp_attribute(
     if wesl_is_condcomp_attribute(attribute) {
       match found {
         Some(_) =>
-          raise WeslCompileError::InvalidExpression(
+          raise InvalidExpression(
             "cannot have multiple @if/@elif/@else attributes on the same node",
           )
         None => found = Some(attribute)
@@ -1334,9 +1305,7 @@ fn wesl_condcomp_attr_end(
     let expr_start = wesl_skip_layout(source, name_end)
     if expr_start >= source.length() ||
       source.code_unit_at(expr_start).to_int() != 40 {
-      raise WeslCompileError::InvalidExpression(
-        source[at_index:source.length()].to_owned(),
-      )
+      raise InvalidExpression(source[at_index:source.length()].to_owned())
     }
     let expr_end = wesl_find_matching_delim(source, expr_start, 40, 41)
     wesl_skip_layout(source, expr_end + 1)
@@ -1390,10 +1359,7 @@ fn wesl_condcomp_attr_value(
     None =>
       match attr.arguments {
         Some(expr) => wesl_parse_if_value(expr, features)
-        None =>
-          raise WeslCompileError::InvalidExpression(
-            "missing @\{attr.name} expression",
-          )
+        None => raise InvalidExpression("missing @\{attr.name} expression")
       }
   }
 }
@@ -1433,7 +1399,7 @@ fn wesl_transform_condcomp_node(
         }
         "elif" => {
           if !state.has_if {
-            raise WeslCompileError::InvalidExpression(
+            raise InvalidExpression(
               "an @elif or @else attribute must be preceded by a @if or @elif on the previous node",
             )
           }
@@ -1447,7 +1413,7 @@ fn wesl_transform_condcomp_node(
                 if state.removed {
                   remove_attr = true
                 } else {
-                  replacement = Some(Attribute::{
+                  replacement = Some({
                     ..cond_attr,
                     name: "else",
                     arguments: None,
@@ -1460,7 +1426,7 @@ fn wesl_transform_condcomp_node(
             Known(false) => keep_node = false
             Unknown =>
               if state.removed {
-                replacement = Some(Attribute::{ ..cond_attr, name: "if" })
+                replacement = Some({ ..cond_attr, name: "if" })
                 let expr = cond_attr.arguments.unwrap_or("")
                 replacement_source = Some("@if(\{expr})")
               } else {
@@ -1470,7 +1436,7 @@ fn wesl_transform_condcomp_node(
         }
         "else" => {
           if !state.has_if {
-            raise WeslCompileError::InvalidExpression(
+            raise InvalidExpression(
               "an @elif or @else attribute must be preceded by a @if or @elif on the previous node",
             )
           }
@@ -1528,7 +1494,7 @@ fn wesl_condcomp_imports(
       state,
     )
     if keep_node {
-      out.push(ImportStatement::{
+      out.push({
         ..statement,
         attributes: next_attrs.unwrap_or(statement.attributes),
         source: next_source.unwrap_or(statement.source),
@@ -1560,11 +1526,11 @@ fn wesl_condcomp_declarations(
         transformed_source,
       )
       guard transformed_declarations.length() == 1 else {
-        raise WeslCompileError::Parse(
+        raise Parse(
           "conditional compilation produced an invalid declaration: \{transformed_source}",
         )
       }
-      out.push(GlobalDeclaration::{
+      out.push({
         ..transformed_declarations[0],
         attributes: next_attrs.unwrap_or(transformed_declarations[0].attributes),
         span: declaration.span,
@@ -1581,7 +1547,7 @@ pub struct CondCompPreprocessor {
 
 ///|
 pub fn CondCompPreprocessor::new(features : Features) -> CondCompPreprocessor {
-  CondCompPreprocessor::{ features, }
+  { features, }
 }
 
 ///|
@@ -1590,15 +1556,15 @@ pub impl ModulePreprocessor for CondCompPreprocessor with fn preprocess_module(
   _path,
   unit,
 ) {
-  TranslationUnit::{
+  {
     imports: wesl_condcomp_imports(unit.imports, self.features) catch {
-      err => raise ResolveError::Error(err.message())
+      err => raise Error(err.message())
     },
     global_declarations: wesl_condcomp_declarations(
       unit.global_declarations,
       self.features,
     ) catch {
-      err => raise ResolveError::Error(err.message())
+      err => raise Error(err.message())
     },
   }
 }
@@ -1662,7 +1628,7 @@ fn wesl_resolve_module_path(
   module_path_text : String,
 ) -> ModulePath raise WeslCompileError {
   let raw_module_path = parse_module_path(module_path_text.trim().to_owned()) catch {
-    err => raise WeslCompileError::Parse(err.message())
+    err => raise Parse(err.message())
   }
   match raw_module_path.origin {
     Package(name) if raw_module_path.components.is_empty() =>
@@ -1696,7 +1662,7 @@ fn wesl_extend_module_path(
   let suffix = extra_segments.join("::")
   let full_path = "\{base_path.to_string()}::\{suffix}"
   parse_module_path(full_path) catch {
-    err => raise WeslCompileError::Parse(err.message())
+    err => raise Parse(err.message())
   }
 }
 
@@ -1906,7 +1872,7 @@ fn wesl_collect_legacy_item_references(
                 }
                 wesl_push_unique_item_ref(
                   references,
-                  ModuleItemRef::Qualified(raw_text, target_path, target_name),
+                  Qualified(raw_text, target_path, target_name),
                 )
               }
               None =>
@@ -1920,7 +1886,7 @@ fn wesl_collect_legacy_item_references(
                   }
                   wesl_push_unique_item_ref(
                     references,
-                    ModuleItemRef::Qualified(raw_text, target_path, target_name),
+                    Qualified(raw_text, target_path, target_name),
                   )
                 }
             }
@@ -1933,14 +1899,14 @@ fn wesl_collect_legacy_item_references(
           continue
         }
         if named_items.contains(name) {
-          wesl_push_unique_item_ref(references, ModuleItemRef::Local(name))
+          wesl_push_unique_item_ref(references, Local(name))
         } else {
           match import_by_local.get(name) {
             Some(import_index) =>
               if wesl_import_named_target(imports[import_index]) is Some(_) {
                 wesl_push_unique_item_ref(
                   references,
-                  ModuleItemRef::Import(name, import_index),
+                  Import(name, import_index),
                 )
               }
             None => ()
@@ -2010,14 +1976,14 @@ fn wesl_ast_collect_type_reference(
   if ty.path.length() == 0 {
     if !wesl_ast_name_is_bound(scopes, ty.ident) {
       if named_items.contains(ty.ident) {
-        wesl_push_unique_item_ref(references, ModuleItemRef::Local(ty.ident))
+        wesl_push_unique_item_ref(references, Local(ty.ident))
       } else {
         match import_by_local.get(ty.ident) {
           Some(import_index) =>
             if wesl_import_named_target(imports[import_index]) is Some(_) {
               wesl_push_unique_item_ref(
                 references,
-                ModuleItemRef::Import(ty.ident, import_index),
+                Import(ty.ident, import_index),
               )
             }
           None => ()
@@ -2036,11 +2002,7 @@ fn wesl_ast_collect_type_reference(
         }
         wesl_push_unique_item_ref(
           references,
-          ModuleItemRef::Qualified(
-            wesl_ast_raw_path(ty),
-            target_path,
-            target_name,
-          ),
+          Qualified(wesl_ast_raw_path(ty), target_path, target_name),
         )
       }
       None =>
@@ -2054,11 +2016,7 @@ fn wesl_ast_collect_type_reference(
           }
           wesl_push_unique_item_ref(
             references,
-            ModuleItemRef::Qualified(
-              wesl_ast_raw_path(ty),
-              target_path,
-              target_name,
-            ),
+            Qualified(wesl_ast_raw_path(ty), target_path, target_name),
           )
         }
     }
@@ -2430,7 +2388,7 @@ fn wesl_ast_collect_control_references(
         None => ()
       }
       match for_.update {
-        Some(ForUpdate::Assignment(assignment)) => {
+        Some(Assignment(assignment)) => {
           wesl_ast_collect_expression_references(
             assignment.lhs,
             references,
@@ -2452,7 +2410,7 @@ fn wesl_ast_collect_control_references(
         }
         Some(Increment(expr))
         | Some(Decrement(expr))
-        | Some(ForUpdate::Expression(expr)) =>
+        | Some(Expression(expr)) =>
           wesl_ast_collect_expression_references(
             expr, references, scopes, named_items, import_by_local, imports, current_path,
           )
@@ -2918,10 +2876,10 @@ fn wesl_is_used_decl(
 ///|
 fn wesl_item_kind(header : GlobalDeclarationHeader) -> ModuleItemKind {
   match header {
-    Alias(_) => ModuleItemKind::Alias
-    Const(_) => ModuleItemKind::Const
-    Var(_) => ModuleItemKind::Var
-    _ => ModuleItemKind::Other
+    Alias(_) => Alias
+    Const(_) => Const
+    Var(_) => Var
+    _ => Other
   }
 }
 
@@ -2941,17 +2899,17 @@ fn wesl_module_export_target(
   name : String,
 ) -> ExportTarget {
   match parsed_module.named_items.get(name) {
-    Some(index) => ExportTarget::Local(index)
+    Some(index) => Local(index)
     None =>
       match parsed_module.import_by_local.get(name) {
         Some(index) =>
           if parsed_module.imports[index].public &&
             wesl_import_named_target(parsed_module.imports[index]) is Some(_) {
-            ExportTarget::ReExport(parsed_module.imports[index])
+            ReExport(parsed_module.imports[index])
           } else {
-            ExportTarget::Private
+            Private
           }
-        None => ExportTarget::Missing
+        None => Missing
       }
   }
 }
@@ -2963,18 +2921,18 @@ fn wesl_resolve_export_target(
   modules : @hashmap.HashMap[ModulePath, ParsedModule],
 ) -> (ModulePath, String) raise WeslCompileError {
   guard modules.get(path) is Some(parsed_module) else {
-    raise WeslCompileError::MissingDecl(path, name)
+    raise MissingDecl(path, name)
   }
   match wesl_module_export_target(parsed_module, name) {
-    ExportTarget::Local(_) => (path, name)
-    ExportTarget::ReExport(import_item) =>
+    Local(_) => (path, name)
+    ReExport(import_item) =>
       match wesl_import_named_target(import_item) {
         Some((import_path, import_name)) =>
           wesl_resolve_export_target(import_path, import_name, modules)
-        None => raise WeslCompileError::MissingDecl(path, name)
+        None => raise MissingDecl(path, name)
       }
-    ExportTarget::Private => raise WeslCompileError::Private(name, path)
-    ExportTarget::Missing => raise WeslCompileError::MissingDecl(path, name)
+    Private => raise Private(name, path)
+    Missing => raise MissingDecl(path, name)
   }
 }
 
@@ -3003,12 +2961,10 @@ fn[R : Resolver] wesl_preload_import_item(
       } noraise {
         loaded =>
           match wesl_module_export_target(loaded, import_name) {
-            ExportTarget::Local(_) => return
-            ExportTarget::ReExport(_) => return
-            ExportTarget::Private =>
-              raise WeslCompileError::Private(import_name, loaded.path)
-            ExportTarget::Missing =>
-              missing_named_target = Some((loaded.path, import_name))
+            Local(_) => return
+            ReExport(_) => return
+            Private => raise Private(import_name, loaded.path)
+            Missing => missing_named_target = Some((loaded.path, import_name))
           }
       }
     None => ()
@@ -3029,7 +2985,7 @@ fn[R : Resolver] wesl_preload_import_item(
     err =>
       match missing_named_target {
         Some((missing_path, missing_name)) =>
-          raise WeslCompileError::MissingDecl(missing_path, missing_name)
+          raise MissingDecl(missing_path, missing_name)
         None => raise err
       }
   }
@@ -3103,21 +3059,20 @@ fn[R : Resolver] wesl_load_module(
       wesl_record_sourcemap_source(path, resolver, sourcemap, record_sourcemap)
       let translation_unit = if options.condcomp && options.imports {
         let unit = R::resolve_module(resolver, path) catch {
-          ResolveError::Error(message) => raise WeslCompileError::Parse(message)
-          err => raise WeslCompileError::Resolve(err)
+          Error(message) => raise Parse(message)
+          err => raise Resolve(err)
         }
         ModulePreprocessor::preprocess_module(
           CondCompPreprocessor::new(options.features),
           path,
           unit,
         ) catch {
-          ResolveError::Error(message) =>
-            raise WeslCompileError::InvalidExpression(message)
-          err => raise WeslCompileError::Resolve(err)
+          Error(message) => raise InvalidExpression(message)
+          err => raise Resolve(err)
         }
       } else if options.condcomp {
         let raw_source = R::resolve_source(resolver, path) catch {
-          err => raise WeslCompileError::Resolve(err)
+          err => raise Resolve(err)
         }
         let unit = parse_translation_unit(path, raw_source, options.imports)
         ModulePreprocessor::preprocess_module(
@@ -3125,19 +3080,18 @@ fn[R : Resolver] wesl_load_module(
           path,
           unit,
         ) catch {
-          ResolveError::Error(message) =>
-            raise WeslCompileError::InvalidExpression(message)
-          err => raise WeslCompileError::Resolve(err)
+          Error(message) => raise InvalidExpression(message)
+          err => raise Resolve(err)
         }
       } else if !options.imports {
         let raw_source = R::resolve_source(resolver, path) catch {
-          err => raise WeslCompileError::Resolve(err)
+          err => raise Resolve(err)
         }
         parse_translation_unit(path, raw_source, options.imports)
       } else {
         R::resolve_module(resolver, path) catch {
-          ResolveError::Error(message) => raise WeslCompileError::Parse(message)
-          err => raise WeslCompileError::Resolve(err)
+          Error(message) => raise Parse(message)
+          err => raise Resolve(err)
         }
       }
       let parsed_module = wesl_parse_loaded_translation_unit(
@@ -3228,7 +3182,7 @@ fn[R : Resolver] wesl_mark_named_decl(
     return
   }
   match wesl_module_export_target(parsed_module, name) {
-    ExportTarget::Local(index) => {
+    Local(index) => {
       used_decls.set(key, true)
       let item = parsed_module.items[index]
       ignore(
@@ -3238,7 +3192,7 @@ fn[R : Resolver] wesl_mark_named_decl(
         ),
       )
     }
-    ExportTarget::ReExport(import_item) => {
+    ReExport(import_item) => {
       used_decls.set(key, true)
       match wesl_import_named_target(import_item) {
         Some((import_path, import_name)) =>
@@ -3251,8 +3205,8 @@ fn[R : Resolver] wesl_mark_named_decl(
         None => ()
       }
     }
-    ExportTarget::Private => raise WeslCompileError::Private(name, path)
-    ExportTarget::Missing => raise WeslCompileError::MissingDecl(path, name)
+    Private => raise Private(name, path)
+    Missing => raise MissingDecl(path, name)
   }
 }
 
@@ -3307,14 +3261,14 @@ fn[R : Resolver] wesl_mark_item_refs(
 ) -> Unit raise WeslCompileError {
   for reference in item.references {
     match reference {
-      ModuleItemRef::Local(name) =>
+      Local(name) =>
         ignore(
           wesl_mark_named_decl(
             path, name, resolver, options, modules, order, used_modules, used_decls,
             sourcemap, record_sourcemap, root, mangler,
           ),
         )
-      ModuleItemRef::Import(_, import_index) => {
+      Import(_, import_index) => {
         let import_item = parsed_module.imports[import_index]
         match wesl_import_named_target(import_item) {
           Some((import_path, import_name)) =>
@@ -3327,7 +3281,7 @@ fn[R : Resolver] wesl_mark_item_refs(
           None => ()
         }
       }
-      ModuleItemRef::Qualified(_, target_path, target_name) =>
+      Qualified(_, target_path, target_name) =>
         ignore(
           wesl_mark_named_decl(
             target_path, target_name, resolver, options, modules, order, used_modules,
@@ -3423,7 +3377,7 @@ fn wesl_lower_source(source : String) -> String raise WeslCompileError {
   let lowered : Array[String] = []
   for item in kept_items {
     let lowered_item = wesl_apply_referenced_replacements(
-        ModuleItem::{
+        {
           ..item,
           source: wesl_apply_referenced_replacements(item, alias_replacements),
         },
@@ -3482,9 +3436,7 @@ fn wesl_validate_decl_cycle(
         guard modules.get(path) is Some(parsed_module) else { return }
         guard parsed_module.named_items.get(name) is Some(index) else { return }
         let item = parsed_module.items[index]
-        raise WeslCompileError::CircularDecl(
-          item.span.symbol_context(path, name),
-        )
+        raise CircularDecl(item.span.symbol_context(path, name))
       } else {
         return
       }
@@ -3515,7 +3467,7 @@ fn wesl_validate_loaded_cycles(
   order : Array[ModulePath],
   modules : @hashmap.HashMap[ModulePath, ParsedModule],
 ) -> Unit raise WeslCompileError {
-  let states : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
+  let states : @hashmap.HashMap[String, Int] = HashMap([])
   for path in order {
     guard modules.get(path) is Some(parsed_module) else { continue }
     for item in parsed_module.items {
@@ -3532,12 +3484,11 @@ fn wesl_validate_loaded_cycles(
 pub fn validate_wesl(unit : TranslationUnit) -> Unit raise WeslCompileError {
   let path = ModulePath::from_path("/__validate__")
   let parsed_module = wesl_parse_loaded_translation_unit(path, unit, true)
-  let modules : @hashmap.HashMap[ModulePath, ParsedModule] = @hashmap.HashMap([])
+  let modules : @hashmap.HashMap[ModulePath, ParsedModule] = HashMap([])
   let order : Array[ModulePath] = [path]
   modules.set(path, parsed_module)
   wesl_validate_loaded_cycles(order, modules) catch {
-    WeslCompileError::CircularDecl(symbol) =>
-      raise WeslCompileError::Validate(ValidateError::Cycle(symbol, symbol))
+    CircularDecl(symbol) => raise Validate(Cycle(symbol, symbol))
     error => raise error
   }
 }
@@ -3545,7 +3496,7 @@ pub fn validate_wesl(unit : TranslationUnit) -> Unit raise WeslCompileError {
 ///|
 fn wesl_validate_wgsl_source(source : String) -> Unit raise WeslCompileError {
   @wgsl_validation.validate_source(source) catch {
-    error => raise WeslCompileError::Validation(error.message())
+    error => raise Validation(error.message())
   }
 }
 
@@ -3562,7 +3513,7 @@ fn wesl_emit_item_source(
   let mut current = item.source
   for reference in item.references {
     match reference {
-      ModuleItemRef::Import(import_ref, import_index) => {
+      Import(import_ref, import_index) => {
         let import_item = parsed_module.imports[import_index]
         match wesl_import_named_target(import_item) {
           Some((import_path, import_name)) => {
@@ -3581,13 +3532,13 @@ fn wesl_emit_item_source(
           None => ()
         }
       }
-      ModuleItemRef::Qualified(qualified_ref, target_path, target_name) =>
+      Qualified(qualified_ref, target_path, target_name) =>
         current = wesl_replace_identifier(
           current,
           qualified_ref,
           ManglerKind::mangle(mangler, target_path, target_name),
         )
-      ModuleItemRef::Local(_) => ()
+      Local(_) => ()
     }
   }
   if parsed_module.path != root || options.mangle_root {
@@ -3688,7 +3639,7 @@ fn wesl_emit_module(
       }
       for reference in item.references {
         match reference {
-          ModuleItemRef::Import(_, import_index) =>
+          Import(_, import_index) =>
             match
               wesl_import_named_target(parsed_module.imports[import_index]) {
               Some((import_path, import_name)) =>
@@ -3705,12 +3656,12 @@ fn wesl_emit_module(
                 }
               None => ()
             }
-          ModuleItemRef::Qualified(_, target_path, _) =>
+          Qualified(_, target_path, _) =>
             wesl_emit_module(
               target_path, root, modules, used_modules, used_decls, emitted, parts,
               mangler, options,
             )
-          ModuleItemRef::Local(_) => ()
+          Local(_) => ()
         }
       }
     }
@@ -3762,10 +3713,10 @@ fn[R : Resolver] compile_with_mangler_kind_and_sourcemap(
 ) -> CompileResult raise WeslCompileError {
   let _ = options.lower
   let _ = options.generics
-  let modules : @hashmap.HashMap[ModulePath, ParsedModule] = @hashmap.HashMap([])
+  let modules : @hashmap.HashMap[ModulePath, ParsedModule] = HashMap([])
   let order : Array[ModulePath] = []
-  let used_modules : @hashmap.HashMap[ModulePath, Bool] = @hashmap.HashMap([])
-  let used_decls : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+  let used_modules : @hashmap.HashMap[ModulePath, Bool] = HashMap([])
+  let used_decls : @hashmap.HashMap[String, Bool] = HashMap([])
   let root_module = wesl_mark_module_used(
     root, resolver, options, modules, order, used_modules, used_decls, sourcemap,
     use_sourcemap, root, mangler,
@@ -3786,7 +3737,7 @@ fn[R : Resolver] compile_with_mangler_kind_and_sourcemap(
       used_modules.set(module_path, true)
     }
   }
-  let emitted : @hashmap.HashMap[ModulePath, Bool] = @hashmap.HashMap([])
+  let emitted : @hashmap.HashMap[ModulePath, Bool] = HashMap([])
   let parts : Array[String] = []
   wesl_emit_module(
     root, root, modules, used_modules, used_decls, emitted, parts, mangler, options,
@@ -3810,7 +3761,7 @@ fn[R : Resolver] compile_with_mangler_kind_and_sourcemap(
   } else {
     None
   }
-  CompileResult::{ syntax, sourcemap: output_sourcemap, modules: order }
+  { syntax, sourcemap: output_sourcemap, modules: order }
 }
 
 ///|
@@ -3882,7 +3833,7 @@ fn[R : Resolver] compile_diagnostic_with_mangler_kind(
     root, resolver, mangler, options, use_sourcemap, sourcemap,
   ) catch {
     err =>
-      raise WeslDiagnosticError::Diagnostic(
+      raise Diagnostic(
         wesl_diagnostic_from_compile_error(
           root, resolver, mangler, err, use_sourcemap, sourcemap,
         ),

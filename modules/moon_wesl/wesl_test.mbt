@@ -91,18 +91,14 @@ test "wesl: mangler kind default is escape" {
 
 ///|
 test "wesl: mangler kind can unmangle reversible schemes" {
-  match
-    ManglerKind::unmangle(
-      ManglerKind::Escape,
-      "package__1bevy_pbr_lighting_item",
-    ) {
+  match ManglerKind::unmangle(Escape, "package__1bevy_pbr_lighting_item") {
     Some((path, item)) => {
       debug_inspect(path.to_string(), content="\"package::bevy_pbr::lighting\"")
       debug_inspect(item, content="\"item\"")
     }
     None => fail("expected escape unmangle")
   }
-  match ManglerKind::unmangle(ManglerKind::Escape, "import_2_bevy_pbr_item") {
+  match ManglerKind::unmangle(Escape, "import_2_bevy_pbr_item") {
     Some((path, item)) => {
       debug_inspect(path.to_string(), content="\"bevy/pbr\"")
       debug_inspect(item, content="\"item\"")
@@ -110,22 +106,15 @@ test "wesl: mangler kind can unmangle reversible schemes" {
     None => fail("expected dependency unmangle")
   }
   let unicode_path = try! parse_module_path("package::foo_bar")
-  let unicode_mangled = ManglerKind::mangle(
-    ManglerKind::Unicode,
-    unicode_path,
-    "make_vec",
-  )
-  match ManglerKind::unmangle(ManglerKind::Unicode, unicode_mangled) {
+  let unicode_mangled = ManglerKind::mangle(Unicode, unicode_path, "make_vec")
+  match ManglerKind::unmangle(Unicode, unicode_mangled) {
     Some((path, item)) => {
       debug_inspect(path.to_string(), content="\"package::foo_bar\"")
       debug_inspect(item, content="\"make_vec\"")
     }
     None => fail("expected unicode unmangle")
   }
-  debug_inspect(
-    ManglerKind::unmangle(ManglerKind::Hash, "item_123") is None,
-    content="true",
-  )
+  debug_inspect(ManglerKind::unmangle(Hash, "item_123") is None, content="true")
 }
 
 ///|
@@ -672,7 +661,7 @@ test "wesl: compile result exec passes user-defined scalar location inputs" {
   )
   let inputs = Inputs::{
     ..Inputs::new_zero_initialized(),
-    user_defined: [UserInput::{ location: 0, value: UserInputValue::U32(41) }],
+    user_defined: [{ location: 0, value: U32(41) }],
   }
   let exec = compiled.exec("main", inputs, [], [])
   match exec.return_value() {
@@ -696,9 +685,7 @@ test "wesl: compile result exec passes user-defined vector location inputs" {
   )
   let inputs = Inputs::{
     ..Inputs::new_zero_initialized(),
-    user_defined: [
-      UserInput::{ location: 1, value: UserInputValue::F32Vector([1.0, 2.0]) },
-    ],
+    user_defined: [{ location: 1, value: F32Vector([1.0, 2.0]) }],
   }
   let exec = compiled.exec("main", inputs, [], [])
   match exec.return_value() {
@@ -733,7 +720,7 @@ test "wesl: compile result exec builds struct entrypoint inputs" {
   let inputs = Inputs::{
     ..Inputs::new_zero_initialized(),
     vertex_index: Some(7),
-    user_defined: [UserInput::{ location: 0, value: UserInputValue::U32(35) }],
+    user_defined: [{ location: 0, value: U32(35) }],
   }
   let exec = compiled.exec("main", inputs, [], [])
   match exec.return_value() {
@@ -771,7 +758,7 @@ test "wesl: compile result exec reads struct entrypoint fields" {
   let inputs = Inputs::{
     ..Inputs::new_zero_initialized(),
     vertex_index: Some(7),
-    user_defined: [UserInput::{ location: 0, value: UserInputValue::U32(35) }],
+    user_defined: [{ location: 0, value: U32(35) }],
   }
   let exec = compiled.exec("main", inputs, [], [])
   match exec.return_value() {
@@ -795,12 +782,7 @@ test "wesl: compile result exec evaluates vector swizzles" {
   )
   let inputs = Inputs::{
     ..Inputs::new_zero_initialized(),
-    user_defined: [
-      UserInput::{
-        location: 0,
-        value: UserInputValue::F32Vector([1.0, 2.0, 3.0]),
-      },
-    ],
+    user_defined: [{ location: 0, value: F32Vector([1.0, 2.0, 3.0]) }],
   }
   let exec = compiled.exec("main", inputs, [], [])
   match exec.return_value() {
@@ -835,12 +817,7 @@ test "wesl: compile result exec evaluates vector dynamic indexing" {
   let inputs = Inputs::{
     ..Inputs::new_zero_initialized(),
     local_invocation_index: Some(2),
-    user_defined: [
-      UserInput::{
-        location: 0,
-        value: UserInputValue::F32Vector([1.0, 2.0, 3.0]),
-      },
-    ],
+    user_defined: [{ location: 0, value: F32Vector([1.0, 2.0, 3.0]) }],
   }
   let exec = compiled.exec("main", inputs, [], [])
   match exec.to_buffer() {
@@ -870,10 +847,7 @@ test "wesl: compile result exec evaluates if else control flow" {
   )
   let first = compiled.exec(
     "main",
-    Inputs::{
-      ..Inputs::new_zero_initialized(),
-      local_invocation_index: Some(0),
-    },
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(0) },
     [],
     [],
   )
@@ -883,10 +857,7 @@ test "wesl: compile result exec evaluates if else control flow" {
   }
   let second = compiled.exec(
     "main",
-    Inputs::{
-      ..Inputs::new_zero_initialized(),
-      local_invocation_index: Some(41),
-    },
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(41) },
     [],
     [],
   )
@@ -911,10 +882,7 @@ test "wesl: compile result exec evaluates while break continue control flow" {
   )
   let exec = compiled.exec(
     "main",
-    Inputs::{
-      ..Inputs::new_zero_initialized(),
-      local_invocation_index: Some(10),
-    },
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(10) },
     [],
     [],
   )
@@ -949,10 +917,7 @@ test "wesl: compile result exec evaluates for loop control flow" {
   )
   let exec = compiled.exec(
     "main",
-    Inputs::{
-      ..Inputs::new_zero_initialized(),
-      local_invocation_index: Some(10),
-    },
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(10) },
     [],
     [],
   )
@@ -1047,10 +1012,7 @@ test "wesl: compile result exec evaluates switch cases and default" {
   )
   let first = compiled.exec(
     "main",
-    Inputs::{
-      ..Inputs::new_zero_initialized(),
-      local_invocation_index: Some(2),
-    },
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(2) },
     [],
     [],
   )
@@ -1060,10 +1022,7 @@ test "wesl: compile result exec evaluates switch cases and default" {
   }
   let second = compiled.exec(
     "main",
-    Inputs::{
-      ..Inputs::new_zero_initialized(),
-      local_invocation_index: Some(7),
-    },
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(7) },
     [],
     [],
   )
@@ -1133,7 +1092,7 @@ test "wesl: compile result exec applies override values" {
   }
 
   let overridden = compiled.exec("main", Inputs::new_zero_initialized(), [], [
-    OverrideValue::{ name: "SCALE", value: "41u" },
+    { name: "SCALE", value: "41u" },
   ])
   match overridden.return_value() {
     Some(value) => inspect(value, content="42u")
@@ -1172,7 +1131,7 @@ test "wesl: compile result exec rejects uninitialized overrides" {
     value => Ok(value)
   }
   match exec {
-    Err(WeslCompileError::Validation(message)) =>
+    Err(Validation(message)) =>
       assert_true(message.contains("uninitialized override"))
     _ => fail("expected uninitialized override to be rejected")
   }
@@ -1195,7 +1154,7 @@ test "wesl: compile result exec reads scalar resource buffers" {
     "main",
     Inputs::new_zero_initialized(),
     [
-      ResourceBinding::{
+      {
         group: 0,
         binding: 0,
         kind: "uniform",
@@ -1249,7 +1208,7 @@ test "wesl: compile result exec writes scalar storage resources" {
     "main",
     Inputs::new_zero_initialized(),
     [
-      ResourceBinding::{
+      {
         group: 0,
         binding: 0,
         kind: "storage",
@@ -1291,7 +1250,7 @@ test "wesl: compile result exec writes void entrypoint storage resources" {
     "main",
     Inputs::new_zero_initialized(),
     [
-      ResourceBinding::{
+      {
         group: 0,
         binding: 0,
         kind: "storage",
@@ -1333,7 +1292,7 @@ test "wesl: compile result exec increments struct storage fields" {
     "main",
     Inputs::new_zero_initialized(),
     [
-      ResourceBinding::{
+      {
         group: 0,
         binding: 0,
         kind: "storage",
@@ -1373,7 +1332,7 @@ test "wesl: compile result exec increments vector storage components" {
     "main",
     Inputs::new_zero_initialized(),
     [
-      ResourceBinding::{
+      {
         group: 0,
         binding: 0,
         kind: "storage",
@@ -1434,7 +1393,7 @@ test "wesl: compile result exec reads vector resource buffers" {
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [ResourceBinding::{ group: 0, binding: 0, kind: "uniform", data: input }],
+    [{ group: 0, binding: 0, kind: "uniform", data: input }],
     [],
   )
   match exec.return_value() {
@@ -1492,7 +1451,7 @@ test "wesl: compile result exec reads struct resource buffers" {
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [ResourceBinding::{ group: 0, binding: 0, kind: "uniform", data: input }],
+    [{ group: 0, binding: 0, kind: "uniform", data: input }],
     [],
   )
   match exec.return_value() {
@@ -1569,7 +1528,7 @@ test "wesl: struct resource layout honors member align and size attributes" {
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [ResourceBinding::{ group: 0, binding: 0, kind: "uniform", data: input }],
+    [{ group: 0, binding: 0, kind: "uniform", data: input }],
     [],
   )
   match exec.to_buffer() {
@@ -1643,7 +1602,7 @@ test "wesl: compile result exec reads array resource buffers with stride padding
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [ResourceBinding::{ group: 0, binding: 0, kind: "uniform", data: input }],
+    [{ group: 0, binding: 0, kind: "uniform", data: input }],
     [],
   )
   match exec.return_value() {
@@ -1714,11 +1673,8 @@ test "wesl: compile result exec indexes storage array resources" {
   ])
   let exec = compiled.exec(
     "main",
-    Inputs::{
-      ..Inputs::new_zero_initialized(),
-      local_invocation_index: Some(2),
-    },
-    [ResourceBinding::{ group: 0, binding: 0, kind: "storage", data: input }],
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(2) },
+    [{ group: 0, binding: 0, kind: "storage", data: input }],
     [],
   )
   match exec.return_value() {
@@ -1746,11 +1702,8 @@ test "wesl: compile result exec writes storage array elements" {
   ])
   let exec = compiled.exec(
     "main",
-    Inputs::{
-      ..Inputs::new_zero_initialized(),
-      local_invocation_index: Some(2),
-    },
-    [ResourceBinding::{ group: 0, binding: 0, kind: "storage", data: input }],
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(2) },
+    [{ group: 0, binding: 0, kind: "storage", data: input }],
     [],
   )
   match exec.return_value() {
@@ -1806,7 +1759,7 @@ test "wesl: compile result exec increments indexed storage in for update" {
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [ResourceBinding::{ group: 0, binding: 0, kind: "storage", data: input }],
+    [{ group: 0, binding: 0, kind: "storage", data: input }],
     [],
   )
   match exec.resource(0, 0) {
@@ -1858,7 +1811,7 @@ test "wesl: compile result exec evaluates runtime array length" {
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [ResourceBinding::{ group: 0, binding: 0, kind: "storage", data: input }],
+    [{ group: 0, binding: 0, kind: "storage", data: input }],
     [],
   )
   match exec.return_value() {
@@ -1897,7 +1850,7 @@ test "wesl: compile result exec evaluates struct runtime array length" {
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [ResourceBinding::{ group: 0, binding: 0, kind: "storage", data: input }],
+    [{ group: 0, binding: 0, kind: "storage", data: input }],
     [],
   )
   match exec.return_value() {
@@ -1930,7 +1883,7 @@ test "wesl: compile result exec reads matrix resource buffers as padded columns"
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [ResourceBinding::{ group: 0, binding: 0, kind: "uniform", data: input }],
+    [{ group: 0, binding: 0, kind: "uniform", data: input }],
     [],
   )
   match exec.return_value() {
@@ -2016,7 +1969,7 @@ test "wesl: compile result exec rejects incompatible scalar resource buffers" {
       "main",
       Inputs::new_zero_initialized(),
       [
-        ResourceBinding::{
+        {
           group: 0,
           binding: 0,
           kind: "uniform",
@@ -2031,8 +1984,7 @@ test "wesl: compile result exec rejects incompatible scalar resource buffers" {
     value => Ok(value)
   }
   match exec {
-    Err(WeslCompileError::Validation(message)) =>
-      assert_true(message.contains("incompatible"))
+    Err(Validation(message)) => assert_true(message.contains("incompatible"))
     _ => fail("expected incompatible resource buffer to be rejected")
   }
 }
@@ -2060,7 +2012,7 @@ test "wesl: compile result writes build artifacts" {
     value => Ok(value)
   }
   match invalid {
-    Err(WeslCompileError::Artifact(_)) => ()
+    Err(Artifact(_)) => ()
     _ => fail("expected invalid artifact names to be rejected")
   }
 }
@@ -2191,7 +2143,7 @@ test "wesl: missing imported module stays resolver-backed" {
   }
 
   match result {
-    Err(WeslCompileError::Resolve(ResolveError::ModuleNotFound(path, context))) => {
+    Err(Resolve(ModuleNotFound(path, context))) => {
       debug_inspect(path.to_string(), content="\"package::shaders::missing\"")
       debug_inspect(context, content="\"virtual module\"")
     }
@@ -2333,7 +2285,7 @@ test "wesl: parse errors include module and line context" {
   }
 
   match result {
-    Err(WeslCompileError::Parse(reason)) => {
+    Err(Parse(reason)) => {
       debug_inspect(
         reason.contains("unsupported import statement"),
         content="true",
@@ -2366,7 +2318,7 @@ test "wesl: duplicate declarations include module and line context" {
   }
 
   match result {
-    Err(WeslCompileError::DuplicateSymbol(symbol)) => {
+    Err(DuplicateSymbol(symbol)) => {
       debug_inspect(symbol.contains("helper"), content="true")
       debug_inspect(symbol.contains("package::shaders::root:5"), content="true")
     }
@@ -2528,7 +2480,7 @@ test "wesl: private imports cannot be re-exported" {
   }
 
   match result {
-    Err(WeslCompileError::Private(item, path)) => {
+    Err(Private(item, path)) => {
       debug_inspect(item, content="\"make_value\"")
       debug_inspect(path.to_string(), content="\"package::shaders::bridge\"")
     }
@@ -2549,7 +2501,7 @@ test "wesl: missing conditional feature can be configured as an error" {
       root_path,
       resolver,
       EscapeMangler::default(),
-      CompileOptions::default().set_missing_feature_behavior(Feature::Error),
+      CompileOptions::default().set_missing_feature_behavior(Error),
     )
   catch {
     err => Err(err)
@@ -2558,7 +2510,7 @@ test "wesl: missing conditional feature can be configured as an error" {
   }
 
   match result {
-    Err(WeslCompileError::InvalidExpression(message)) => {
+    Err(InvalidExpression(message)) => {
       debug_inspect(message.contains("unexpected feature flag"), content="true")
       debug_inspect(message.contains("EXPERIMENTAL_SHADER"), content="true")
     }
@@ -2581,7 +2533,7 @@ test "wesl: keep conditional feature preserves unresolved attributes" {
     CompileOptions::default()
     .with_strip(false)
     .with_validate(false)
-    .set_missing_feature_behavior(Feature::Keep),
+    .set_missing_feature_behavior(Keep),
   )
   let compiled_text = compiled.to_string()
 
@@ -2612,7 +2564,7 @@ test "wesl: conditional expression parser rejects malformed expressions" {
     value => Ok(value)
   }
   match result {
-    Err(WeslCompileError::InvalidExpression(expr)) =>
+    Err(InvalidExpression(expr)) =>
       debug_inspect(
         expr,
         content="\"invalid if attribute expression: `true &&`\"",
@@ -2664,7 +2616,7 @@ test "wesl: validate option controls semantic validation pass" {
   }
 
   match failing {
-    Err(WeslCompileError::Validation(message)) =>
+    Err(Validation(message)) =>
       debug_inspect(
         message.contains("matrix type must use a floating-point scalar"),
         content="true",
@@ -2706,7 +2658,7 @@ test "wesl: validation checks matrix templates through AST type expressions" {
   }
 
   match result {
-    Err(WeslCompileError::Validation(message)) =>
+    Err(Validation(message)) =>
       debug_inspect(
         message.contains("matrix type must use a floating-point scalar"),
         content="true",
@@ -2735,7 +2687,7 @@ test "wesl: validation checks matrix constructors through AST calls" {
   }
 
   match result {
-    Err(WeslCompileError::Validation(_)) => ()
+    Err(Validation(_)) => ()
     _ => fail("expected matrix constructor validation error")
   }
 }
@@ -2762,7 +2714,7 @@ test "wesl: validation checks matrix assignments through AST lhs scopes" {
   }
 
   match result {
-    Err(WeslCompileError::Validation(_)) => ()
+    Err(Validation(_)) => ()
     _ => fail("expected matrix assignment validation error")
   }
 }
@@ -2776,8 +2728,7 @@ test "wesl: public validate_wesl rejects duplicate declarations" {
   )
 
   try validate_wesl(unit) catch {
-    WeslCompileError::Validate(ValidateError::Duplicate(name)) =>
-      debug_inspect(name, content="\"make\"")
+    Validate(Duplicate(name)) => debug_inspect(name, content="\"make\"")
     _ => fail("expected duplicate declaration validation error")
   } noraise {
     _ => fail("expected duplicate declaration validation error")
@@ -2803,7 +2754,7 @@ test "wesl: public validate_wesl rejects cyclic declarations" {
   )
 
   try validate_wesl(unit) catch {
-    WeslCompileError::Validate(ValidateError::Cycle(name, _)) =>
+    Validate(Cycle(name, _)) =>
       debug_inspect(name.contains("A") || name.contains("B"), content="true")
     _ => fail("expected cyclic declaration validation error")
   } noraise {
@@ -2827,7 +2778,7 @@ test "wesl: compile delegates user function arity validation to WGSL Core" {
       CompileOptions::default().with_strip(false),
     )
   catch {
-    WeslCompileError::Validation(message) =>
+    Validation(message) =>
       debug_inspect(message.contains("takes_one"), content="true")
     _ => fail("expected function arity validation error")
   } noraise {
@@ -2873,7 +2824,7 @@ test "wesl: compile delegates unknown types to WGSL Core" {
   }
 
   match result {
-    Err(WeslCompileError::Validation(message)) =>
+    Err(Validation(message)) =>
       debug_inspect(message.contains("MissingType"), content="true")
     _ => fail("expected WGSL Core validation error")
   }
@@ -2901,7 +2852,7 @@ test "wesl: compile validate runs assembled WGSL call checks" {
   }
 
   match result {
-    Err(WeslCompileError::Validation(message)) =>
+    Err(Validation(message)) =>
       debug_inspect(message.contains("value"), content="true")
     _ => fail("expected assembled WGSL validation error")
   }
@@ -2927,7 +2878,7 @@ test "wesl: compile validation rejects invalid imported call statements" {
       CompileOptions::default().with_keep_root(true),
     )
   catch {
-    WeslCompileError::Validation(message) =>
+    Validation(message) =>
       debug_inspect(message.contains("expected 1, got 0"), content="true")
     _ => fail("expected assembled WGSL validation error")
   } noraise {
@@ -3042,7 +2993,7 @@ test "wesl: diagnostic renders source origin and snippets" {
     .diagnostic()
     .with_module_path(root_path, Some("root.wesl"))
     .with_source(source)
-    .with_syntax_span(SyntaxSpan::{ start_line: 2, end_line: 2 })
+    .with_syntax_span({ start_line: 2, end_line: 2 })
     .with_declaration("bad")
   let rendered = diagnostic.to_string()
 
@@ -3077,7 +3028,7 @@ test "wesl: diagnostic compile path attaches resolver source context" {
   }
 
   match result {
-    Err(WeslDiagnosticError::Diagnostic(diagnostic)) => {
+    Err(Diagnostic(diagnostic)) => {
       let rendered = diagnostic.to_string()
       debug_inspect(
         rendered.contains("matrix type must use a floating-point scalar"),
@@ -3106,7 +3057,7 @@ test "wesl: source mapper records resolver sources and mangled declarations" {
   let util_path = ModulePath::from_path("/shaders/util")
   resolver.add_module(root_path, "import super::util::make_value;\n")
   resolver.add_module(util_path, "fn make_value() -> f32 {\n  return 1.0;\n}\n")
-  let mapper = SourceMapper::new(root_path, resolver, ManglerKind::Escape)
+  let mapper = SourceMapper::new(root_path, resolver, Escape)
 
   let root_source = mapper.resolve_source(root_path)
   let mangled = mapper.mangle(util_path, "make_value")
@@ -3190,7 +3141,7 @@ test "wesl: facade can set features in bulk and expose resolver" {
     .set_options(
       CompileOptions::default().with_strip(false).with_validate(false),
     )
-    .set_features([("A", Feature::Enable), ("B", Feature::Enable)])
+    .set_features([("A", Enable), ("B", Enable)])
   let compiled = wesl.compile(root_path)
   let returned_resolver = wesl.resolver()
 
@@ -3254,7 +3205,7 @@ test "wesl: no resolver error matches upstream context" {
   }
 
   match result {
-    Err(ResolveError::ModuleNotFound(_, context)) =>
+    Err(ModuleNotFound(_, context)) =>
       debug_inspect(
         context,
         content="\"no module resolver, imports are effectively disabled here\"",
@@ -3292,7 +3243,7 @@ test "wesl: resolver defaults match upstream constructors" {
     content="Some(\"package\")",
   )
   match no_resolver_result {
-    Err(ResolveError::ModuleNotFound(_, context)) =>
+    Err(ModuleNotFound(_, context)) =>
       debug_inspect(
         context,
         content="\"no module resolver, imports are effectively disabled here\"",
@@ -3300,12 +3251,12 @@ test "wesl: resolver defaults match upstream constructors" {
     _ => fail("expected default no resolver to reject modules")
   }
   match pkg_result {
-    Err(ResolveError::ModuleNotFound(_, context)) =>
+    Err(ModuleNotFound(_, context)) =>
       debug_inspect(context, content="\"dependency `demo` not found\"")
     _ => fail("expected default package resolver to reject unknown package")
   }
   match router_result {
-    Err(ResolveError::ModuleNotFound(_, context)) =>
+    Err(ModuleNotFound(_, context)) =>
       debug_inspect(context, content="\"no mount point\"")
     _ => fail("expected default router to have no mount point")
   }
@@ -3339,24 +3290,24 @@ impl ModulePreprocessor for AppendDeclPreprocessor with fn preprocess_module(
   _path,
   unit,
 ) {
-  unit.global_declarations.push(GlobalDeclaration::{
-    header: GlobalDeclarationHeader::Function(FunctionDeclaration::{
+  unit.global_declarations.push({
+    header: Function({
       name: "injected",
       generic_parameters: None,
       parameters: [],
       return_type: Some("f32"),
-      return_type_expr: Some(TypeExpression::{
+      return_type_expr: Some({
         path: [],
         ident: "f32",
         template_text: None,
         template_args: [],
       }),
       return_attributes: [],
-      body: FunctionBody::{ statements: [] },
+      body: { statements: [] },
     }),
     attributes: Array::new(),
     source: "fn injected() -> f32 {\n  return 1.0;\n}",
-    span: SyntaxSpan::{ start_line: 1, end_line: 3 },
+    span: { start_line: 1, end_line: 3 },
   })
   unit
 }
@@ -3370,32 +3321,32 @@ impl ModulePreprocessor for ConditionalAppendPreprocessor with fn preprocess_mod
   _path,
   unit,
 ) {
-  unit.global_declarations.push(GlobalDeclaration::{
-    header: GlobalDeclarationHeader::Function(FunctionDeclaration::{
+  unit.global_declarations.push({
+    header: Function({
       name: "injected",
       generic_parameters: None,
       parameters: [],
       return_type: Some("f32"),
-      return_type_expr: Some(TypeExpression::{
+      return_type_expr: Some({
         path: [],
         ident: "f32",
         template_text: None,
         template_args: [],
       }),
       return_attributes: [],
-      body: FunctionBody::{ statements: [] },
+      body: { statements: [] },
     }),
     attributes: [
-      Attribute::{
+      {
         name: "if",
         arguments: Some("EXTRA"),
         argument_exprs: [],
         condition_expr: Some(Feature("EXTRA")),
-        span: SyntaxSpan::{ start_line: 1, end_line: 1 },
+        span: { start_line: 1, end_line: 1 },
       },
     ],
     source: "@if(EXTRA)\nfn injected() -> f32 {\n  return 4.0;\n}",
-    span: SyntaxSpan::{ start_line: 1, end_line: 4 },
+    span: { start_line: 1, end_line: 4 },
   })
   unit
 }
@@ -3589,7 +3540,7 @@ test "wesl: package builder scans filesystem artifacts" {
     value => Ok(value)
   }
   match skipped {
-    Err(ResolveError::ModuleNotFound(_, _)) => ()
+    Err(ModuleNotFound(_, _)) => ()
     _ => fail("expected invalid module filename to be skipped")
   }
 }
@@ -3619,7 +3570,7 @@ test "wesl: package builder artifacts compile through standard resolver" {
     .compile(ModulePath::from_path("/app/root"))
   let compiled_text = compiled.to_string()
   let expected = ManglerKind::mangle(
-    ManglerKind::Escape,
+    Escape,
     try! parse_module_path("shader_lib::util"),
     "make_value",
   )

@@ -152,13 +152,13 @@ fn parser_validate_declaration_ident(
   name : String,
 ) -> Unit raise WeslCompileError {
   if name == "_" {
-    raise WeslCompileError::Parse("invalid declaration identifier `\{name}`")
+    raise Parse("invalid declaration identifier `\{name}`")
   }
   if name.length() >= 2 && name[:2].to_owned() == "__" {
-    raise WeslCompileError::Parse("invalid declaration identifier `\{name}`")
+    raise Parse("invalid declaration identifier `\{name}`")
   }
   if parser_is_reserved_word(name) {
-    raise WeslCompileError::Parse("invalid declaration identifier `\{name}`")
+    raise Parse("invalid declaration identifier `\{name}`")
   }
 }
 
@@ -253,12 +253,12 @@ priv struct Parser {
 
 ///|
 fn Parser::new(source : String) -> Parser {
-  Parser::{ source, tokens: parser_lex(source), position: 0 }
+  { source, tokens: parser_lex(source), position: 0 }
 }
 
 ///|
 fn Parser::from_tokens(source : String, tokens : Array[ParserToken]) -> Parser {
-  Parser::{ source, tokens, position: 0 }
+  { source, tokens, position: 0 }
 }
 
 ///|
@@ -287,9 +287,8 @@ fn[A] Parser::error(
   message : String,
 ) -> A raise WeslCompileError {
   match self.view() {
-    [token, ..] =>
-      raise WeslCompileError::Parse("\{message} at line \{token.line()}")
-    [] => raise WeslCompileError::Parse("\{message} at the end of input")
+    [token, ..] => raise Parse("\{message} at line \{token.line()}")
+    [] => raise Parse("\{message} at the end of input")
   }
 }
 
@@ -323,8 +322,7 @@ fn Parser::item_span(self : Parser) -> SyntaxSpan raise WeslCompileError {
   match self.tokens[:] {
     [first, ..] =>
       match self.tokens.last() {
-        Some(last) =>
-          SyntaxSpan::{ start_line: first.line(), end_line: last.line() }
+        Some(last) => { start_line: first.line(), end_line: last.line() }
         None => self.error("empty top-level item")
       }
     [] => self.error("empty top-level item")
@@ -343,22 +341,18 @@ fn Parser::parse_attributes(
   let parsed = @attribute_parse.parse_attributes_source(item_source)
   let attrs : Array[Attribute] = []
   let success = match parsed {
-    @attribute_parse.Parsed(success) => success
-    @attribute_parse.Failed(diagnostic) => {
+    Parsed(success) => success
+    Failed(diagnostic) => {
       let byte_offset = first_token.start() + diagnostic.offset
       if diagnostic.incomplete {
-        raise WeslCompileError::Parse(
-          "incomplete attribute list at byte \{byte_offset}",
-        )
+        raise Parse("incomplete attribute list at byte \{byte_offset}")
       }
-      raise WeslCompileError::Parse(
-        "invalid attribute list at byte \{byte_offset}",
-      )
+      raise Parse("invalid attribute list at byte \{byte_offset}")
     }
   }
   let line_base = first_token.line() - 1
   for attr in success.attributes {
-    attrs.push(Attribute::{
+    attrs.push({
       name: attr.name,
       arguments: attr.arguments,
       argument_exprs: parser_parse_attribute_argument_exprs(
@@ -370,7 +364,7 @@ fn Parser::parse_attributes(
         attr.name,
         attr.arguments,
       ),
-      span: SyntaxSpan::{
+      span: {
         start_line: line_base + attr.start_line,
         end_line: line_base + attr.end_line,
       },
@@ -406,17 +400,16 @@ fn parser_cond_expression_from_generated(
   node : @cond_expr_parse.CondExprNode,
 ) -> CondExpression {
   match node {
-    Literal(value) => CondExpression::Literal(value)
-    Feature(name) => CondExpression::Feature(name)
-    Not(inner) =>
-      CondExpression::Not(parser_cond_expression_from_generated(inner))
+    Literal(value) => Literal(value)
+    Feature(name) => Feature(name)
+    Not(inner) => Not(parser_cond_expression_from_generated(inner))
     And(left, right) =>
-      CondExpression::And(
+      And(
         parser_cond_expression_from_generated(left),
         parser_cond_expression_from_generated(right),
       )
     Or(left, right) =>
-      CondExpression::Or(
+      Or(
         parser_cond_expression_from_generated(left),
         parser_cond_expression_from_generated(right),
       )
@@ -434,9 +427,8 @@ fn parser_parse_attribute_condition_expr(
   match arguments {
     Some(text) =>
       match @cond_expr_parse.parse_cond_expr_source(text) {
-        @cond_expr_parse.Parsed(node) =>
-          Some(parser_cond_expression_from_generated(node))
-        @cond_expr_parse.Failed(_) => None
+        Parsed(node) => Some(parser_cond_expression_from_generated(node))
+        Failed(_) => None
       }
     None => None
   }
@@ -462,11 +454,7 @@ fn parser_import_node_from_generated(
   for child in node.children {
     children.push(parser_import_node_from_generated(child))
   }
-  ImportNode::{
-    path_segments: node.path_segments,
-    rename: node.rename,
-    children,
-  }
+  { path_segments: node.path_segments, rename: node.rename, children }
 }
 
 ///|
@@ -475,7 +463,7 @@ fn parser_struct_members_from_generated(
 ) -> Array[StructMember] raise WeslCompileError {
   let mapped : Array[StructMember] = []
   for field in members {
-    mapped.push(StructMember::{
+    mapped.push({
       name: field.name,
       type_text: field.type_text,
       type_expr: parser_parse_type_expression(field.type_text),
@@ -495,7 +483,7 @@ fn parser_function_parameters_from_generated(
 ) -> Array[FunctionParameter] raise WeslCompileError {
   let mapped : Array[FunctionParameter] = []
   for parameter in parameters {
-    mapped.push(FunctionParameter::{
+    mapped.push({
       name: parameter.name,
       type_text: parameter.type_text,
       type_expr: parser_parse_type_expression(parameter.type_text),
@@ -514,29 +502,29 @@ fn parser_statement_kind_from_generated(
   kind : @statement_parse.StatementParseKind,
 ) -> StatementKind {
   match kind {
-    @statement_parse.Empty => Empty
-    @statement_parse.Block => Block
-    @statement_parse.Return => Return
-    @statement_parse.Discard => Discard
-    @statement_parse.If => If
-    @statement_parse.Switch => Switch
-    @statement_parse.Loop => Loop
-    @statement_parse.For => For
-    @statement_parse.While => While
-    @statement_parse.Continuing => Continuing
-    @statement_parse.Break => Break
-    @statement_parse.Continue => Continue
-    @statement_parse.BreakIf => BreakIf
-    @statement_parse.ConstAssert => ConstAssert
-    @statement_parse.Const => StatementKind::Const
-    @statement_parse.Let => Let
-    @statement_parse.Var => Var
-    @statement_parse.Assignment => Assignment
-    @statement_parse.CompoundAssignment => CompoundAssignment
-    @statement_parse.Increment => Increment
-    @statement_parse.Decrement => Decrement
-    @statement_parse.Call => Call
-    @statement_parse.Other => Other
+    Empty => Empty
+    Block => Block
+    Return => Return
+    Discard => Discard
+    If => If
+    Switch => Switch
+    Loop => Loop
+    For => For
+    While => While
+    Continuing => Continuing
+    Break => Break
+    Continue => Continue
+    BreakIf => BreakIf
+    ConstAssert => ConstAssert
+    Const => Const
+    Let => Let
+    Var => Var
+    Assignment => Assignment
+    CompoundAssignment => CompoundAssignment
+    Increment => Increment
+    Decrement => Decrement
+    Call => Call
+    Other => Other
   }
 }
 
@@ -545,10 +533,10 @@ fn parser_statement_declaration_kind_from_binding(
   kind : @binding_parse.BindingParseKind,
 ) -> StatementDeclarationKind raise WeslCompileError {
   match kind {
-    @binding_parse.Const => StatementDeclarationKind::Const
-    @binding_parse.Let => StatementDeclarationKind::Let
-    @binding_parse.Var => StatementDeclarationKind::Var
-    _ => raise WeslCompileError::Parse("expected local declaration statement")
+    Const => Const
+    Let => Let
+    Var => Var
+    _ => raise Parse("expected local declaration statement")
   }
 }
 
@@ -584,7 +572,7 @@ fn parser_type_expression_from_generated(
       let parsed = parser_parse_type_expression(
         parser_expression_type_source(node),
       )
-      TypeExpression::{
+      {
         path: parsed.path,
         ident: parsed.ident,
         template_text: Some(template_text),
@@ -592,7 +580,7 @@ fn parser_type_expression_from_generated(
       }
     }
     None =>
-      TypeExpression::{
+      {
         path: node.path,
         ident: node.ident,
         template_text: None,
@@ -606,9 +594,8 @@ fn parser_type_template_argument_from_generated(
   node : @type_parse.TypeTemplateArgumentParseNode,
 ) -> TypeTemplateArgument {
   match node {
-    @type_parse.Type(ty) =>
-      TypeTemplateArgument::Type(parser_type_expression_from_type_parse(ty))
-    @type_parse.Literal(text) => TypeTemplateArgument::Literal(text)
+    Type(ty) => Type(parser_type_expression_from_type_parse(ty))
+    Literal(text) => Literal(text)
   }
 }
 
@@ -620,12 +607,7 @@ fn parser_type_expression_from_type_parse(
   for arg in node.template_args {
     template_args.push(parser_type_template_argument_from_generated(arg))
   }
-  TypeExpression::{
-    path: node.path,
-    ident: node.ident,
-    template_text: None,
-    template_args,
-  }
+  { path: node.path, ident: node.ident, template_text: None, template_args }
 }
 
 ///|
@@ -633,10 +615,10 @@ fn parser_parse_type_expression(
   source : String,
 ) -> TypeExpression raise WeslCompileError {
   match @type_parse.parse_type_source(source) {
-    @type_parse.Parsed(node) => parser_type_expression_from_type_parse(node)
-    @type_parse.Failed(diagnostic) => {
+    Parsed(node) => parser_type_expression_from_type_parse(node)
+    Failed(diagnostic) => {
       if diagnostic.incomplete {
-        raise WeslCompileError::Parse(
+        raise Parse(
           "incomplete type expression at byte \{diagnostic.offset}: \{source}",
         )
       }
@@ -644,9 +626,7 @@ fn parser_parse_type_expression(
         Some(message) => message
         None => "invalid type expression"
       }
-      raise WeslCompileError::Parse(
-        "\{message} at byte \{diagnostic.offset}: \{source}",
-      )
+      raise Parse("\{message} at byte \{diagnostic.offset}: \{source}")
     }
   }
 }
@@ -704,10 +684,7 @@ fn parser_function_return_attributes(
     if cursor < source.length() && source.code_unit_at(cursor).to_int() == 40 {
       let close = match parser_find_matching_delimiter(source, cursor, 40, 41) {
         Some(end_) => end_
-        None =>
-          raise WeslCompileError::Parse(
-            "incomplete function return attribute list",
-          )
+        None => raise Parse("incomplete function return attribute list")
       }
       cursor = close + 1
     }
@@ -728,7 +705,7 @@ fn parser_parse_const_assert_declaration(
     parser_strip_statement_attributes(item_source),
   )
   let assertion = source[12:].trim().to_owned()
-  ConstAssertDeclaration::{
+  {
     assertion,
     assertion_expr: parser_parse_statement_expression(assertion, item_source),
   }
@@ -738,11 +715,7 @@ fn parser_parse_const_assert_declaration(
 fn parser_diagnostic_directive_from_arguments(
   arguments : Array[String],
 ) -> DiagnosticDirectiveDeclaration {
-  DiagnosticDirectiveDeclaration::{
-    arguments,
-    severity: arguments.get(0),
-    rule_name: arguments.get(1),
-  }
+  { arguments, severity: arguments.get(0), rule_name: arguments.get(1) }
 }
 
 ///|
@@ -750,11 +723,11 @@ fn parser_unary_operator_from_generated(
   op : @expression_parse.ExpressionUnaryOperator,
 ) -> UnaryOperator {
   match op {
-    @expression_parse.Negation => Negation
-    @expression_parse.LogicalNegation => LogicalNegation
-    @expression_parse.BitwiseComplement => BitwiseComplement
-    @expression_parse.Indirection => Indirection
-    @expression_parse.AddressOf => AddressOf
+    Negation => Negation
+    LogicalNegation => LogicalNegation
+    BitwiseComplement => BitwiseComplement
+    Indirection => Indirection
+    AddressOf => AddressOf
   }
 }
 
@@ -763,24 +736,24 @@ fn parser_binary_operator_from_generated(
   op : @expression_parse.ExpressionBinaryOperator,
 ) -> BinaryOperator {
   match op {
-    @expression_parse.ShortCircuitOr => ShortCircuitOr
-    @expression_parse.ShortCircuitAnd => ShortCircuitAnd
-    @expression_parse.BitwiseOr => BitwiseOr
-    @expression_parse.BitwiseXor => BitwiseXor
-    @expression_parse.BitwiseAnd => BitwiseAnd
-    @expression_parse.Equality => Equality
-    @expression_parse.Inequality => Inequality
-    @expression_parse.LessThan => LessThan
-    @expression_parse.LessThanEqual => LessThanEqual
-    @expression_parse.GreaterThan => GreaterThan
-    @expression_parse.GreaterThanEqual => GreaterThanEqual
-    @expression_parse.ShiftLeft => ShiftLeft
-    @expression_parse.ShiftRight => ShiftRight
-    @expression_parse.Addition => Addition
-    @expression_parse.Subtraction => Subtraction
-    @expression_parse.Multiplication => Multiplication
-    @expression_parse.Division => Division
-    @expression_parse.Remainder => Remainder
+    ShortCircuitOr => ShortCircuitOr
+    ShortCircuitAnd => ShortCircuitAnd
+    BitwiseOr => BitwiseOr
+    BitwiseXor => BitwiseXor
+    BitwiseAnd => BitwiseAnd
+    Equality => Equality
+    Inequality => Inequality
+    LessThan => LessThan
+    LessThanEqual => LessThanEqual
+    GreaterThan => GreaterThan
+    GreaterThanEqual => GreaterThanEqual
+    ShiftLeft => ShiftLeft
+    ShiftRight => ShiftRight
+    Addition => Addition
+    Subtraction => Subtraction
+    Multiplication => Multiplication
+    Division => Division
+    Remainder => Remainder
   }
 }
 
@@ -800,7 +773,7 @@ fn parser_assignment_operator_from_text(
     "^=" => XorEqual
     "<<=" => ShiftLeftAssign
     ">>=" => ShiftRightAssign
-    _ => raise WeslCompileError::Parse("invalid assignment operator `\{text}`")
+    _ => raise Parse("invalid assignment operator `\{text}`")
   }
 }
 
@@ -809,39 +782,35 @@ fn parser_expression_from_generated(
   node : @expression_parse.ExpressionParseNode,
 ) -> Expression raise WeslCompileError {
   match node {
-    @expression_parse.Literal(text) => Expression::Literal(text)
-    @expression_parse.Bool(value) => Expression::Bool(value)
-    @expression_parse.TypeOrIdentifier(ty) =>
-      Expression::TypeOrIdentifier(parser_type_expression_from_generated(ty))
-    @expression_parse.Parenthesized(expr) =>
-      Expression::Parenthesized(parser_expression_from_generated(expr))
-    @expression_parse.NamedComponent(base, component) =>
-      Expression::NamedComponent(
-        parser_expression_from_generated(base),
-        component,
-      )
-    @expression_parse.Indexing(base, index) =>
-      Expression::Indexing(
+    Literal(text) => Literal(text)
+    Bool(value) => Bool(value)
+    TypeOrIdentifier(ty) =>
+      TypeOrIdentifier(parser_type_expression_from_generated(ty))
+    Parenthesized(expr) => Parenthesized(parser_expression_from_generated(expr))
+    NamedComponent(base, component) =>
+      NamedComponent(parser_expression_from_generated(base), component)
+    Indexing(base, index) =>
+      Indexing(
         parser_expression_from_generated(base),
         parser_expression_from_generated(index),
       )
-    @expression_parse.Unary(op, operand) =>
-      Expression::Unary(
+    Unary(op, operand) =>
+      Unary(
         parser_unary_operator_from_generated(op),
         parser_expression_from_generated(operand),
       )
-    @expression_parse.Binary(op, left, right) =>
-      Expression::Binary(
+    Binary(op, left, right) =>
+      Binary(
         parser_binary_operator_from_generated(op),
         parser_expression_from_generated(left),
         parser_expression_from_generated(right),
       )
-    @expression_parse.FunctionCall(call) => {
+    FunctionCall(call) => {
       let arguments : Array[Expression] = []
       for argument in call.arguments {
         arguments.push(parser_expression_from_generated(argument))
       }
-      Expression::FunctionCall(FunctionCallExpression::{
+      FunctionCall({
         callee: parser_type_expression_from_generated(call.callee),
         arguments,
       })
@@ -917,10 +886,10 @@ fn parser_parse_statement_expression(
   item_source : String,
 ) -> Expression raise WeslCompileError {
   match @expression_parse.parse_expression_source(source) {
-    @expression_parse.Parsed(node) => parser_expression_from_generated(node)
-    @expression_parse.Failed(diagnostic) => {
+    Parsed(node) => parser_expression_from_generated(node)
+    Failed(diagnostic) => {
       if diagnostic.incomplete {
-        raise WeslCompileError::Parse(
+        raise Parse(
           "incomplete statement expression at byte \{diagnostic.offset}: \{item_source}",
         )
       }
@@ -928,9 +897,7 @@ fn parser_parse_statement_expression(
         Some(message) => message
         None => "invalid statement expression"
       }
-      raise WeslCompileError::Parse(
-        "\{message} at byte \{diagnostic.offset}: \{item_source}",
-      )
+      raise Parse("\{message} at byte \{diagnostic.offset}: \{item_source}")
     }
   }
 }
@@ -942,7 +909,7 @@ fn parser_parse_assignment_statement(
 ) -> AssignmentStatement raise WeslCompileError {
   match parser_assignment_operator_at_top_level(source) {
     Some((operator, start, end_)) =>
-      AssignmentStatement::{
+      {
         operator: parser_assignment_operator_from_text(operator),
         lhs: parser_parse_statement_expression(
           source[:start].trim().to_owned(),
@@ -953,10 +920,7 @@ fn parser_parse_assignment_statement(
           item_source,
         ),
       }
-    None =>
-      raise WeslCompileError::Parse(
-        "expected assignment operator in statement: \{source}",
-      )
+    None => raise Parse("expected assignment operator in statement: \{source}")
   }
 }
 
@@ -966,7 +930,7 @@ fn parser_statement_assignment(
   item_source : String,
 ) -> AssignmentStatement? raise WeslCompileError {
   match statement.kind {
-    @statement_parse.Assignment | @statement_parse.CompoundAssignment => {
+    Assignment | CompoundAssignment => {
       let source = parser_trim_statement_semicolon(
         parser_strip_statement_attributes(statement.source),
       )
@@ -982,12 +946,12 @@ fn parser_statement_update_expression(
   item_source : String,
 ) -> Expression? raise WeslCompileError {
   match statement.kind {
-    @statement_parse.Increment | @statement_parse.Decrement => {
+    Increment | Decrement => {
       let source = parser_trim_statement_semicolon(
         parser_strip_statement_attributes(statement.source),
       )
       if source.length() < 2 {
-        raise WeslCompileError::Parse(
+        raise Parse(
           "expected update expression in statement: \{statement.source}",
         )
       }
@@ -1101,15 +1065,15 @@ fn parser_parse_embedded_function_body(
   item_source : String,
 ) -> FunctionBody raise WeslCompileError {
   match @statement_parse.parse_function_body_source(body_source) {
-    @statement_parse.Parsed(node) =>
+    Parsed(node) =>
       parser_function_body_from_generated(node.statements, item_source)
-    @statement_parse.Failed(diagnostic) => {
+    Failed(diagnostic) => {
       if diagnostic.incomplete {
-        raise WeslCompileError::Parse(
+        raise Parse(
           "incomplete embedded function body at byte \{diagnostic.offset}: \{item_source}",
         )
       }
-      raise WeslCompileError::Parse(
+      raise Parse(
         "invalid embedded function body at byte \{diagnostic.offset}: \{item_source}",
       )
     }
@@ -1131,10 +1095,7 @@ fn parser_parse_braced_statement_body(
         ),
         close_index,
       )
-    None =>
-      raise WeslCompileError::Parse(
-        "expected statement body closing brace: \{item_source}",
-      )
+    None => raise Parse("expected statement body closing brace: \{item_source}")
   }
 }
 
@@ -1154,7 +1115,7 @@ fn parser_parse_parenthesized_condition(
         close_index,
       )
     None =>
-      raise WeslCompileError::Parse(
+      raise Parse(
         "expected statement condition closing parenthesis: \{item_source}",
       )
   }
@@ -1231,7 +1192,7 @@ fn parser_parse_control_condition_and_body_start(
         body_start,
       )
     None =>
-      raise WeslCompileError::Parse(
+      raise Parse(
         "expected statement control body opening brace: \{item_source}",
       )
   }
@@ -1295,7 +1256,7 @@ fn parser_split_for_header(
   }
   parts.push(source[part_start:].trim().to_owned())
   if parts.length() != 3 {
-    raise WeslCompileError::Parse("expected three for-loop header segments")
+    raise Parse("expected three for-loop header segments")
   }
   parts
 }
@@ -1314,24 +1275,14 @@ fn parser_for_initializer(
     stripped.has_prefix("let ") ||
     stripped.has_prefix("var ") {
     return Some(
-      ForInitializer::Declaration(
-        parser_parse_statement_declaration(stripped, item_source),
-      ),
+      Declaration(parser_parse_statement_declaration(stripped, item_source)),
     )
   }
   match parser_assignment_operator_at_top_level(stripped) {
     Some(_) =>
-      Some(
-        ForInitializer::Assignment(
-          parser_parse_assignment_statement(stripped, item_source),
-        ),
-      )
+      Some(Assignment(parser_parse_assignment_statement(stripped, item_source)))
     None =>
-      Some(
-        ForInitializer::Expression(
-          parser_parse_statement_expression(stripped, item_source),
-        ),
-      )
+      Some(Expression(parser_parse_statement_expression(stripped, item_source)))
   }
 }
 
@@ -1348,7 +1299,7 @@ fn parser_for_update(
   }
   if text.has_suffix("++") {
     return Some(
-      ForUpdate::Increment(
+      Increment(
         parser_parse_statement_expression(
           text[:text.length() - 2].trim().to_owned(),
           item_source,
@@ -1358,7 +1309,7 @@ fn parser_for_update(
   }
   if text.has_suffix("--") {
     return Some(
-      ForUpdate::Decrement(
+      Decrement(
         parser_parse_statement_expression(
           text[:text.length() - 2].trim().to_owned(),
           item_source,
@@ -1368,17 +1319,9 @@ fn parser_for_update(
   }
   match parser_assignment_operator_at_top_level(text) {
     Some(_) =>
-      Some(
-        ForUpdate::Assignment(
-          parser_parse_assignment_statement(text, item_source),
-        ),
-      )
+      Some(Assignment(parser_parse_assignment_statement(text, item_source)))
     None =>
-      Some(
-        ForUpdate::Expression(
-          parser_parse_statement_expression(text, item_source),
-        ),
-      )
+      Some(Expression(parser_parse_statement_expression(text, item_source)))
   }
 }
 
@@ -1649,9 +1592,7 @@ fn parser_parse_switch_cases(
     let header = match parser_switch_clause_header_at(source, cursor) {
       Some(header) => header
       None =>
-        raise WeslCompileError::Parse(
-          "expected switch case or default clause: \{item_source}",
-        )
+        raise Parse("expected switch case or default clause: \{item_source}")
     }
     let is_default = parser_keyword_at(source, header, "default")
     let keyword_len = if is_default {
@@ -1659,9 +1600,7 @@ fn parser_parse_switch_cases(
     } else if parser_keyword_at(source, header, "case") {
       4
     } else {
-      raise WeslCompileError::Parse(
-        "expected switch case or default clause: \{item_source}",
-      )
+      raise Parse("expected switch case or default clause: \{item_source}")
     }
     let header_start = parser_skip_layout_and_comments(
       source,
@@ -1670,10 +1609,7 @@ fn parser_parse_switch_cases(
     let (header_end, body_start) = match
       parser_find_switch_clause_header_end(source, header_start) {
       Some(result) => result
-      None =>
-        raise WeslCompileError::Parse(
-          "expected switch clause body: \{item_source}",
-        )
+      None => raise Parse("expected switch clause body: \{item_source}")
     }
     let selectors = if is_default {
       []
@@ -1684,7 +1620,7 @@ fn parser_parse_switch_cases(
       )
     }
     let body_end = parser_find_next_switch_clause(source, body_start)
-    cases.push(SwitchCase::{
+    cases.push({
       selectors,
       is_default,
       body: parser_parse_switch_case_body(
@@ -1707,7 +1643,7 @@ fn parser_statement_block_control(
   let (body, _) = parser_parse_braced_statement_body(
     source, body_start, item_source,
   )
-  ControlStatement::Block(BlockStatement::{ body, })
+  Block({ body, })
 }
 
 ///|
@@ -1719,7 +1655,7 @@ fn parser_statement_loop_control(
   let (body, _) = parser_parse_braced_statement_body(
     source, body_start, item_source,
   )
-  ControlStatement::Loop(LoopStatement::{ body, })
+  Loop({ body, })
 }
 
 ///|
@@ -1742,7 +1678,7 @@ fn parser_statement_for_control(
       let (body, _) = parser_parse_braced_statement_body(
         source, body_start, item_source,
       )
-      ControlStatement::For(ForStatement::{
+      For({
         initializer: parser_for_initializer(parts[0], item_source),
         condition,
         update: parser_for_update(parts[2], item_source),
@@ -1750,7 +1686,7 @@ fn parser_statement_for_control(
       })
     }
     None =>
-      raise WeslCompileError::Parse(
+      raise Parse(
         "expected for-loop header closing parenthesis: \{item_source}",
       )
   }
@@ -1767,12 +1703,9 @@ fn parser_statement_switch_control(
   let body_end = match
     parser_find_matching_delimiter(source, body_start, 123, 125) {
     Some(body_end) => body_end
-    None =>
-      raise WeslCompileError::Parse(
-        "expected switch body closing brace: \{item_source}",
-      )
+    None => raise Parse("expected switch body closing brace: \{item_source}")
   }
-  ControlStatement::Switch(SwitchStatement::{
+  Switch({
     selector,
     cases: parser_parse_switch_cases(
       source[body_start + 1:body_end].to_owned(),
@@ -1790,7 +1723,7 @@ fn parser_statement_continuing_control(
   let (body, _) = parser_parse_braced_statement_body(
     source, body_start, item_source,
   )
-  ControlStatement::Continuing(ContinuingStatement::{ body, })
+  Continuing({ body, })
 }
 
 ///|
@@ -1804,7 +1737,7 @@ fn parser_statement_while_control(
   let (body, _) = parser_parse_braced_statement_body(
     source, body_start, item_source,
   )
-  ControlStatement::While(WhileStatement::{ condition, body })
+  While({ condition, body })
 }
 
 ///|
@@ -1838,7 +1771,7 @@ fn parser_statement_if_control(
   } else {
     None
   }
-  ControlStatement::If(IfStatement::{ condition, body, else_body })
+  If({ condition, body, else_body })
 }
 
 ///|
@@ -1848,20 +1781,13 @@ fn parser_statement_control(
 ) -> ControlStatement? raise WeslCompileError {
   let source = parser_strip_statement_attributes(statement.source)
   match statement.kind {
-    @statement_parse.Block =>
-      Some(parser_statement_block_control(source, item_source))
-    @statement_parse.If =>
-      Some(parser_statement_if_control(source, item_source))
-    @statement_parse.Switch =>
-      Some(parser_statement_switch_control(source, item_source))
-    @statement_parse.Loop =>
-      Some(parser_statement_loop_control(source, item_source))
-    @statement_parse.For =>
-      Some(parser_statement_for_control(source, item_source))
-    @statement_parse.While =>
-      Some(parser_statement_while_control(source, item_source))
-    @statement_parse.Continuing =>
-      Some(parser_statement_continuing_control(source, item_source))
+    Block => Some(parser_statement_block_control(source, item_source))
+    If => Some(parser_statement_if_control(source, item_source))
+    Switch => Some(parser_statement_switch_control(source, item_source))
+    Loop => Some(parser_statement_loop_control(source, item_source))
+    For => Some(parser_statement_for_control(source, item_source))
+    While => Some(parser_statement_while_control(source, item_source))
+    Continuing => Some(parser_statement_continuing_control(source, item_source))
     _ => None
   }
 }
@@ -1871,10 +1797,10 @@ fn parser_statement_attributes(
   source : String,
 ) -> Array[Attribute] raise WeslCompileError {
   match @attribute_parse.parse_attributes_source(source) {
-    @attribute_parse.Parsed(success) => {
+    Parsed(success) => {
       let attrs : Array[Attribute] = []
       for attr in success.attributes {
-        attrs.push(Attribute::{
+        attrs.push({
           name: attr.name,
           arguments: attr.arguments,
           argument_exprs: parser_parse_attribute_argument_exprs(
@@ -1886,21 +1812,18 @@ fn parser_statement_attributes(
             attr.name,
             attr.arguments,
           ),
-          span: SyntaxSpan::{
-            start_line: attr.start_line,
-            end_line: attr.end_line,
-          },
+          span: { start_line: attr.start_line, end_line: attr.end_line },
         })
       }
       attrs
     }
-    @attribute_parse.Failed(diagnostic) => {
+    Failed(diagnostic) => {
       if diagnostic.incomplete {
-        raise WeslCompileError::Parse(
+        raise Parse(
           "incomplete statement attribute list at byte \{diagnostic.offset}",
         )
       }
-      raise WeslCompileError::Parse(
+      raise Parse(
         "invalid statement attribute list at byte \{diagnostic.offset}",
       )
     }
@@ -1995,7 +1918,7 @@ fn parser_statement_expression(
     parser_strip_statement_attributes(statement.source),
   )
   match statement.kind {
-    @statement_parse.Return => {
+    Return => {
       let rest = source[6:].trim().to_owned()
       if rest == "" {
         None
@@ -2003,22 +1926,21 @@ fn parser_statement_expression(
         Some(parser_parse_statement_expression(rest, item_source))
       }
     }
-    @statement_parse.ConstAssert =>
+    ConstAssert =>
       Some(
         parser_parse_statement_expression(
           source[12:].trim().to_owned(),
           item_source,
         ),
       )
-    @statement_parse.BreakIf =>
+    BreakIf =>
       Some(
         parser_parse_statement_expression(
           source[8:].trim().to_owned(),
           item_source,
         ),
       )
-    @statement_parse.Call =>
-      Some(parser_parse_statement_expression(source, item_source))
+    Call => Some(parser_parse_statement_expression(source, item_source))
     _ => None
   }
 }
@@ -2029,19 +1951,19 @@ fn parser_parse_statement_declaration(
   item_source : String,
 ) -> StatementDeclaration raise WeslCompileError {
   let binding = match @binding_parse.parse_binding_source(source) {
-    @binding_parse.Parsed(node) => node
-    @binding_parse.Failed(diagnostic) => {
+    Parsed(node) => node
+    Failed(diagnostic) => {
       if diagnostic.incomplete {
-        raise WeslCompileError::Parse(
+        raise Parse(
           "incomplete statement declaration at byte \{diagnostic.offset}: \{item_source}",
         )
       }
-      raise WeslCompileError::Parse(
+      raise Parse(
         "invalid statement declaration at byte \{diagnostic.offset}: \{item_source}",
       )
     }
   }
-  StatementDeclaration::{
+  {
     kind: parser_statement_declaration_kind_from_binding(binding.kind),
     name: binding.name,
     template_arguments: binding.var_template,
@@ -2061,7 +1983,7 @@ fn parser_statement_declaration(
   item_source : String,
 ) -> StatementDeclaration? raise WeslCompileError {
   match statement.kind {
-    @statement_parse.Const | @statement_parse.Let | @statement_parse.Var =>
+    Const | Let | Var =>
       Some(
         parser_parse_statement_declaration(
           parser_strip_statement_attributes(statement.source),
@@ -2079,7 +2001,7 @@ fn parser_function_body_from_generated(
 ) -> FunctionBody raise WeslCompileError {
   let mapped : Array[Statement] = []
   for statement in statements {
-    mapped.push(Statement::{
+    mapped.push({
       kind: parser_statement_kind_from_generated(statement.kind),
       source: statement.source,
       expression: parser_statement_expression(statement, item_source),
@@ -2092,7 +2014,7 @@ fn parser_function_body_from_generated(
       attributes: parser_statement_attributes(statement.source),
     })
   }
-  FunctionBody::{ statements: mapped }
+  { statements: mapped }
 }
 
 ///|
@@ -2102,20 +2024,20 @@ fn Parser::parse_function_body_with_yacc(
   item_source : String,
 ) -> FunctionBody raise WeslCompileError {
   match @statement_parse.parse_function_body_source(body_source) {
-    @statement_parse.Parsed(node) =>
+    Parsed(node) =>
       parser_function_body_from_generated(node.statements, item_source)
-    @statement_parse.Failed(diagnostic) => {
+    Failed(diagnostic) => {
       let byte_offset = if self.tokens.length() > 0 {
         self.tokens[0].start() + diagnostic.offset
       } else {
         diagnostic.offset
       }
       if diagnostic.incomplete {
-        raise WeslCompileError::Parse(
+        raise Parse(
           "incomplete function body at byte \{byte_offset}: \{item_source}",
         )
       }
-      raise WeslCompileError::Parse(
+      raise Parse(
         "invalid function body at byte \{byte_offset}: \{item_source}",
       )
     }
@@ -2128,19 +2050,19 @@ fn Parser::parse_binding_with_yacc(
   item_source : String,
 ) -> @binding_parse.BindingParseNode raise WeslCompileError {
   match @binding_parse.parse_binding_source(item_source) {
-    @binding_parse.Parsed(node) => node
-    @binding_parse.Failed(diagnostic) => {
+    Parsed(node) => node
+    Failed(diagnostic) => {
       let byte_offset = if self.tokens.length() > 0 {
         self.tokens[0].start() + diagnostic.offset
       } else {
         diagnostic.offset
       }
       if diagnostic.incomplete {
-        raise WeslCompileError::Parse(
+        raise Parse(
           "incomplete binding declaration at byte \{byte_offset}: \{item_source}",
         )
       }
-      raise WeslCompileError::Parse(
+      raise Parse(
         "invalid binding declaration at byte \{byte_offset}: \{item_source}",
       )
     }
@@ -2153,21 +2075,19 @@ fn Parser::parse_directive_with_yacc(
   item_source : String,
 ) -> @directive_parse.DirectiveParseNode raise WeslCompileError {
   match @directive_parse.parse_directive_source(item_source) {
-    @directive_parse.Parsed(node) => node
-    @directive_parse.Failed(diagnostic) => {
+    Parsed(node) => node
+    Failed(diagnostic) => {
       let byte_offset = if self.tokens.length() > 0 {
         self.tokens[0].start() + diagnostic.offset
       } else {
         diagnostic.offset
       }
       if diagnostic.incomplete {
-        raise WeslCompileError::Parse(
+        raise Parse(
           "incomplete directive at byte \{byte_offset}: \{item_source}",
         )
       }
-      raise WeslCompileError::Parse(
-        "invalid directive at byte \{byte_offset}: \{item_source}",
-      )
+      raise Parse("invalid directive at byte \{byte_offset}: \{item_source}")
     }
   }
 }
@@ -2181,29 +2101,25 @@ fn Parser::parse_import_tree_with_yacc(
   let first_start = match self.view() {
     [token, ..] => token.start()
     [] =>
-      raise WeslCompileError::Parse(
-        "unsupported import statement (\{context}): \{item_source}",
-      )
+      raise Parse("unsupported import statement (\{context}): \{item_source}")
   }
   let tree_end = match self.tokens.last() {
     Some(Semi(start, _, _)) => start
     _ =>
-      raise WeslCompileError::Parse(
-        "unsupported import statement (\{context}): \{item_source}",
-      )
+      raise Parse("unsupported import statement (\{context}): \{item_source}")
   }
   let tree_source = self.source_slice(first_start, tree_end)
   let parsed = @import_parse.parse_import_tree_source(tree_source)
   let generated_items = match parsed {
-    @import_parse.Parsed(nodes) => nodes
-    @import_parse.Failed(diagnostic) => {
+    Parsed(nodes) => nodes
+    Failed(diagnostic) => {
       let byte_offset = first_start + diagnostic.offset
       if diagnostic.incomplete {
-        raise WeslCompileError::Parse(
+        raise Parse(
           "incomplete import statement at byte \{byte_offset} (\{context}): \{item_source}",
         )
       }
-      raise WeslCompileError::Parse(
+      raise Parse(
         "invalid import statement at byte \{byte_offset} (\{context}): \{item_source}",
       )
     }
@@ -2217,9 +2133,7 @@ fn Parser::parse_import_tree_with_yacc(
       [Semi(_, _, _), ..] => break
       [_, .. rest] => self.update_view(rest)
       [] =>
-        raise WeslCompileError::Parse(
-          "unsupported import statement (\{context}): \{item_source}",
-        )
+        raise Parse("unsupported import statement (\{context}): \{item_source}")
     }
   }
   items
@@ -2234,25 +2148,19 @@ fn Parser::parse_import_statement(
   let span = self.item_span()
   let context = span.context(current_path)
   guard self.tokens.last() is Some(Semi(_, _, _)) else {
-    raise WeslCompileError::Parse(
-      "unsupported import statement (\{context}): \{item_source}",
-    )
+    raise Parse("unsupported import statement (\{context}): \{item_source}")
   }
   let attrs = self.parse_attributes() catch {
-    Parse(reason) => raise WeslCompileError::Parse("\{reason} (\{context})")
+    Parse(reason) => raise Parse("\{reason} (\{context})")
     err => raise err
   }
   guard self.view() is [Ident("import", _, _, _), .. after_import] else {
-    raise WeslCompileError::Parse(
-      "unsupported import statement (\{context}): \{item_source}",
-    )
+    raise Parse("unsupported import statement (\{context}): \{item_source}")
   }
   self.update_view(after_import)
   let items = self.parse_import_tree_with_yacc(context, item_source)
   if items.is_empty() {
-    raise WeslCompileError::Parse(
-      "unsupported import statement (\{context}): \{item_source}",
-    )
+    raise Parse("unsupported import statement (\{context}): \{item_source}")
   }
   let statement = ImportStatement::{
     span,
@@ -2273,28 +2181,28 @@ fn Parser::parse_global_declaration(
   let attrs = self.parse_attributes()
   let parsed = @global_parse.parse_global_header_source(item_source)
   let header = match parsed {
-    @global_parse.Parsed(@global_parse.Function(name)) => {
+    Parsed(Function(name)) => {
       parser_validate_declaration_ident(name)
       let function_node = match
         @function_parse.parse_function_source(item_source) {
-        @function_parse.Parsed(node) => node
-        @function_parse.Failed(diagnostic) => {
+        Parsed(node) => node
+        Failed(diagnostic) => {
           let byte_offset = if self.tokens.length() > 0 {
             self.tokens[0].start() + diagnostic.offset
           } else {
             diagnostic.offset
           }
           if diagnostic.incomplete {
-            raise WeslCompileError::Parse(
+            raise Parse(
               "incomplete function declaration at byte \{byte_offset}: \{item_source}",
             )
           }
-          raise WeslCompileError::Parse(
+          raise Parse(
             "invalid function declaration at byte \{byte_offset}: \{item_source}",
           )
         }
       }
-      GlobalDeclarationHeader::Function(FunctionDeclaration::{
+      GlobalDeclarationHeader::Function({
         name,
         generic_parameters: function_node.generic_parameters,
         parameters: parser_function_parameters_from_generated(
@@ -2311,42 +2219,41 @@ fn Parser::parse_global_declaration(
         ),
       })
     }
-    @global_parse.Parsed(@global_parse.Struct(name)) => {
+    Parsed(Struct(name)) => {
       parser_validate_declaration_ident(name)
       let members = match @struct_parse.parse_struct_source(item_source) {
-        @struct_parse.Parsed(node) =>
-          parser_struct_members_from_generated(node.members)
-        @struct_parse.Failed(diagnostic) => {
+        Parsed(node) => parser_struct_members_from_generated(node.members)
+        Failed(diagnostic) => {
           let byte_offset = if self.tokens.length() > 0 {
             self.tokens[0].start() + diagnostic.offset
           } else {
             diagnostic.offset
           }
           if diagnostic.incomplete {
-            raise WeslCompileError::Parse(
+            raise Parse(
               "incomplete struct declaration at byte \{byte_offset}: \{item_source}",
             )
           }
-          raise WeslCompileError::Parse(
+          raise Parse(
             "invalid struct declaration at byte \{byte_offset}: \{item_source}",
           )
         }
       }
-      GlobalDeclarationHeader::Struct(StructDeclaration::{ name, members })
+      Struct({ name, members })
     }
-    @global_parse.Parsed(@global_parse.Alias(name)) => {
+    Parsed(Alias(name)) => {
       parser_validate_declaration_ident(name)
       let binding = self.parse_binding_with_yacc(item_source)
-      GlobalDeclarationHeader::Alias(AliasDeclaration::{
+      Alias({
         name,
         target: binding.type_text,
         target_type: parser_parse_optional_type_expression(binding.type_text),
       })
     }
-    @global_parse.Parsed(@global_parse.Const(name)) => {
+    Parsed(Const(name)) => {
       parser_validate_declaration_ident(name)
       let binding = self.parse_binding_with_yacc(item_source)
-      GlobalDeclarationHeader::Const(ConstDeclaration::{
+      Const({
         name,
         type_text: binding.type_text,
         type_expr: parser_parse_optional_type_expression(binding.type_text),
@@ -2357,10 +2264,10 @@ fn Parser::parse_global_declaration(
         ),
       })
     }
-    @global_parse.Parsed(@global_parse.Override(name)) => {
+    Parsed(Override(name)) => {
       parser_validate_declaration_ident(name)
       let binding = self.parse_binding_with_yacc(item_source)
-      GlobalDeclarationHeader::Override(OverrideDeclaration::{
+      Override({
         name,
         type_text: binding.type_text,
         type_expr: parser_parse_optional_type_expression(binding.type_text),
@@ -2371,10 +2278,10 @@ fn Parser::parse_global_declaration(
         ),
       })
     }
-    @global_parse.Parsed(@global_parse.Let(name)) => {
+    Parsed(Let(name)) => {
       parser_validate_declaration_ident(name)
       let binding = self.parse_binding_with_yacc(item_source)
-      GlobalDeclarationHeader::Let(LetDeclaration::{
+      Let({
         name,
         type_text: binding.type_text,
         type_expr: parser_parse_optional_type_expression(binding.type_text),
@@ -2385,13 +2292,13 @@ fn Parser::parse_global_declaration(
         ),
       })
     }
-    @global_parse.Parsed(@global_parse.Var(var_header)) => {
+    Parsed(Var(var_header)) => {
       match var_header.name {
         Some(name) => parser_validate_declaration_ident(name)
         None => ()
       }
       let binding = self.parse_binding_with_yacc(item_source)
-      GlobalDeclarationHeader::Var(VarDeclaration::{
+      Var({
         name: var_header.name,
         template_arguments: binding.var_template,
         type_text: binding.type_text,
@@ -2403,46 +2310,40 @@ fn Parser::parse_global_declaration(
         ),
       })
     }
-    @global_parse.Parsed(@global_parse.ConstAssert) =>
-      GlobalDeclarationHeader::ConstAssert(
-        parser_parse_const_assert_declaration(item_source),
-      )
-    @global_parse.Parsed(@global_parse.EnableDirective) => {
+    Parsed(ConstAssert) =>
+      ConstAssert(parser_parse_const_assert_declaration(item_source))
+    Parsed(EnableDirective) => {
       let directive = self.parse_directive_with_yacc(item_source)
-      GlobalDeclarationHeader::EnableDirective(EnableDirectiveDeclaration::{
-        names: directive.arguments,
-      })
+      EnableDirective({ names: directive.arguments })
     }
-    @global_parse.Parsed(@global_parse.RequiresDirective) => {
+    Parsed(RequiresDirective) => {
       let directive = self.parse_directive_with_yacc(item_source)
-      GlobalDeclarationHeader::RequiresDirective(RequiresDirectiveDeclaration::{
-        names: directive.arguments,
-      })
+      RequiresDirective({ names: directive.arguments })
     }
-    @global_parse.Parsed(@global_parse.DiagnosticDirective) => {
+    Parsed(DiagnosticDirective) => {
       let directive = self.parse_directive_with_yacc(item_source)
-      GlobalDeclarationHeader::DiagnosticDirective(
+      DiagnosticDirective(
         parser_diagnostic_directive_from_arguments(directive.arguments),
       )
     }
-    @global_parse.Parsed(@global_parse.Other) => GlobalDeclarationHeader::Other
-    @global_parse.Failed(diagnostic) => {
+    Parsed(Other) => Other
+    Failed(diagnostic) => {
       let byte_offset = if self.tokens.length() > 0 {
         self.tokens[0].start() + diagnostic.offset
       } else {
         diagnostic.offset
       }
       if diagnostic.incomplete {
-        raise WeslCompileError::Parse(
+        raise Parse(
           "incomplete global declaration at byte \{byte_offset}: \{item_source}",
         )
       }
-      raise WeslCompileError::Parse(
+      raise Parse(
         "invalid global declaration at byte \{byte_offset}: \{item_source}",
       )
     }
   }
-  GlobalDeclaration::{ header, attributes: attrs, source: item_source, span }
+  { header, attributes: attrs, source: item_source, span }
 }
 
 ///|
@@ -2451,16 +2352,14 @@ fn parser_top_level_item_parsers(
 ) -> Array[Parser] raise WeslCompileError {
   let root_parser = Parser::new(source)
   let spans = match @item_parse.parse_top_level_items_source(source) {
-    @item_parse.Parsed(spans) => spans
-    @item_parse.Failed(diagnostic) => {
+    Parsed(spans) => spans
+    Failed(diagnostic) => {
       if diagnostic.incomplete {
-        raise WeslCompileError::Parse(
+        raise Parse(
           "unexpected end of top-level item at byte \{diagnostic.offset}",
         )
       }
-      raise WeslCompileError::Parse(
-        "invalid top-level item at byte \{diagnostic.offset}",
-      )
+      raise Parse("invalid top-level item at byte \{diagnostic.offset}")
     }
   }
   let parsers : Array[Parser] = []
@@ -2509,5 +2408,5 @@ pub fn parse_translation_unit(
     }
     global_declarations.push(item_parser.parse_global_declaration())
   }
-  TranslationUnit::{ imports, global_declarations }
+  { imports, global_declarations }
 }

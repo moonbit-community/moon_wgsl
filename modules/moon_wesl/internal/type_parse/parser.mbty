@@ -48,8 +48,8 @@ template_arg_list
   ;
 
 template_arg
-  : type_specifier                { TypeTemplateArgumentParseNode::Type($1) }
-  | shift_literal                 { TypeTemplateArgumentParseNode::Literal($1) }
+  : type_specifier                { Type($1) }
+  | shift_literal                 { Literal($1) }
   ;
 
 shift_literal
