@@ -1,0 +1,10 @@
+import {
+  "Milky2018/moon_wesl",
+  "Milky2018/moon_wesl/internal/wgsl_validation",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/string",
+  "moonbitlang/x/fs",
+  "moonbitlang/x/sys",
+}
+
+pkgtype(kind: "executable")

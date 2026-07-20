@@ -1,0 +1,46 @@
+%derive<Debug> Token
+%derive<Debug> ParseError
+%position<Int>
+%start<CondExprNode> parse_cond_expr
+
+%token<String> IDENT
+%token TRUE         "true"
+%token FALSE        "false"
+%token BANG         "!"
+%token AMP_AMP      "&&"
+%token PIPE_PIPE    "||"
+%token LEFT_PAREN   "("
+%token RIGHT_PAREN  ")"
+
+%type<CondExprNode> or_expr
+%type<CondExprNode> and_expr
+%type<CondExprNode> not_expr
+%type<CondExprNode> primary_expr
+
+%%
+
+parse_cond_expr
+  : or_expr                      { $1 }
+  ;
+
+or_expr
+  : and_expr                     { $1 }
+  | or_expr "||" and_expr        { CondExprNode::Or($1, $3) }
+  ;
+
+and_expr
+  : not_expr                     { $1 }
+  | and_expr "&&" not_expr       { CondExprNode::And($1, $3) }
+  ;
+
+not_expr
+  : primary_expr                 { $1 }
+  | "!" not_expr                 { CondExprNode::Not($2) }
+  ;
+
+primary_expr
+  : IDENT                        { CondExprNode::Feature($1) }
+  | "true"                       { CondExprNode::Literal(true) }
+  | "false"                      { CondExprNode::Literal(false) }
+  | "(" or_expr ")"             { $2 }
+  ;

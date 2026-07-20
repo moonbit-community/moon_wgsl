@@ -17,8 +17,12 @@ The pinned external sources used to judge WGSL frontend correctness.
 _Avoid_: single implementation truth
 
 **Workspace Release**:
-A synchronized release of all publishable workspace modules with the same version number.
+A synchronized release of the WGSL compatibility module line with the same version number.
 _Avoid_: independent module release
+
+**Incubating Workspace Member**:
+A module that is tested by the workspace but has not yet joined the synchronized release line.
+_Avoid_: unreleased code, experimental package
 
 **Moon WGSL Facade**:
 The public compatibility product that keeps the existing `moon_wgsl` identity as the recommended user entrypoint while delegating language facts to **WGSL Core**.
@@ -69,7 +73,7 @@ The compatibility context that models naga-oil preprocessing and composer behavi
 _Avoid_: WGSL core, Naga layer
 
 **WESL Extension Layer**:
-The future compatibility context for WESL-specific syntax, composition, and language extensions.
+The compatibility context for WESL-specific syntax, module resolution, composition, and language extensions.
 _Avoid_: WGSL core
 
 ## Relationships
@@ -78,6 +82,7 @@ _Avoid_: WGSL core
 - **WGSL Core** aims to provide an **Official WGSL Frontend**, not a composer-oriented subset.
 - **WGSL Oracle Baseline** combines GPUWeb CTS and Naga parser/validator behavior, with wgpu validation kept as an isolated tooling concern.
 - **Workspace Release** publishes `wgsl`, `moon_wgsl_naga`, `moon_wgsl_naga_oil`, and `moon_wgsl` with the same version.
+- `moon_wesl` is an **Incubating Workspace Member** until it completes its first release from this repository; it already consumes **WGSL Core** for official WGSL semantics.
 - **Moon WGSL Facade** is the default user-facing entrypoint for preprocessing and composition.
 - **Legacy Subpackage Path** compatibility is not part of the workspace split goal.
 - **Naga Compatibility Layer** depends on **WGSL Core** and must not define WGSL language semantics.
@@ -87,6 +92,7 @@ _Avoid_: WGSL core
 - **Compose Graph**, **Symbol Graph**, **Final Name Table**, and **Emission Plan** are the semantic facts for naga-oil composition before any **Source Edit Backend** runs.
 - **naga-oil Compatibility Layer** depends on **WGSL Core** and may depend on **Naga Compatibility Layer** only for explicitly Naga-shaped behavior.
 - **WESL Extension Layer** is separate from **WGSL Core** and must not redefine base WGSL semantics.
+- **WESL Extension Layer** depends on **WGSL Core** for official WGSL parsing and validation.
 - **WGSL Core** must not depend on **Moon WGSL Facade**, **Naga Compatibility Layer**, **naga-oil Compatibility Layer**, or **WESL Extension Layer**.
 
 ## Example dialogue

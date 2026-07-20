@@ -3,5 +3,6 @@ members = [
   "./modules/moon_wgsl_naga",
   "./modules/moon_wgsl_naga_oil",
   "./modules/moon_wgsl",
+  "./modules/moon_wesl",
   "./tools",
 ]

@@ -1,0 +1,39 @@
+%derive<Debug> Token
+%derive<Debug> ParseError
+%position<Int>
+%start<FunctionParseNode> parse_function_decl
+
+%token<String> IDENT
+%token<String> GENERICS
+%token<FunctionParameterParseNode> PARAM
+%token<String> RETURN_TYPE
+%token FN          "fn"
+%token LEFT_PAREN  "("
+%token RIGHT_PAREN ")"
+%token<String> BODY
+
+%type<String?> opt_generics
+%type<Array[FunctionParameterParseNode]> params
+%type<String?> opt_return
+
+%%
+
+parse_function_decl
+  : "fn" IDENT opt_generics "(" params ")" opt_return BODY
+                                  { FunctionParseNode::{ name: $2, generic_parameters: $3, parameters: $5, return_type: $7, body_text: $8 } }
+  ;
+
+opt_generics
+  :                               { None }
+  | GENERICS                      { Some($1) }
+  ;
+
+params
+  :                               { [] }
+  | params PARAM                  { $1.push($2); $1 }
+  ;
+
+opt_return
+  :                               { None }
+  | RETURN_TYPE                   { Some($1) }
+  ;

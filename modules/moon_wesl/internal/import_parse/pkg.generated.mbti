@@ -1,0 +1,60 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wesl/internal/import_parse"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse_import_tree(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[ImportParseNode] raise ParseError
+
+pub fn parse_import_tree_source(String) -> ImportParseResult
+
+// Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct ImportParseDiagnostic {
+  offset : Int
+  incomplete : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ImportParseNode {
+  path_segments : Array[String]
+  rename : String?
+  children : Array[ImportParseNode]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ImportParseResult {
+  Parsed(Array[ImportParseNode])
+  Failed(ImportParseDiagnostic)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Token {
+  IDENT(String)
+  AS
+  DOUBLE_COLON
+  COMMA
+  LEFT_BRACE
+  RIGHT_BRACE
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_IDENT
+  TK_AS
+  TK_DOUBLE_COLON
+  TK_COMMA
+  TK_LEFT_BRACE
+  TK_RIGHT_BRACE
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
+
+// Type aliases
+
+// Traits
+

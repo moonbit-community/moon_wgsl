@@ -1,5 +1,77 @@
 {
   "package_imports": {
+    "modules/moon_wesl/cmd/wesl/moon.pkg": [
+      "Milky2018/moon_wesl",
+      "Milky2018/moon_wesl/internal/wgsl_validation",
+      "moonbitlang/core/debug",
+      "moonbitlang/core/string",
+      "moonbitlang/x/fs",
+      "moonbitlang/x/sys"
+    ],
+    "modules/moon_wesl/internal/attribute_parse/moon.pkg": [
+      "moonbitlang/core/list"
+    ],
+    "modules/moon_wesl/internal/binding_parse/moon.pkg": [
+      "moonbitlang/core/list"
+    ],
+    "modules/moon_wesl/internal/cond_expr_parse/moon.pkg": [
+      "moonbitlang/core/list"
+    ],
+    "modules/moon_wesl/internal/directive_parse/moon.pkg": [
+      "moonbitlang/core/list"
+    ],
+    "modules/moon_wesl/internal/expression_parse/moon.pkg": [
+      "moonbitlang/core/list"
+    ],
+    "modules/moon_wesl/internal/function_parse/moon.pkg": [
+      "moonbitlang/core/list"
+    ],
+    "modules/moon_wesl/internal/global_parse/moon.pkg": [
+      "moonbitlang/core/list"
+    ],
+    "modules/moon_wesl/internal/import_parse/moon.pkg": [
+      "moonbitlang/core/list"
+    ],
+    "modules/moon_wesl/internal/item_parse/moon.pkg": [
+      "moonbitlang/core/list"
+    ],
+    "modules/moon_wesl/internal/module_path_parse/moon.pkg": [
+      "moonbitlang/core/list"
+    ],
+    "modules/moon_wesl/internal/statement_parse/moon.pkg": [
+      "moonbitlang/core/list"
+    ],
+    "modules/moon_wesl/internal/struct_parse/moon.pkg": [
+      "moonbitlang/core/list"
+    ],
+    "modules/moon_wesl/internal/type_parse/moon.pkg": [
+      "moonbitlang/core/list"
+    ],
+    "modules/moon_wesl/internal/wgsl_validation/moon.pkg": [
+      "Milky2018/wgsl/ir"
+    ],
+    "modules/moon_wesl/moon.pkg": [
+      "Milky2018/moon_wesl/internal/attribute_parse",
+      "Milky2018/moon_wesl/internal/binding_parse",
+      "Milky2018/moon_wesl/internal/cond_expr_parse",
+      "Milky2018/moon_wesl/internal/directive_parse",
+      "Milky2018/moon_wesl/internal/expression_parse",
+      "Milky2018/moon_wesl/internal/function_parse",
+      "Milky2018/moon_wesl/internal/global_parse",
+      "Milky2018/moon_wesl/internal/import_parse",
+      "Milky2018/moon_wesl/internal/item_parse",
+      "Milky2018/moon_wesl/internal/module_path_parse",
+      "Milky2018/moon_wesl/internal/statement_parse",
+      "Milky2018/moon_wesl/internal/struct_parse",
+      "Milky2018/moon_wesl/internal/type_parse",
+      "Milky2018/moon_wesl/internal/wgsl_validation",
+      "moonbitlang/core/debug",
+      "moonbitlang/core/env",
+      "moonbitlang/core/hashmap",
+      "moonbitlang/core/math",
+      "moonbitlang/core/string",
+      "moonbitlang/x/fs"
+    ],
     "modules/moon_wgsl/moon.pkg": [
       "Milky2018/moon_wgsl_naga_oil/compose",
       "Milky2018/moon_wgsl_naga_oil/preprocess",
@@ -210,12 +282,39 @@
         "."
       ],
       "exceptions": {}
+    },
+    "modules/moon_wesl": {
+      "allowed": [
+        ".",
+        "cmd/wesl"
+      ],
+      "internal": [
+        "internal/attribute_parse",
+        "internal/binding_parse",
+        "internal/cond_expr_parse",
+        "internal/directive_parse",
+        "internal/expression_parse",
+        "internal/function_parse",
+        "internal/global_parse",
+        "internal/import_parse",
+        "internal/item_parse",
+        "internal/module_path_parse",
+        "internal/statement_parse",
+        "internal/struct_parse",
+        "internal/type_parse",
+        "internal/wgsl_validation"
+      ],
+      "exceptions": {}
     }
   },
   "internal_package_roots": [
     {
       "module": "modules/moon_wgsl_naga_oil",
       "import_prefix": "Milky2018/moon_wgsl_naga_oil/internal/"
+    },
+    {
+      "module": "modules/moon_wesl",
+      "import_prefix": "Milky2018/moon_wesl/internal/"
     }
   ],
   "concept_ownership": [
@@ -265,6 +364,21 @@
         "*_wbtest.mbt"
       ],
       "forbidden": "WgslIrGeneratedImportProvenance|WgslIrImportArenaEvent|WgslIrFinalNameTable|WgslIrLinkGraph|generated_import_provenance|import_arena_events|generated_import\\s*:\\s*Bool|parse_wgsl_module_to_ir_with_generated_imports"
+    },
+    {
+      "name": "WESL delegates official WGSL validation to WGSL Core",
+      "paths": [
+        "modules/moon_wesl"
+      ],
+      "globs": [
+        "*.mbt",
+        "*.mbti"
+      ],
+      "exclude": [
+        "*_test.mbt",
+        "*_wbtest.mbt"
+      ],
+      "forbidden": "pub fn validate_wgsl\\("
     }
   ],
   "exported_type_methods": [
@@ -317,5 +431,11 @@
     }
   ],
   "forbid_unlisted_source_symlinks": true,
-  "source_symlink_exceptions": []
+  "source_symlink_exceptions": [
+    {
+      "path": "modules/moon_wesl/README.md",
+      "target": "README.mbt.md",
+      "issue": "ISS-043"
+    }
+  ]
 }

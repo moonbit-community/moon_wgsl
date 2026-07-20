@@ -1,0 +1,19 @@
+%derive<Debug> Token
+%derive<Debug> ParseError
+%position<Int>
+%start<FunctionBodyParseNode> parse_function_body
+
+%token<StatementParseNode> STATEMENT
+
+%type<Array[StatementParseNode]> statements
+
+%%
+
+parse_function_body
+  : statements                    { FunctionBodyParseNode::{ statements: $1 } }
+  ;
+
+statements
+  :                               { [] }
+  | statements STATEMENT          { $1.push($2); $1 }
+  ;

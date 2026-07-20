@@ -1,0 +1,72 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wesl/internal/function_parse"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse_function_decl(Array[(Token, Int, Int)], initial_pos? : Int) -> FunctionParseNode raise ParseError
+
+pub fn parse_function_source(String) -> FunctionParseResult
+
+// Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct FunctionParameterParseNode {
+  name : String
+  type_text : String
+  attributes : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FunctionParseDiagnostic {
+  offset : Int
+  incomplete : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FunctionParseNode {
+  name : String
+  generic_parameters : String?
+  parameters : Array[FunctionParameterParseNode]
+  return_type : String?
+  body_text : String
+} derive(Eq, @debug.Debug)
+
+pub(all) enum FunctionParseResult {
+  Parsed(FunctionParseNode)
+  Failed(FunctionParseDiagnostic)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Token {
+  IDENT(String)
+  GENERICS(String)
+  PARAM(FunctionParameterParseNode)
+  RETURN_TYPE(String)
+  FN
+  LEFT_PAREN
+  RIGHT_PAREN
+  BODY(String)
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_IDENT
+  TK_GENERICS
+  TK_PARAM
+  TK_RETURN_TYPE
+  TK_FN
+  TK_LEFT_PAREN
+  TK_RIGHT_PAREN
+  TK_BODY
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
+
+// Type aliases
+
+// Traits
+

@@ -1,0 +1,865 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wesl"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/hashmap",
+}
+
+// Values
+pub fn[R : Resolver] compile(ModulePath, R, EscapeMangler, CompileOptions) -> CompileResult raise WeslCompileError
+
+pub fn[R : Resolver] compile_diagnostic(ModulePath, R, EscapeMangler, CompileOptions) -> CompileResult raise WeslDiagnosticError
+
+pub fn[R : Resolver] compile_sourcemap(ModulePath, R, EscapeMangler, CompileOptions) -> CompileResult raise WeslCompileError
+
+pub fn[R : Resolver] compile_sourcemap_diagnostic(ModulePath, R, EscapeMangler, CompileOptions) -> CompileResult raise WeslDiagnosticError
+
+pub fn[R : Resolver] emit_rerun_if_changed(Array[ModulePath], R) -> Unit
+
+pub fn eval_const(String, String) -> EvalResult raise WeslCompileError
+
+pub fn eval_str(String) -> EvalResult raise WeslCompileError
+
+pub fn parse_global_declarations(String) -> Array[GlobalDeclaration] raise WeslCompileError
+
+pub fn parse_module_path(String) -> ModulePath raise ModulePathParseError
+
+pub fn parse_translation_unit(ModulePath, String, Bool) -> TranslationUnit raise WeslCompileError
+
+pub fn validate_wesl(TranslationUnit) -> Unit raise WeslCompileError
+
+// Errors
+pub(all) suberror ModulePathParseError {
+  Empty
+  MisplacedPackage
+  MisplacedSelf
+  MisplacedSuper
+}
+pub fn ModulePathParseError::message(Self) -> String
+
+pub(all) suberror ResolveError {
+  FileNotFound(String, String)
+  ModuleNotFound(ModulePath, String)
+  Error(String)
+}
+pub fn ResolveError::message(Self) -> String
+
+pub(all) suberror ScanDirectoryError {
+  RootNotFound(String)
+  ReservedModName(String)
+  Io(String)
+}
+pub fn ScanDirectoryError::message(Self) -> String
+
+pub(all) suberror ValidateError {
+  UndefinedSymbol(String)
+  ParamCount(String, Int, Int)
+  NotCallable(String)
+  Duplicate(String)
+  Cycle(String, String)
+}
+pub fn ValidateError::message(Self) -> String
+
+pub(all) suberror WeslCompileError {
+  Resolve(ResolveError)
+  Parse(String)
+  Validation(String)
+  Validate(ValidateError)
+  InvalidExpression(String)
+  Artifact(String)
+  DuplicateSymbol(String)
+  CircularDecl(String)
+  MissingDecl(ModulePath, String)
+  Private(String, ModulePath)
+}
+pub fn WeslCompileError::diagnostic(Self) -> Diagnostic
+pub fn WeslCompileError::message(Self) -> String
+
+pub(all) suberror WeslDiagnosticError {
+  Diagnostic(Diagnostic)
+}
+pub fn WeslDiagnosticError::message(Self) -> String
+
+// Types and methods
+pub(all) struct AliasDeclaration {
+  name : String
+  target : String?
+  target_type : TypeExpression?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum AssignmentOperator {
+  Equal
+  PlusEqual
+  MinusEqual
+  TimesEqual
+  DivisionEqual
+  ModuloEqual
+  AndEqual
+  OrEqual
+  XorEqual
+  ShiftLeftAssign
+  ShiftRightAssign
+} derive(Eq, @debug.Debug)
+
+pub(all) struct AssignmentStatement {
+  operator : AssignmentOperator
+  lhs : Expression
+  rhs : Expression
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Attribute {
+  name : String
+  arguments : String?
+  argument_exprs : Array[Expression]
+  condition_expr : CondExpression?
+  span : SyntaxSpan
+} derive(Eq, @debug.Debug)
+
+pub struct BasicSourceMap {
+  root : ModulePath
+  mappings : @hashmap.HashMap[String, (ModulePath, String)]
+  sources : @hashmap.HashMap[ModulePath, (String?, String)]
+  mut default_source : String?
+} derive(@debug.Debug)
+pub fn BasicSourceMap::add_decl(Self, String, ModulePath, String) -> Unit
+pub fn BasicSourceMap::add_source(Self, ModulePath, String?, String) -> Unit
+pub fn BasicSourceMap::default() -> Self
+pub fn BasicSourceMap::get_decl(Self, String) -> (ModulePath, String)?
+pub fn BasicSourceMap::get_default_source(Self) -> String?
+pub fn BasicSourceMap::get_display_name(Self, ModulePath) -> String?
+pub fn BasicSourceMap::get_source(Self, ModulePath) -> String?
+pub fn BasicSourceMap::new() -> Self
+pub fn BasicSourceMap::set_default_source(Self, String) -> Unit
+pub fn BasicSourceMap::unmangle_identifier(Self, String) -> String?
+pub fn BasicSourceMap::unmangle_text(Self, String) -> String
+pub impl SourceMap for BasicSourceMap
+
+pub(all) enum BinaryOperator {
+  ShortCircuitOr
+  ShortCircuitAnd
+  BitwiseOr
+  BitwiseXor
+  BitwiseAnd
+  Equality
+  Inequality
+  LessThan
+  LessThanEqual
+  GreaterThan
+  GreaterThanEqual
+  ShiftLeft
+  ShiftRight
+  Addition
+  Subtraction
+  Multiplication
+  Division
+  Remainder
+} derive(Eq, @debug.Debug)
+
+pub(all) struct BlockStatement {
+  body : FunctionBody
+} derive(Eq, @debug.Debug)
+
+pub struct CodegenModule {
+  name : String
+  source : String
+  submodules : Array[CodegenModule]
+} derive(Eq, @debug.Debug)
+pub fn CodegenModule::add_submodule(Self, Self) -> Unit
+pub fn CodegenModule::new(String, String) -> Self
+pub fn CodegenModule::with_submodules(Self, Array[Self]) -> Self
+
+pub struct CodegenPkg {
+  crate_name : String
+  root : CodegenModule
+  dependencies : Array[CodegenPkg]
+} derive(Eq, @debug.Debug)
+pub fn CodegenPkg::add_dependency(Self, Self) -> Unit
+pub fn CodegenPkg::new(String, CodegenModule) -> Self
+pub fn CodegenPkg::with_dependencies(Self, Array[Self]) -> Self
+
+pub struct CompileOptions {
+  imports : Bool
+  condcomp : Bool
+  generics : Bool
+  strip : Bool
+  lower : Bool
+  validate : Bool
+  lazy_resolution : Bool
+  mangle_root : Bool
+  keep : Array[String]?
+  keep_root : Bool
+  features : Features
+}
+pub fn CompileOptions::default() -> Self
+pub fn CompileOptions::keep_declarations(Self, Array[String]) -> Self
+pub fn CompileOptions::set_feature(Self, String, Feature) -> Self
+pub fn CompileOptions::set_missing_feature_behavior(Self, Feature) -> Self
+pub fn CompileOptions::with_condcomp(Self, Bool) -> Self
+pub fn CompileOptions::with_feature(Self, String, Bool) -> Self
+pub fn CompileOptions::with_generics(Self, Bool) -> Self
+pub fn CompileOptions::with_imports(Self, Bool) -> Self
+pub fn CompileOptions::with_keep_root(Self, Bool) -> Self
+pub fn CompileOptions::with_lazy(Self, Bool) -> Self
+pub fn CompileOptions::with_lower(Self, Bool) -> Self
+pub fn CompileOptions::with_mangle_root(Self, Bool) -> Self
+pub fn CompileOptions::with_strip(Self, Bool) -> Self
+pub fn CompileOptions::with_validate(Self, Bool) -> Self
+
+pub struct CompileResult {
+  syntax : TranslationUnit
+  sourcemap : BasicSourceMap?
+  modules : Array[ModulePath]
+} derive(@debug.Debug)
+pub fn CompileResult::default() -> Self
+pub fn CompileResult::eval(Self, String) -> EvalResult raise WeslCompileError
+pub fn CompileResult::exec(Self, String, Inputs, Array[ResourceBinding], Array[OverrideValue]) -> ExecResult raise WeslCompileError
+pub fn CompileResult::has_sourcemap(Self) -> Bool
+pub fn CompileResult::to_string(Self) -> String
+pub fn CompileResult::unmangle_text(Self, String) -> String
+pub fn CompileResult::write_artifact(Self, String, out_dir? : String?) -> Unit raise WeslCompileError
+pub fn CompileResult::write_to_file(Self, String) -> Unit raise WeslCompileError
+
+pub struct CondCompPreprocessor {
+  features : Features
+}
+pub fn CondCompPreprocessor::new(Features) -> Self
+pub impl ModulePreprocessor for CondCompPreprocessor
+
+pub(all) enum CondExpression {
+  Literal(Bool)
+  Feature(String)
+  Not(CondExpression)
+  And(CondExpression, CondExpression)
+  Or(CondExpression, CondExpression)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ConstAssertDeclaration {
+  assertion : String
+  assertion_expr : Expression
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ConstDeclaration {
+  name : String
+  type_text : String?
+  type_expr : TypeExpression?
+  initializer : String?
+  initializer_expr : Expression?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ContinuingStatement {
+  body : FunctionBody
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ControlStatement {
+  Block(BlockStatement)
+  If(IfStatement)
+  Switch(SwitchStatement)
+  Loop(LoopStatement)
+  For(ForStatement)
+  While(WhileStatement)
+  Continuing(ContinuingStatement)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Diagnostic {
+  error : WeslCompileError
+  detail : DiagnosticDetail
+}
+pub fn Diagnostic::display_origin(Self) -> String
+pub fn Diagnostic::display_short_origin(Self) -> String?
+pub fn Diagnostic::infer_span_from_message(Self) -> Self
+pub fn Diagnostic::message(Self) -> String
+pub fn Diagnostic::new(WeslCompileError) -> Self
+pub fn Diagnostic::to_string(Self) -> String
+pub fn Diagnostic::unmangle_with_mangler(Self, ManglerKind) -> Self
+pub fn[S : SourceMap] Diagnostic::unmangle_with_sourcemap(Self, S) -> Self
+pub fn Diagnostic::with_declaration(Self, String) -> Self
+pub fn Diagnostic::with_module_path(Self, ModulePath, String?) -> Self
+pub fn Diagnostic::with_output(Self, String) -> Self
+pub fn Diagnostic::with_source(Self, String) -> Self
+pub fn[S : SourceMap] Diagnostic::with_sourcemap(Self, S) -> Self
+pub fn Diagnostic::with_span(Self, SourceSpan) -> Self
+pub fn Diagnostic::with_syntax_span(Self, SyntaxSpan) -> Self
+
+pub(all) struct DiagnosticDetail {
+  source : String?
+  output : String?
+  module_path : ModulePath?
+  display_name : String?
+  declaration : String?
+  span : SourceSpan?
+  message : String?
+} derive(Eq, @debug.Debug)
+pub fn DiagnosticDetail::default() -> Self
+
+pub(all) struct DiagnosticDirectiveDeclaration {
+  arguments : Array[String]
+  severity : String?
+  rule_name : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct EnableDirectiveDeclaration {
+  names : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub struct EscapeMangler {
+}
+pub fn EscapeMangler::default() -> Self
+pub fn EscapeMangler::mangle(Self, ModulePath, String) -> String
+pub fn EscapeMangler::unmangle(Self, String) -> (ModulePath, String)?
+
+pub(all) struct EvalResult {
+  value : String
+  buffer : Bytes?
+} derive(Eq, @debug.Debug)
+pub fn EvalResult::to_buffer(Self) -> Bytes?
+pub fn EvalResult::to_string(Self) -> String
+
+pub(all) struct ExecResult {
+  value : String?
+  buffer : Bytes?
+  resources : Array[ResourceBinding]
+} derive(Eq, @debug.Debug)
+pub fn ExecResult::resource(Self, Int, Int) -> ResourceBinding?
+pub fn ExecResult::return_value(Self) -> String?
+pub fn ExecResult::to_buffer(Self) -> Bytes?
+pub fn ExecResult::to_string(Self) -> String
+
+pub(all) enum Expression {
+  Literal(String)
+  Bool(Bool)
+  TypeOrIdentifier(TypeExpression)
+  Parenthesized(Expression)
+  NamedComponent(Expression, String)
+  Indexing(Expression, Expression)
+  Unary(UnaryOperator, Expression)
+  Binary(BinaryOperator, Expression, Expression)
+  FunctionCall(FunctionCallExpression)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Feature {
+  Enable
+  Disable
+  Keep
+  Error
+} derive(Eq, @debug.Debug)
+pub fn Feature::default() -> Self
+pub fn Feature::from_bool(Bool) -> Self
+
+pub struct Features {
+  default : Feature
+  flags : @hashmap.HashMap[String, Feature]
+}
+pub fn Features::default() -> Self
+pub fn Features::with_feature(Self, String, Feature) -> Self
+
+pub struct FileResolver {
+  base : String
+  extension : String
+}
+pub fn FileResolver::default() -> Self
+pub fn FileResolver::file_path(Self, ModulePath) -> String raise ResolveError
+pub fn FileResolver::new(String) -> Self
+pub fn FileResolver::set_extension(Self, String) -> Self
+pub impl Resolver for FileResolver
+
+pub(all) enum ForInitializer {
+  Declaration(StatementDeclaration)
+  Assignment(AssignmentStatement)
+  Expression(Expression)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ForStatement {
+  initializer : ForInitializer?
+  condition : Expression?
+  update : ForUpdate?
+  body : FunctionBody
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ForUpdate {
+  Assignment(AssignmentStatement)
+  Increment(Expression)
+  Decrement(Expression)
+  Expression(Expression)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FunctionBody {
+  statements : Array[Statement]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FunctionCallExpression {
+  callee : TypeExpression
+  arguments : Array[Expression]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FunctionDeclaration {
+  name : String
+  generic_parameters : String?
+  parameters : Array[FunctionParameter]
+  return_type : String?
+  return_type_expr : TypeExpression?
+  return_attributes : Array[Attribute]
+  body : FunctionBody
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FunctionParameter {
+  name : String
+  type_text : String
+  type_expr : TypeExpression
+  attributes : Array[Attribute]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GlobalDeclaration {
+  header : GlobalDeclarationHeader
+  attributes : Array[Attribute]
+  source : String
+  span : SyntaxSpan
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GlobalDeclarationHeader {
+  Function(FunctionDeclaration)
+  Struct(StructDeclaration)
+  Alias(AliasDeclaration)
+  Const(ConstDeclaration)
+  Override(OverrideDeclaration)
+  Let(LetDeclaration)
+  Var(VarDeclaration)
+  ConstAssert(ConstAssertDeclaration)
+  EnableDirective(EnableDirectiveDeclaration)
+  RequiresDirective(RequiresDirectiveDeclaration)
+  DiagnosticDirective(DiagnosticDirectiveDeclaration)
+  Other
+} derive(Eq, @debug.Debug)
+
+pub struct IdentityPreprocessor {
+}
+pub fn IdentityPreprocessor::new() -> Self
+pub impl ModulePreprocessor for IdentityPreprocessor
+
+pub(all) struct IfStatement {
+  condition : Expression
+  body : FunctionBody
+  else_body : FunctionBody?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ImportNode {
+  path_segments : Array[String]
+  rename : String?
+  children : Array[ImportNode]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ImportStatement {
+  span : SyntaxSpan
+  attributes : Array[Attribute]
+  entries : Array[ImportNode]
+  source : String
+} derive(Eq, @debug.Debug)
+pub fn ImportStatement::source_text(Self) -> String
+
+pub(all) struct ImportedName {
+  export_module_path : ModulePath?
+  export_name : String?
+  namespace_path : ModulePath
+  local_name : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Inputs {
+  vertex_index : Int?
+  instance_index : Int?
+  position : Array[Double]?
+  front_facing : Bool?
+  sample_index : Int?
+  sample_mask : Int?
+  local_invocation_id : Array[Int]?
+  local_invocation_index : Int?
+  global_invocation_id : Array[Int]?
+  workgroup_id : Array[Int]?
+  num_workgroups : Array[Int]?
+  subgroup_invocation_id : Int?
+  subgroup_size : Int?
+  subgroup_id : Int?
+  num_subgroups : Int?
+  primitive_index : Int?
+  view_index : Int?
+  user_defined : Array[UserInput]
+} derive(Eq, @debug.Debug)
+pub fn Inputs::new_zero_initialized() -> Self
+
+pub(all) struct LetDeclaration {
+  name : String
+  type_text : String?
+  type_expr : TypeExpression?
+  initializer : String?
+  initializer_expr : Expression?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct LoopStatement {
+  body : FunctionBody
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ManglerKind {
+  Escape
+  Hash
+  Unicode
+  None
+} derive(Eq, @debug.Debug)
+pub fn ManglerKind::default() -> Self
+pub fn ManglerKind::mangle(Self, ModulePath, String) -> String
+pub fn ManglerKind::unmangle(Self, String) -> (ModulePath, String)?
+
+type ModuleItemRef derive(Eq, @debug.Debug)
+
+pub(all) struct ModulePath {
+  origin : PathOrigin
+  components : Array[String]
+} derive(Eq, Hash, @debug.Debug)
+pub fn ModulePath::first(Self) -> String?
+pub fn ModulePath::from_path(String) -> Self
+pub fn ModulePath::is_package(Self) -> Bool
+pub fn ModulePath::is_relative(Self) -> Bool
+pub fn ModulePath::is_root(Self) -> Bool
+pub fn ModulePath::join(Self, Array[String]) -> Self
+pub fn ModulePath::join_path(Self, Self) -> Self
+pub fn ModulePath::last(Self) -> String?
+pub fn ModulePath::new(PathOrigin, Array[String]) -> Self
+pub fn ModulePath::new_root() -> Self
+pub fn ModulePath::push(Self, String) -> Unit
+pub fn ModulePath::starts_with(Self, Self) -> Bool
+pub fn ModulePath::to_path_string(Self) -> String
+pub fn ModulePath::to_string(Self) -> String
+
+pub struct NoResolver {
+}
+pub fn NoResolver::default() -> Self
+pub fn NoResolver::new() -> Self
+pub impl Resolver for NoResolver
+
+pub struct NoSourceMap {
+}
+pub fn NoSourceMap::default() -> Self
+pub fn NoSourceMap::new() -> Self
+pub impl SourceMap for NoSourceMap
+
+pub(all) struct OverrideDeclaration {
+  name : String
+  type_text : String?
+  type_expr : TypeExpression?
+  initializer : String?
+  initializer_expr : Expression?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct OverrideValue {
+  name : String
+  value : String
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PathOrigin {
+  Absolute
+  Relative(Int)
+  Package(String)
+} derive(Eq, Hash, @debug.Debug)
+
+pub(all) struct Pkg {
+  crate_name : String
+  root : CodegenModule
+  dependencies : Array[CodegenPkg]
+}
+pub fn Pkg::build_artifact(Self, String) -> Unit raise ScanDirectoryError
+pub fn Pkg::codegen(Self) -> String
+pub fn Pkg::to_codegen_pkg(Self) -> CodegenPkg
+pub fn Pkg::validate(Self) -> Self raise WeslCompileError
+
+pub struct PkgBuilder {
+  name : String
+  dependencies : Array[CodegenPkg]
+}
+pub fn PkgBuilder::add_package(Self, CodegenPkg) -> Self
+pub fn PkgBuilder::add_packages(Self, Array[CodegenPkg]) -> Self
+pub fn PkgBuilder::new(String) -> Self
+pub fn PkgBuilder::scan_root(Self, String) -> Pkg raise ScanDirectoryError
+
+pub struct PkgResolver {
+  packages : Array[CodegenPkg]
+}
+pub fn PkgResolver::add_package(Self, CodegenPkg) -> Unit
+pub fn PkgResolver::default() -> Self
+pub fn PkgResolver::new() -> Self
+pub impl Resolver for PkgResolver
+
+pub struct Preprocessor[R, P] {
+  resolver : R
+  preprocess : P
+}
+pub fn[R, P] Preprocessor::new(R, P) -> Self[R, P]
+pub impl[R : Resolver, P : ModulePreprocessor] Resolver for Preprocessor[R, P]
+
+pub(all) struct RequiresDirectiveDeclaration {
+  names : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ResourceBinding {
+  group : Int
+  binding : Int
+  kind : String
+  data : Bytes
+} derive(Eq, @debug.Debug)
+
+pub struct Router {
+  // private fields
+}
+pub fn Router::default() -> Self
+pub fn Router::mount_fallback_file_resolver(Self, FileResolver) -> Unit
+pub fn Router::mount_fallback_resolver(Self, VirtualResolver) -> Unit
+pub fn Router::mount_file_resolver(Self, ModulePath, FileResolver) -> Unit
+pub fn Router::mount_pkg_resolver(Self, ModulePath, PkgResolver) -> Unit
+pub fn Router::mount_resolver(Self, ModulePath, VirtualResolver) -> Unit
+pub fn Router::mount_standard_resolver(Self, ModulePath, StandardResolver) -> Unit
+pub fn Router::new() -> Self
+pub impl Resolver for Router
+
+pub struct SourceMapper[R] {
+  root : ModulePath
+  resolver : R
+  mangler : ManglerKind
+  sourcemap : BasicSourceMap
+}
+pub fn[R] SourceMapper::finish(Self[R]) -> BasicSourceMap
+pub fn[R] SourceMapper::mangle(Self[R], ModulePath, String) -> String
+pub fn[R] SourceMapper::mangler(Self[R]) -> ManglerKind
+pub fn[R] SourceMapper::new(ModulePath, R, ManglerKind) -> Self[R]
+pub fn[R] SourceMapper::sourcemap(Self[R]) -> BasicSourceMap
+pub fn[R] SourceMapper::unmangle(Self[R], String) -> (ModulePath, String)?
+pub impl[R : Resolver] Resolver for SourceMapper[R]
+
+pub(all) struct SourcePosition {
+  line : Int
+  column : Int
+  offset : Int
+} derive(Eq, @debug.Debug)
+pub fn SourcePosition::new(Int, Int, Int) -> Self
+
+pub(all) struct SourceSpan {
+  start : SourcePosition
+  end : SourcePosition
+} derive(Eq, @debug.Debug)
+pub fn SourceSpan::from_line_range(String, Int, Int) -> Self
+pub fn SourceSpan::new(SourcePosition, SourcePosition) -> Self
+
+pub struct StandardResolver {
+  pkg : PkgResolver
+  files : FileResolver
+  constants : @hashmap.HashMap[String, Double]
+}
+pub fn StandardResolver::add_constant(Self, String, Double) -> Unit
+pub fn StandardResolver::add_package(Self, CodegenPkg) -> Unit
+pub fn StandardResolver::add_scanned_package(Self, Pkg) -> Unit
+pub fn StandardResolver::generate_constant_module(Self) -> String
+pub fn StandardResolver::new(String) -> Self
+pub impl Resolver for StandardResolver
+
+pub(all) struct Statement {
+  kind : StatementKind
+  source : String
+  expression : Expression?
+  declaration : StatementDeclaration?
+  assignment : AssignmentStatement?
+  update_expression : Expression?
+  control : ControlStatement?
+  attributes : Array[Attribute]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct StatementDeclaration {
+  kind : StatementDeclarationKind
+  name : String?
+  template_arguments : String?
+  type_text : String?
+  type_expr : TypeExpression?
+  initializer : String?
+  initializer_expr : Expression?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum StatementDeclarationKind {
+  Const
+  Let
+  Var
+} derive(Eq, @debug.Debug)
+
+pub(all) enum StatementKind {
+  Empty
+  Block
+  Return
+  Discard
+  If
+  Switch
+  Loop
+  For
+  While
+  Continuing
+  Break
+  Continue
+  BreakIf
+  ConstAssert
+  Const
+  Let
+  Var
+  Assignment
+  CompoundAssignment
+  Increment
+  Decrement
+  Call
+  Other
+} derive(Eq, @debug.Debug)
+
+pub(all) struct StructDeclaration {
+  name : String
+  members : Array[StructMember]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct StructMember {
+  name : String
+  type_text : String
+  type_expr : TypeExpression
+  attributes : Array[Attribute]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SwitchCase {
+  selectors : Array[Expression]
+  is_default : Bool
+  body : FunctionBody
+  attributes : Array[Attribute]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SwitchStatement {
+  selector : Expression
+  cases : Array[SwitchCase]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SyntaxSpan {
+  start_line : Int
+  end_line : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TranslationUnit {
+  imports : Array[ImportStatement]
+  global_declarations : Array[GlobalDeclaration]
+} derive(Eq, @debug.Debug)
+pub fn TranslationUnit::default() -> Self
+pub fn TranslationUnit::to_string(Self) -> String
+
+pub(all) struct TypeExpression {
+  path : Array[String]
+  ident : String
+  template_text : String?
+  template_args : Array[TypeTemplateArgument]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TypeTemplateArgument {
+  Type(TypeExpression)
+  Literal(String)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum UnaryOperator {
+  Negation
+  LogicalNegation
+  BitwiseComplement
+  Indirection
+  AddressOf
+} derive(Eq, @debug.Debug)
+
+pub(all) struct UserInput {
+  location : Int
+  value : UserInputValue
+} derive(Eq, @debug.Debug)
+
+pub(all) enum UserInputValue {
+  Bool(Bool)
+  I32(Int)
+  U32(Int)
+  F32(Double)
+  I32Vector(Array[Int])
+  U32Vector(Array[Int])
+  F32Vector(Array[Double])
+} derive(Eq, @debug.Debug)
+
+pub(all) struct VarDeclaration {
+  name : String?
+  template_arguments : String?
+  type_text : String?
+  type_expr : TypeExpression?
+  initializer : String?
+  initializer_expr : Expression?
+} derive(Eq, @debug.Debug)
+
+pub struct VirtualResolver {
+  files : @hashmap.HashMap[ModulePath, String]
+}
+pub fn VirtualResolver::add_module(Self, ModulePath, String) -> Unit
+pub fn VirtualResolver::add_translation_unit(Self, ModulePath, TranslationUnit) -> Unit
+pub fn VirtualResolver::default() -> Self
+pub fn VirtualResolver::get_module(Self, ModulePath) -> String raise ResolveError
+pub fn VirtualResolver::modules(Self) -> Array[(ModulePath, String)]
+pub fn VirtualResolver::new() -> Self
+pub impl Resolver for VirtualResolver
+
+pub struct Wesl[R] {
+  options : CompileOptions
+  use_sourcemap : Bool
+  resolver : R
+  mangler : ManglerKind
+}
+pub fn Wesl::add_constant(Self[StandardResolver], String, Double) -> Self[StandardResolver]
+pub fn Wesl::add_constants(Self[StandardResolver], Array[(String, Double)]) -> Self[StandardResolver]
+pub fn Wesl::add_package(Self[StandardResolver], CodegenPkg) -> Self[StandardResolver]
+pub fn Wesl::add_packages(Self[StandardResolver], Array[CodegenPkg]) -> Self[StandardResolver]
+pub fn Wesl::add_scanned_package(Self[StandardResolver], Pkg) -> Self[StandardResolver]
+pub fn[R : Resolver] Wesl::build_artifact(Self[R], ModulePath, String, out_dir? : String?) -> Unit raise WeslCompileError
+pub fn[R : Resolver] Wesl::compile(Self[R], ModulePath) -> CompileResult raise WeslCompileError
+pub fn[R : Resolver] Wesl::compile_diagnostic(Self[R], ModulePath) -> CompileResult raise WeslDiagnosticError
+pub fn[R] Wesl::keep_all_entrypoints(Self[R]) -> Self[R]
+pub fn[R] Wesl::keep_declarations(Self[R], Array[String]) -> Self[R]
+pub fn Wesl::new(String) -> Self[StandardResolver]
+pub fn Wesl::new_barebones() -> Self[NoResolver]
+pub fn Wesl::new_experimental(String) -> Self[StandardResolver]
+pub fn Wesl::new_virtual(VirtualResolver) -> Self[VirtualResolver]
+pub fn[R] Wesl::resolver(Self[R]) -> R
+pub fn[R, CustomResolver] Wesl::set_custom_resolver(Self[R], CustomResolver) -> Self[CustomResolver]
+pub fn[R] Wesl::set_feature(Self[R], String, Feature) -> Self[R]
+pub fn[R] Wesl::set_features(Self[R], Array[(String, Feature)]) -> Self[R]
+pub fn[R] Wesl::set_mangler(Self[R], ManglerKind) -> Self[R]
+pub fn[R] Wesl::set_missing_feature_behavior(Self[R], Feature) -> Self[R]
+pub fn[R] Wesl::set_options(Self[R], CompileOptions) -> Self[R]
+pub fn[R] Wesl::unset_feature(Self[R], String) -> Self[R]
+pub fn[R] Wesl::use_condcomp(Self[R], Bool) -> Self[R]
+pub fn[R] Wesl::use_generics(Self[R], Bool) -> Self[R]
+pub fn[R] Wesl::use_imports(Self[R], Bool) -> Self[R]
+pub fn[R] Wesl::use_lower(Self[R], Bool) -> Self[R]
+pub fn[R] Wesl::use_sourcemap(Self[R], Bool) -> Self[R]
+pub fn[R] Wesl::use_stripping(Self[R], Bool) -> Self[R]
+
+pub(all) struct WhileStatement {
+  condition : Expression
+  body : FunctionBody
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+pub(open) trait ModulePreprocessor {
+  fn preprocess_module(Self, ModulePath, TranslationUnit) -> TranslationUnit raise ResolveError
+}
+
+pub(open) trait Resolver {
+  fn resolve_source(Self, ModulePath) -> String raise ResolveError
+  fn resolve_module(Self, ModulePath) -> TranslationUnit raise ResolveError = _
+  fn display_name(Self, ModulePath) -> String? = _
+  fn fs_path(Self, ModulePath) -> String? = _
+}
+
+pub(open) trait SourceMap {
+  fn get_decl(Self, String) -> (ModulePath, String)?
+  fn get_source(Self, ModulePath) -> String?
+  fn get_display_name(Self, ModulePath) -> String?
+  fn get_default_source(Self) -> String? = _
+  fn unmangle_text(Self, String) -> String = _
+}
+

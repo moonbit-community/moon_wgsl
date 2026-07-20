@@ -1,0 +1,19 @@
+%derive<Debug> Token
+%derive<Debug> ParseError
+%position<Int>
+%start<Array[TopLevelItemSpan]> parse_top_level_items
+
+%token<TopLevelItemSpan> ITEM
+
+%type<Array[TopLevelItemSpan]> item_list
+
+%%
+
+parse_top_level_items
+  : item_list                    { $1 }
+  ;
+
+item_list
+  : ITEM                         { [$1] }
+  | item_list ITEM               { $1.push($2); $1 }
+  ;

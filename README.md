@@ -13,6 +13,9 @@ by ownership instead of exposing every internal package through one module.
   export.
 - `Milky2018/moon_wgsl`: thin user-facing facade for ordinary preprocessing and
   composition workflows.
+- `Milky2018/moon_wesl`: incubating WESL module resolution, conditional
+  compilation, and source assembly. It is tested in this workspace but remains
+  outside the synchronized WGSL compatibility release line during migration.
 
 Most users should install `Milky2018/moon_wgsl`. Use the lower-level modules
 only when you need their specific parser, IR, Naga, or naga-oil boundary.
@@ -59,11 +62,16 @@ moon check --target all --deny-warn
 moon test --target all
 ```
 
-Publish all public modules with the synchronized release script:
+Publish the four-module WGSL compatibility line with the synchronized release
+script:
 
 ```bash
 moon run --target js publish.mbtx <version>
 ```
+
+`moon_wesl` depends on `Milky2018/wgsl` for official WGSL parsing and semantic
+validation. It remains versioned and published separately while its first
+replacement release is prepared in this repository.
 
 ## License
 

@@ -1,0 +1,96 @@
+%derive<Debug> Token
+%derive<Debug> ParseError
+%position<Int>
+%start<GlobalParseHeader> parse_global_header
+
+%token<String> IDENT
+%token<String> VAR_TEMPLATE
+%token ATTRIBUTE
+%token FN           "fn"
+%token STRUCT       "struct"
+%token ALIAS        "alias"
+%token CONST        "const"
+%token OVERRIDE     "override"
+%token LET          "let"
+%token VAR          "var"
+%token CONST_ASSERT "const_assert"
+%token ENABLE       "enable"
+%token REQUIRES     "requires"
+%token DIAGNOSTIC   "diagnostic"
+%token OTHER
+
+%type<GlobalParseHeader> parse_global_header
+%type<Unit> attributes
+%type<Unit> tail
+%type<Unit> tail_item
+%type<Unit> other_global
+%type<Unit> other_item
+%type<String?> opt_var_template
+
+%%
+
+parse_global_header
+  : attributes "fn" IDENT tail
+                                 { GlobalParseHeader::Function($3) }
+  | attributes "struct" IDENT tail
+                                 { GlobalParseHeader::Struct($3) }
+  | attributes "alias" IDENT tail
+                                 { GlobalParseHeader::Alias($3) }
+  | attributes "const" IDENT tail
+                                 { GlobalParseHeader::Const($3) }
+  | attributes "override" IDENT tail
+                                 { GlobalParseHeader::Override($3) }
+  | attributes "let" IDENT tail
+                                 { GlobalParseHeader::Let($3) }
+  | attributes "var" opt_var_template IDENT tail
+                                 { GlobalParseHeader::Var(GlobalParseVar::{ name: Some($4), template_arguments: $3 }) }
+  | attributes "const_assert" tail
+                                 { GlobalParseHeader::ConstAssert }
+  | attributes "enable" tail      { GlobalParseHeader::EnableDirective }
+  | attributes "requires" tail    { GlobalParseHeader::RequiresDirective }
+  | attributes "diagnostic" tail  { GlobalParseHeader::DiagnosticDirective }
+  | attributes other_global       { GlobalParseHeader::Other }
+  ;
+
+attributes
+  :                              { () }
+  | attributes ATTRIBUTE          { () }
+  ;
+
+opt_var_template
+  :                              { None }
+  | VAR_TEMPLATE                  { Some($1) }
+  ;
+
+tail
+  :                              { () }
+  | tail tail_item                { () }
+  ;
+
+tail_item
+  : IDENT                         { () }
+  | VAR_TEMPLATE                  { () }
+  | ATTRIBUTE                     { () }
+  | "fn"                          { () }
+  | "struct"                      { () }
+  | "alias"                       { () }
+  | "const"                       { () }
+  | "override"                    { () }
+  | "let"                         { () }
+  | "var"                         { () }
+  | "const_assert"                { () }
+  | "enable"                      { () }
+  | "requires"                    { () }
+  | "diagnostic"                  { () }
+  | OTHER                         { () }
+  ;
+
+other_global
+  : other_item tail               { () }
+  ;
+
+other_item
+  : IDENT                         { () }
+  | VAR_TEMPLATE                  { () }
+  | OTHER                         { () }
+  ;

@@ -87,6 +87,25 @@ jobs:
           moon -C modules/moon_wgsl test --target all
           git diff --exit-code
 
+  wesl-fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- nightly
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Check WESL module
+        run: |
+          moon -C modules/moon_wesl update
+          moon -C modules/moon_wesl fmt
+          moon -C modules/moon_wesl info --target all
+          moon check modules/moon_wesl modules/moon_wesl/cmd/wesl --target all --deny-warn
+          moon test modules/moon_wesl modules/moon_wesl/cmd/wesl modules/moon_wesl/internal/wgsl_validation --target all
+          git diff --exit-code
+
   workspace-integration:
     runs-on: ubuntu-latest
     needs:
@@ -94,6 +113,7 @@ jobs:
       - naga-fast
       - naga-oil-fast
       - facade-fast
+      - wesl-fast
     steps:
       - uses: actions/checkout@v4
         with:

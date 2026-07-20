@@ -1,0 +1,48 @@
+%derive<Debug> Token
+%derive<Debug> ParseError
+%position<Int>
+%start<Array[ImportParseNode]> parse_import_tree
+
+%token<String> IDENT
+%token AS           "as"
+%token DOUBLE_COLON "::"
+%token COMMA        ","
+%token LEFT_BRACE   "{"
+%token RIGHT_BRACE  "}"
+
+%type<Array[ImportParseNode]> parse_import_tree
+%type<Array[ImportParseNode]> import_item_list
+%type<ImportParseNode> import_item
+%type<Array[String]> path_segments
+%type<String?> opt_alias
+
+%%
+
+parse_import_tree
+  : import_item_list             { $1 }
+  | "{" import_item_list "}"     { $2 }
+  ;
+
+import_item_list
+  : import_item                  { [$1] }
+  | import_item_list "," import_item
+                                 { $1.push($3); $1 }
+  | import_item_list ","         { $1 }
+  ;
+
+import_item
+  : path_segments opt_alias
+                                 { ImportParseNode::{ path_segments: $1, rename: $2, children: [] } }
+  | path_segments "::" "{" import_item_list "}"
+                                 { ImportParseNode::{ path_segments: $1, rename: None, children: $4 } }
+  ;
+
+path_segments
+  : IDENT                        { [$1] }
+  | path_segments "::" IDENT     { $1.push($3); $1 }
+  ;
+
+opt_alias
+  :                              { None }
+  | "as" IDENT                   { Some($2) }
+  ;

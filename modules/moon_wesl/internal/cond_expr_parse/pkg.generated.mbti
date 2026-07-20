@@ -1,0 +1,66 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wesl/internal/cond_expr_parse"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse_cond_expr(Array[(Token, Int, Int)], initial_pos? : Int) -> CondExprNode raise ParseError
+
+pub fn parse_cond_expr_source(String) -> CondExprParseResult
+
+// Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct CondExprDiagnostic {
+  offset : Int
+  incomplete : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CondExprNode {
+  Literal(Bool)
+  Feature(String)
+  Not(CondExprNode)
+  And(CondExprNode, CondExprNode)
+  Or(CondExprNode, CondExprNode)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CondExprParseResult {
+  Parsed(CondExprNode)
+  Failed(CondExprDiagnostic)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Token {
+  IDENT(String)
+  TRUE
+  FALSE
+  BANG
+  AMP_AMP
+  PIPE_PIPE
+  LEFT_PAREN
+  RIGHT_PAREN
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_IDENT
+  TK_TRUE
+  TK_FALSE
+  TK_BANG
+  TK_AMP_AMP
+  TK_PIPE_PIPE
+  TK_LEFT_PAREN
+  TK_RIGHT_PAREN
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
+
+// Type aliases
+
+// Traits
+

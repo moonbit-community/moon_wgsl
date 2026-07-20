@@ -1,0 +1,65 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wesl/internal/struct_parse"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse_struct_decl(Array[(Token, Int, Int)], initial_pos? : Int) -> StructParseNode raise ParseError
+
+pub fn parse_struct_source(String) -> StructParseResult
+
+// Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct StructMemberParseNode {
+  name : String
+  type_text : String
+  attributes : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct StructParseDiagnostic {
+  offset : Int
+  incomplete : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct StructParseNode {
+  name : String
+  members : Array[StructMemberParseNode]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum StructParseResult {
+  Parsed(StructParseNode)
+  Failed(StructParseDiagnostic)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Token {
+  IDENT(String)
+  MEMBER(StructMemberParseNode)
+  STRUCT
+  LEFT_BRACE
+  RIGHT_BRACE
+  SEMI
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_IDENT
+  TK_MEMBER
+  TK_STRUCT
+  TK_LEFT_BRACE
+  TK_RIGHT_BRACE
+  TK_SEMI
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
+
+// Type aliases
+
+// Traits
+

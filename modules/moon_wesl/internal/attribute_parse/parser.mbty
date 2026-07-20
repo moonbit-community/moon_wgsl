@@ -1,0 +1,19 @@
+%derive<Debug> Token
+%derive<Debug> ParseError
+%position<Int>
+%start<Array[AttributeParseNode]> parse_attributes
+
+%token<AttributeParseNode> ATTRIBUTE
+
+%type<Array[AttributeParseNode]> attribute_list
+
+%%
+
+parse_attributes
+  : attribute_list               { $1 }
+  ;
+
+attribute_list
+  :                              { [] }
+  | attribute_list ATTRIBUTE     { $1.push($2); $1 }
+  ;

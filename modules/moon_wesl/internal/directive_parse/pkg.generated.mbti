@@ -1,0 +1,69 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wesl/internal/directive_parse"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse_directive(Array[(Token, Int, Int)], initial_pos? : Int) -> DirectiveParseNode raise ParseError
+
+pub fn parse_directive_source(String) -> DirectiveParseResult
+
+// Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct DirectiveParseDiagnostic {
+  offset : Int
+  incomplete : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum DirectiveParseKind {
+  Enable
+  Requires
+  Diagnostic
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DirectiveParseNode {
+  kind : DirectiveParseKind
+  arguments : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum DirectiveParseResult {
+  Parsed(DirectiveParseNode)
+  Failed(DirectiveParseDiagnostic)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Token {
+  ITEM(String)
+  ENABLE
+  REQUIRES
+  DIAGNOSTIC
+  LEFT_PAREN
+  RIGHT_PAREN
+  COMMA
+  SEMI
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_ITEM
+  TK_ENABLE
+  TK_REQUIRES
+  TK_DIAGNOSTIC
+  TK_LEFT_PAREN
+  TK_RIGHT_PAREN
+  TK_COMMA
+  TK_SEMI
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
+
+// Type aliases
+
+// Traits
+

@@ -20,6 +20,35 @@ test "IR validator accepts lowered WGSL module" {
 }
 
 ///|
+test "IR validator rejects integer matrix types" {
+  let source = "const value: mat2x2<i32> = mat2x2<i32>();\n"
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let message = try {
+    validate_wgsl_ir_module(module_)
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"invalid IR type: matrix type must use a floating-point scalar\"",
+  )
+}
+
+///|
+test "IR validator accepts abstract-float matrix constructors" {
+  let source = "const value = mat2x2(1.0, 0.0, 0.0, 1.0);\n"
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+}
+
+///|
 test "IR validator accepts immediate globals" {
   let source =
     #|struct Constants { max_mip_level: u32 }

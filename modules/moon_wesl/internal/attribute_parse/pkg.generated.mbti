@@ -1,0 +1,57 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wesl/internal/attribute_parse"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse_attributes(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[AttributeParseNode] raise ParseError
+
+pub fn parse_attributes_source(String) -> AttributeParseResult
+
+// Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct AttributeParseDiagnostic {
+  offset : Int
+  incomplete : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct AttributeParseNode {
+  name : String
+  arguments : String?
+  start_line : Int
+  end_line : Int
+  end_offset : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum AttributeParseResult {
+  Parsed(AttributeParseSuccess)
+  Failed(AttributeParseDiagnostic)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct AttributeParseSuccess {
+  attributes : Array[AttributeParseNode]
+  consumed_offset : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Token {
+  ATTRIBUTE(AttributeParseNode)
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_ATTRIBUTE
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
+
+// Type aliases
+
+// Traits
+

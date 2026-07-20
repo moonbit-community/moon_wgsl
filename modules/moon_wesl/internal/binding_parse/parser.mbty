@@ -1,0 +1,60 @@
+%derive<Debug> Token
+%derive<Debug> ParseError
+%position<Int>
+%start<BindingParseNode> parse_binding_decl
+
+%token<String> IDENT
+%token<String> VAR_TEMPLATE
+%token<String> TYPE_TEXT
+%token<String> INIT_TEXT
+%token ALIAS    "alias"
+%token CONST    "const"
+%token OVERRIDE "override"
+%token LET      "let"
+%token VAR      "var"
+%token COLON    ":"
+%token EQ       "="
+%token SEMI     ";"
+
+%type<BindingParseKind> binding_kind
+%type<String?> opt_var_template
+%type<String?> opt_type
+%type<String?> opt_init
+%type<Unit> opt_semi
+
+%%
+
+parse_binding_decl
+  : "alias" IDENT "=" TYPE_TEXT opt_semi
+                                  { BindingParseNode::{ kind: BindingParseKind::Alias, name: Some($2), var_template: None, type_text: Some($4), initializer: None } }
+  | binding_kind IDENT opt_type opt_init opt_semi
+                                  { BindingParseNode::{ kind: $1, name: Some($2), var_template: None, type_text: $3, initializer: $4 } }
+  | "var" opt_var_template IDENT opt_type opt_init opt_semi
+                                  { BindingParseNode::{ kind: BindingParseKind::Var, name: Some($3), var_template: $2, type_text: $4, initializer: $5 } }
+  ;
+
+binding_kind
+  : "const"                       { BindingParseKind::Const }
+  | "override"                    { BindingParseKind::Override }
+  | "let"                         { BindingParseKind::Let }
+  ;
+
+opt_var_template
+  :                               { None }
+  | VAR_TEMPLATE                  { Some($1) }
+  ;
+
+opt_type
+  :                               { None }
+  | ":" TYPE_TEXT                 { Some($2) }
+  ;
+
+opt_init
+  :                               { None }
+  | "=" INIT_TEXT                 { Some($2) }
+  ;
+
+opt_semi
+  :                               { () }
+  | ";"                           { () }
+  ;

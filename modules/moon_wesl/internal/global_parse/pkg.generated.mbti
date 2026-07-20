@@ -1,0 +1,92 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wesl/internal/global_parse"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse_global_header(Array[(Token, Int, Int)], initial_pos? : Int) -> GlobalParseHeader raise ParseError
+
+pub fn parse_global_header_source(String) -> GlobalParseResult
+
+// Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct GlobalParseDiagnostic {
+  offset : Int
+  incomplete : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GlobalParseHeader {
+  Function(String)
+  Struct(String)
+  Alias(String)
+  Const(String)
+  Override(String)
+  Let(String)
+  Var(GlobalParseVar)
+  ConstAssert
+  EnableDirective
+  RequiresDirective
+  DiagnosticDirective
+  Other
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GlobalParseResult {
+  Parsed(GlobalParseHeader)
+  Failed(GlobalParseDiagnostic)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GlobalParseVar {
+  name : String?
+  template_arguments : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Token {
+  IDENT(String)
+  VAR_TEMPLATE(String)
+  ATTRIBUTE
+  FN
+  STRUCT
+  ALIAS
+  CONST
+  OVERRIDE
+  LET
+  VAR
+  CONST_ASSERT
+  ENABLE
+  REQUIRES
+  DIAGNOSTIC
+  OTHER
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_IDENT
+  TK_VAR_TEMPLATE
+  TK_ATTRIBUTE
+  TK_FN
+  TK_STRUCT
+  TK_ALIAS
+  TK_CONST
+  TK_OVERRIDE
+  TK_LET
+  TK_VAR
+  TK_CONST_ASSERT
+  TK_ENABLE
+  TK_REQUIRES
+  TK_DIAGNOSTIC
+  TK_OTHER
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
+
+// Type aliases
+
+// Traits
+

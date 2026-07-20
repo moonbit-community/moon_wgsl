@@ -1,0 +1,82 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wesl/internal/binding_parse"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse_binding_decl(Array[(Token, Int, Int)], initial_pos? : Int) -> BindingParseNode raise ParseError
+
+pub fn parse_binding_source(String) -> BindingParseResult
+
+// Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct BindingParseDiagnostic {
+  offset : Int
+  incomplete : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum BindingParseKind {
+  Alias
+  Const
+  Override
+  Let
+  Var
+} derive(Eq, @debug.Debug)
+
+pub(all) struct BindingParseNode {
+  kind : BindingParseKind
+  name : String?
+  var_template : String?
+  type_text : String?
+  initializer : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum BindingParseResult {
+  Parsed(BindingParseNode)
+  Failed(BindingParseDiagnostic)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Token {
+  IDENT(String)
+  VAR_TEMPLATE(String)
+  TYPE_TEXT(String)
+  INIT_TEXT(String)
+  ALIAS
+  CONST
+  OVERRIDE
+  LET
+  VAR
+  COLON
+  EQ
+  SEMI
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_IDENT
+  TK_VAR_TEMPLATE
+  TK_TYPE_TEXT
+  TK_INIT_TEXT
+  TK_ALIAS
+  TK_CONST
+  TK_OVERRIDE
+  TK_LET
+  TK_VAR
+  TK_COLON
+  TK_EQ
+  TK_SEMI
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
+
+// Type aliases
+
+// Traits
+

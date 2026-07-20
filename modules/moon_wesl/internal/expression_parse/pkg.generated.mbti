@@ -1,0 +1,170 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wesl/internal/expression_parse"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse_expression(Array[(Token, Int, Int)], initial_pos? : Int) -> ExpressionParseNode raise ParseError
+
+pub fn parse_expression_source(String) -> ExpressionParseResult
+
+// Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) enum ExpressionBinaryOperator {
+  ShortCircuitOr
+  ShortCircuitAnd
+  BitwiseOr
+  BitwiseXor
+  BitwiseAnd
+  Equality
+  Inequality
+  LessThan
+  LessThanEqual
+  GreaterThan
+  GreaterThanEqual
+  ShiftLeft
+  ShiftRight
+  Addition
+  Subtraction
+  Multiplication
+  Division
+  Remainder
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ExpressionFunctionCallParseNode {
+  callee : ExpressionTypeParseNode
+  arguments : Array[ExpressionParseNode]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ExpressionParseDiagnostic {
+  offset : Int
+  incomplete : Bool
+  message : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ExpressionParseNode {
+  Literal(String)
+  Bool(Bool)
+  TypeOrIdentifier(ExpressionTypeParseNode)
+  Parenthesized(ExpressionParseNode)
+  NamedComponent(ExpressionParseNode, String)
+  Indexing(ExpressionParseNode, ExpressionParseNode)
+  Unary(ExpressionUnaryOperator, ExpressionParseNode)
+  Binary(ExpressionBinaryOperator, ExpressionParseNode, ExpressionParseNode)
+  FunctionCall(ExpressionFunctionCallParseNode)
+} derive(Eq, @debug.Debug)
+pub fn ExpressionParseNode::apply_postfix(Self, ExpressionPostfixSuffix) -> Self
+
+pub(all) enum ExpressionParseResult {
+  Parsed(ExpressionParseNode)
+  Failed(ExpressionParseDiagnostic)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ExpressionPostfixSuffix {
+  NamedComponent(String)
+  Indexing(ExpressionParseNode)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ExpressionTypeParseNode {
+  path : Array[String]
+  ident : String
+  template_text : String?
+} derive(Eq, @debug.Debug)
+pub fn ExpressionTypeParseNode::from_path(Array[String]) -> Self
+pub fn ExpressionTypeParseNode::qualified_child(Self, String) -> Self
+pub fn ExpressionTypeParseNode::with_template(Self, String) -> Self
+
+pub(all) enum ExpressionUnaryOperator {
+  Negation
+  LogicalNegation
+  BitwiseComplement
+  Indirection
+  AddressOf
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Token {
+  IDENT(String)
+  NUMBER(String)
+  TEMPLATE(String)
+  TRUE
+  FALSE
+  LEFT_PAREN
+  RIGHT_PAREN
+  LEFT_BRACKET
+  RIGHT_BRACKET
+  DOT
+  COMMA
+  DOUBLE_COLON
+  LESS
+  LESS_EQUAL
+  SHIFT_LEFT
+  GREATER
+  GREATER_EQUAL
+  SHIFT_RIGHT
+  PLUS
+  MINUS
+  MINUS_MINUS
+  STAR
+  SLASH
+  PERCENT
+  BANG
+  TILDE
+  AMP
+  AMP_AMP
+  PIPE
+  PIPE_PIPE
+  CARET
+  EQUAL_EQUAL
+  BANG_EQUAL
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_IDENT
+  TK_NUMBER
+  TK_TEMPLATE
+  TK_TRUE
+  TK_FALSE
+  TK_LEFT_PAREN
+  TK_RIGHT_PAREN
+  TK_LEFT_BRACKET
+  TK_RIGHT_BRACKET
+  TK_DOT
+  TK_COMMA
+  TK_DOUBLE_COLON
+  TK_LESS
+  TK_LESS_EQUAL
+  TK_SHIFT_LEFT
+  TK_GREATER
+  TK_GREATER_EQUAL
+  TK_SHIFT_RIGHT
+  TK_PLUS
+  TK_MINUS
+  TK_MINUS_MINUS
+  TK_STAR
+  TK_SLASH
+  TK_PERCENT
+  TK_BANG
+  TK_TILDE
+  TK_AMP
+  TK_AMP_AMP
+  TK_PIPE
+  TK_PIPE_PIPE
+  TK_CARET
+  TK_EQUAL_EQUAL
+  TK_BANG_EQUAL
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
+
+// Type aliases
+
+// Traits
+

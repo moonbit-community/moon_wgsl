@@ -1,0 +1,70 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wesl/internal/module_path_parse"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse_module_path(Array[(Token, Int, Int)], initial_pos? : Int) -> ModulePathParseNode raise ParseError
+
+pub fn parse_module_path_source(String) -> ModulePathParseResult
+
+// Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct ModulePathParseDiagnostic {
+  offset : Int
+  problem : ModulePathParseProblem
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ModulePathParseNode {
+  origin : ModulePathParseOrigin
+  components : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ModulePathParseOrigin {
+  Absolute
+  Relative(Int)
+  Package(String)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ModulePathParseProblem {
+  Empty
+  MisplacedPackage
+  MisplacedSelf
+  MisplacedSuper
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ModulePathParseResult {
+  Parsed(ModulePathParseNode)
+  Failed(ModulePathParseDiagnostic)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Token {
+  SEGMENT(String)
+  PACKAGE
+  SELF
+  SUPER
+  DOUBLE_COLON
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_SEGMENT
+  TK_PACKAGE
+  TK_SELF
+  TK_SUPER
+  TK_DOUBLE_COLON
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
+
+// Type aliases
+
+// Traits
+

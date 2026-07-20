@@ -1,0 +1,58 @@
+%derive<Debug> Token
+%derive<Debug> ParseError
+%position<Int>
+%start<ModulePathParseNode> parse_module_path
+
+%token<String> SEGMENT
+%token PACKAGE      "package"
+%token SELF         "self"
+%token SUPER        "super"
+%token DOUBLE_COLON "::"
+
+%type<ModulePathParseNode> absolute_path
+%type<ModulePathParseNode> self_path
+%type<ModulePathParseNode> super_path
+%type<ModulePathParseNode> package_path
+%type<Int> super_prefix
+%type<Array[String]> tail_segments
+%type<Array[String]> segment_list
+
+%%
+
+parse_module_path
+  : absolute_path                { $1 }
+  | self_path                    { $1 }
+  | super_path                   { $1 }
+  | package_path                 { $1 }
+  ;
+
+absolute_path
+  : "package" tail_segments      { ModulePathParseNode::{ origin: ModulePathParseOrigin::Absolute, components: $2 } }
+  ;
+
+self_path
+  : "self" tail_segments         { ModulePathParseNode::{ origin: ModulePathParseOrigin::Relative(0), components: $2 } }
+  ;
+
+super_path
+  : super_prefix tail_segments   { ModulePathParseNode::{ origin: ModulePathParseOrigin::Relative($1), components: $2 } }
+  ;
+
+package_path
+  : SEGMENT tail_segments        { ModulePathParseNode::{ origin: ModulePathParseOrigin::Package($1), components: $2 } }
+  ;
+
+super_prefix
+  : "super"                      { 1 }
+  | super_prefix "::" "super"    { $1 + 1 }
+  ;
+
+tail_segments
+  :                              { [] }
+  | "::" segment_list            { $2 }
+  ;
+
+segment_list
+  : SEGMENT                      { [$1] }
+  | segment_list "::" SEGMENT    { $1.push($3); $1 }
+  ;

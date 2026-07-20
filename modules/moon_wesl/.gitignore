@@ -1,0 +1,6 @@
+.DS_Store
+_build/
+.mooncakes/
+.moonagent/
+tools/wesl-ref-runner/target/
+*.mbt.map.json

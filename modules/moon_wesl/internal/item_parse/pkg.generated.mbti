@@ -1,0 +1,49 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wesl/internal/item_parse"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse_top_level_items(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[TopLevelItemSpan] raise ParseError
+
+pub fn parse_top_level_items_source(String) -> TopLevelItemParseResult
+
+// Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) enum Token {
+  ITEM(TopLevelItemSpan)
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_ITEM
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
+
+pub(all) struct TopLevelItemDiagnostic {
+  offset : Int
+  incomplete : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TopLevelItemParseResult {
+  Parsed(Array[TopLevelItemSpan])
+  Failed(TopLevelItemDiagnostic)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TopLevelItemSpan {
+  start_offset : Int
+  end_offset : Int
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

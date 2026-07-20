@@ -8,7 +8,9 @@ No ready issues.
 
 ## Unresolved Issues
 
-No unresolved issues.
+| ID | Status | Priority | Type | Assignee | Blocked by | Blocks | Title |
+| --- | --- | ---: | --- | --- | --- | --- | --- |
+| [ISS-043](ISS-043.md) | in_progress | 1 | task | agent | none | none | Integrate moon_wesl behind the WGSL Core boundary |
 
 ## Dependency Graph
 
@@ -56,6 +58,7 @@ graph TD
   ISS_040["ISS-040: Internalize naga-oil implementation packages"]
   ISS_041["ISS-041: Replace writer symlinks with explicit neutral ownership"]
   ISS_042["ISS-042: Complete migration documentation and architecture proof"]
+  ISS_043["ISS-043: Integrate moon_wesl behind the WGSL Core boundary"]
   ISS_002 --> ISS_003
   ISS_006 --> ISS_003
   ISS_003 --> ISS_004

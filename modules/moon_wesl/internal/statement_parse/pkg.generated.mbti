@@ -1,0 +1,79 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wesl/internal/statement_parse"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse_function_body(Array[(Token, Int, Int)], initial_pos? : Int) -> FunctionBodyParseNode raise ParseError
+
+pub fn parse_function_body_source(String) -> StatementParseResult
+
+// Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct FunctionBodyParseNode {
+  statements : Array[StatementParseNode]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct StatementParseDiagnostic {
+  offset : Int
+  incomplete : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum StatementParseKind {
+  Empty
+  Block
+  Return
+  Discard
+  If
+  Switch
+  Loop
+  For
+  While
+  Continuing
+  Break
+  Continue
+  BreakIf
+  ConstAssert
+  Const
+  Let
+  Var
+  Assignment
+  CompoundAssignment
+  Increment
+  Decrement
+  Call
+  Other
+} derive(Eq, @debug.Debug)
+
+pub(all) struct StatementParseNode {
+  kind : StatementParseKind
+  source : String
+} derive(Eq, @debug.Debug)
+
+pub(all) enum StatementParseResult {
+  Parsed(FunctionBodyParseNode)
+  Failed(StatementParseDiagnostic)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Token {
+  STATEMENT(StatementParseNode)
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_STATEMENT
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
+
+// Type aliases
+
+// Traits
+

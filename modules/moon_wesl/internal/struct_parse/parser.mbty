@@ -1,0 +1,31 @@
+%derive<Debug> Token
+%derive<Debug> ParseError
+%position<Int>
+%start<StructParseNode> parse_struct_decl
+
+%token<String> IDENT
+%token<StructMemberParseNode> MEMBER
+%token STRUCT      "struct"
+%token LEFT_BRACE  "{"
+%token RIGHT_BRACE "}"
+%token SEMI        ";"
+
+%type<Array[StructMemberParseNode]> members
+%type<Unit> opt_semi
+
+%%
+
+parse_struct_decl
+  : "struct" IDENT "{" members "}" opt_semi
+                                { StructParseNode::{ name: $2, members: $4 } }
+  ;
+
+members
+  :                             { [] }
+  | members MEMBER              { $1.push($2); $1 }
+  ;
+
+opt_semi
+  :                             { () }
+  | ";"                         { () }
+  ;

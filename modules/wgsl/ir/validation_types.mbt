@@ -24,6 +24,7 @@ fn WgslIrValidator::validate_type_inner(
         self.require_type(struct_member.ty)
       }
     Atomic(scalar) => self.validate_atomic_scalar(scalar)
+    Matrix(_, _, scalar) => self.validate_matrix_scalar(scalar)
     _ => ()
   }
 }
@@ -144,6 +145,17 @@ fn WgslIrValidator::validate_atomic_scalar(
   ignore(self)
   if !(scalar.kind == Sint || scalar.kind == Uint) || scalar.width != 4 {
     raise InvalidType("atomic type must use i32 or u32 scalar")
+  }
+}
+
+///|
+fn WgslIrValidator::validate_matrix_scalar(
+  self : WgslIrValidator,
+  scalar : Scalar,
+) -> Unit raise WgslIrValidationError {
+  ignore(self)
+  if scalar.kind != Float && scalar.kind != AbstractFloat {
+    raise InvalidType("matrix type must use a floating-point scalar")
   }
 }
 
