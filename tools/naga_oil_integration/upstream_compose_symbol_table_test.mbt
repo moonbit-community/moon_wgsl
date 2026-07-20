@@ -53,7 +53,7 @@ test "github issue 12: transitive tonemapping type identity is reused" {
   )
   let source = composer.compose_wgsl(
     "pbr.wgsl",
-    upstream_parity_compose_options(upstream_parity_empty_defines()),
+    compose_regression_options(compose_regression_empty_defines()),
   ) catch {
     err => abort("expected issue 12 compose success: \{err.message()}")
   }
@@ -94,7 +94,7 @@ test "composer symbol table: parent alias does not expose transitive imports" {
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_compose_options(upstream_parity_empty_defines()),
+    compose_regression_options(compose_regression_empty_defines()),
   ) catch {
     err =>
       abort(
@@ -126,7 +126,7 @@ test "composer symbol table: direct item emit creates local unqualified binding"
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_compose_options(upstream_parity_empty_defines()),
+    compose_regression_options(compose_regression_empty_defines()),
   ) catch {
     err =>
       abort("expected direct item binding compose success: \{err.message()}")
@@ -177,7 +177,7 @@ test "github issue 6: transitive nested module alias rewrites imported binding t
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_compose_options(upstream_parity_empty_defines()),
+    compose_regression_options(compose_regression_empty_defines()),
   ) catch {
     err =>
       abort(
@@ -197,7 +197,7 @@ test "github issue 6: transitive nested module alias rewrites imported binding t
   )
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(
-    upstream_parity_count_occurrences(source, "viewX_naga_oil_mod_X") > 0,
+    compose_regression_count_occurrences(source, "viewX_naga_oil_mod_X") > 0,
     content="true",
   )
 }
@@ -215,7 +215,7 @@ test "github issue 6: root local defines are stripped from final composed WGSL" 
   )
   let source = composer.compose_wgsl(
     "root_define.wgsl",
-    upstream_parity_compose_options(upstream_parity_empty_defines()),
+    compose_regression_options(compose_regression_empty_defines()),
   ) catch {
     err => abort("expected root-local define compose success: \{err.message()}")
   }
@@ -247,7 +247,7 @@ test "composer symbol table: partial import keeps alias-qualified type dependenc
   )
   let source = composer.compose_wgsl(
     "consumer.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort(
@@ -295,7 +295,7 @@ test "composer symbol table: nested full-module alias keeps transitive alias typ
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort(
@@ -339,7 +339,7 @@ test "composer symbol table: partial import keeps alias-qualified function depen
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort(
@@ -389,7 +389,7 @@ test "composer symbol table: grouped partial import keeps alias-qualified functi
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort(
@@ -435,7 +435,7 @@ test "composer symbol table: partial import keeps nested alias-qualified functio
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort(
@@ -484,7 +484,7 @@ test "composer symbol table: partial import keeps trailing-underscore alias depe
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort(
@@ -534,7 +534,7 @@ test "composer symbol table: grouped long-path alias keeps trailing-underscore d
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort(
@@ -575,7 +575,7 @@ test "composer symbol table: local global shadows same-name unqualified import b
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort("expected local global shadowing compose success: \{err.message()}")
@@ -604,7 +604,7 @@ test "composer symbol table: default module alias rewrites qualified function re
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort(
@@ -652,7 +652,7 @@ test "composer symbol table: alias partial module keeps alias-qualified global t
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort(
@@ -700,7 +700,7 @@ test "composer symbol table: direct default import and nested alias share typed 
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort(
@@ -762,7 +762,7 @@ test "composer symbol table: transitive default alias keeps sibling alias type d
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort(
@@ -806,7 +806,7 @@ test "composer symbol table: unqualified item import rewrites item sharing modul
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort("expected same-leaf item import compose success: \{err.message()}")
@@ -844,7 +844,7 @@ test "composer symbol table: imported module may use unqualified item sharing it
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort(
@@ -885,7 +885,7 @@ test "composer symbol table: imported module rewrites unqualified resource shari
   )
   let source = composer.compose_wgsl(
     "root.wgsl",
-    upstream_parity_empty_compose_options(),
+    compose_regression_empty_options(),
   ) catch {
     err =>
       abort("expected same-alias resource compose success: \{err.message()}")

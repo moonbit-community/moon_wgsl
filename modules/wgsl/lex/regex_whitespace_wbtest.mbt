@@ -17,7 +17,7 @@ test "naga_oil regex whitespace matches representative Unicode spaces" {
 }
 
 ///|
-test "naga_oil tokenizer uses Rust whitespace for imports" {
+test "naga_oil tokenizer accepts Unicode whitespace in imports" {
   let tokens = tokenize("a\u{00A0}b\u{2003}c", false)
   debug_inspect(tokens.length(), content="3")
   debug_inspect(tokens[0].identifier_text(), content="Some(\"a\")")

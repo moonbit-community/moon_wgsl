@@ -1,9 +1,0 @@
-[package]
-name = "naga_oil_oracle"
-version = "0.1.0"
-edition = "2021"
-publish = false
-
-[dependencies]
-naga = { version = "29", features = ["wgsl-in", "wgsl-out"] }
-naga_oil = { git = "https://github.com/bevyengine/naga_oil", rev = "bc444c82bb593ede94c55cdbf799e9743800843e", default-features = false, features = ["glsl"] }

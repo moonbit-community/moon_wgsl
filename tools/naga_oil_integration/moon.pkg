@@ -6,10 +6,3 @@ import {
   "Milky2018/moon_wgsl_tools/wgsl_io",
   "moonbitlang/x/fs",
 } for "test"
-
-import {
-  "Milky2018/moon_wgsl_naga_oil/preprocess",
-  "Milky2018/moon_wgsl_tools/wgsl_io",
-  "Milky2018/wgsl/parser",
-  "moonbitlang/x/fs",
-} for "wbtest"

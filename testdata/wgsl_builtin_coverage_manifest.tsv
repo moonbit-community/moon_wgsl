@@ -1,162 +1,162 @@
 # builtin	category	corpus_id	required_stage	token	notes
-abs	numeric	ir-builtin-numeric-fragment	naga-ir	abs	Official numeric builtin covered by IR roundtrip plus Naga validation.
-acos	numeric	ir-builtin-numeric-fragment	naga-ir	acos	Official numeric builtin covered by IR roundtrip plus Naga validation.
-acosh	numeric	ir-builtin-numeric-fragment	naga-ir	acosh	Official numeric builtin covered by IR roundtrip plus Naga validation.
-all	relational	ir-builtin-numeric-fragment	naga-ir	all	Official relational builtin covered by IR roundtrip plus Naga validation.
-any	relational	ir-builtin-numeric-fragment	naga-ir	any	Official relational builtin covered by IR roundtrip plus Naga validation.
-asin	numeric	ir-builtin-numeric-fragment	naga-ir	asin	Official numeric builtin covered by IR roundtrip plus Naga validation.
-asinh	numeric	ir-builtin-numeric-fragment	naga-ir	asinh	Official numeric builtin covered by IR roundtrip plus Naga validation.
-atan	numeric	ir-builtin-numeric-fragment	naga-ir	atan	Official numeric builtin covered by IR roundtrip plus Naga validation.
-atan2	numeric	ir-builtin-numeric-fragment	naga-ir	atan2	Official numeric builtin covered by IR roundtrip plus Naga validation.
-atanh	numeric	ir-builtin-numeric-fragment	naga-ir	atanh	Official numeric builtin covered by IR roundtrip plus Naga validation.
-atomicAdd	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicAdd	Official atomic builtin covered by IR roundtrip plus Naga validation.
-atomicAnd	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicAnd	Official atomic builtin covered by IR roundtrip plus Naga validation.
-atomicCompareExchangeWeak	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicCompareExchangeWeak	Official atomic builtin covered by IR roundtrip plus Naga validation.
-atomicExchange	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicExchange	Official atomic builtin covered by IR roundtrip plus Naga validation.
-atomicLoad	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicLoad	Official atomic builtin covered by IR roundtrip plus Naga validation.
-atomicMax	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicMax	Official atomic builtin covered by IR roundtrip plus Naga validation.
-atomicMin	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicMin	Official atomic builtin covered by IR roundtrip plus Naga validation.
-atomicOr	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicOr	Official atomic builtin covered by IR roundtrip plus Naga validation.
-atomicStore	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicStore	Official atomic builtin covered by IR roundtrip plus Naga validation.
-atomicSub	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicSub	Official atomic builtin covered by IR roundtrip plus Naga validation.
-atomicXor	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicXor	Official atomic builtin covered by IR roundtrip plus Naga validation.
-ceil	numeric	ir-builtin-numeric-fragment	naga-ir	ceil	Official numeric builtin covered by IR roundtrip plus Naga validation.
-clamp	numeric	ir-builtin-numeric-fragment	naga-ir	clamp	Official numeric builtin covered by IR roundtrip plus Naga validation.
-cos	numeric	ir-builtin-numeric-fragment	naga-ir	cos	Official numeric builtin covered by IR roundtrip plus Naga validation.
-cosh	numeric	ir-builtin-numeric-fragment	naga-ir	cosh	Official numeric builtin covered by IR roundtrip plus Naga validation.
-countLeadingZeros	integer	ir-builtin-integer-compute	naga-ir	countLeadingZeros	Official integer builtin covered by IR roundtrip plus Naga validation.
-countOneBits	integer	ir-builtin-integer-compute	naga-ir	countOneBits	Official integer builtin covered by IR roundtrip plus Naga validation.
-countTrailingZeros	integer	ir-builtin-integer-compute	naga-ir	countTrailingZeros	Official integer builtin covered by IR roundtrip plus Naga validation.
-cross	numeric	ir-builtin-numeric-fragment	naga-ir	cross	Official numeric builtin covered by IR roundtrip plus Naga validation.
-degrees	numeric	ir-builtin-numeric-fragment	naga-ir	degrees	Official numeric builtin covered by IR roundtrip plus Naga validation.
-determinant	numeric	ir-builtin-numeric-fragment	naga-ir	determinant	Official matrix builtin covered by IR roundtrip plus Naga validation.
-distance	numeric	ir-builtin-numeric-fragment	naga-ir	distance	Official numeric builtin covered by IR roundtrip plus Naga validation.
-dot	numeric	ir-builtin-numeric-fragment	naga-ir	dot	Official numeric builtin covered by IR roundtrip plus Naga validation.
-dot4I8Packed	integer	ir-builtin-integer-compute	naga-ir	dot4I8Packed	Official packed integer builtin covered by IR roundtrip plus Naga validation.
-dot4U8Packed	integer	ir-builtin-integer-compute	naga-ir	dot4U8Packed	Official packed integer builtin covered by IR roundtrip plus Naga validation.
-dpdx	derivative	ir-builtin-numeric-fragment	naga-ir	dpdx	Official derivative builtin covered by IR roundtrip plus Naga validation.
-dpdxCoarse	derivative	ir-builtin-numeric-fragment	naga-ir	dpdxCoarse	Official derivative builtin covered by IR roundtrip plus Naga validation.
-dpdxFine	derivative	ir-builtin-numeric-fragment	naga-ir	dpdxFine	Official derivative builtin covered by IR roundtrip plus Naga validation.
-dpdy	derivative	ir-builtin-numeric-fragment	naga-ir	dpdy	Official derivative builtin covered by IR roundtrip plus Naga validation.
-dpdyCoarse	derivative	ir-builtin-numeric-fragment	naga-ir	dpdyCoarse	Official derivative builtin covered by IR roundtrip plus Naga validation.
-dpdyFine	derivative	ir-builtin-numeric-fragment	naga-ir	dpdyFine	Official derivative builtin covered by IR roundtrip plus Naga validation.
-exp	numeric	ir-builtin-numeric-fragment	naga-ir	exp	Official numeric builtin covered by IR roundtrip plus Naga validation.
-exp2	numeric	ir-builtin-numeric-fragment	naga-ir	exp2	Official numeric builtin covered by IR roundtrip plus Naga validation.
-extractBits	integer	ir-builtin-integer-compute	naga-ir	extractBits	Official integer builtin covered by IR roundtrip plus Naga validation.
-faceForward	numeric	ir-builtin-numeric-fragment	naga-ir	faceForward	Official numeric builtin covered by IR roundtrip plus Naga validation.
-firstLeadingBit	integer	ir-builtin-integer-compute	naga-ir	firstLeadingBit	Official integer builtin covered by IR roundtrip plus Naga validation.
-firstTrailingBit	integer	ir-builtin-integer-compute	naga-ir	firstTrailingBit	Official integer builtin covered by IR roundtrip plus Naga validation.
-floor	numeric	ir-builtin-numeric-fragment	naga-ir	floor	Official numeric builtin covered by IR roundtrip plus Naga validation.
-fma	numeric	ir-builtin-numeric-fragment	naga-ir	fma	Official numeric builtin covered by IR roundtrip plus Naga validation.
-fract	numeric	ir-builtin-numeric-fragment	naga-ir	fract	Official numeric builtin covered by IR roundtrip plus Naga validation.
-frexp	numeric	ir-builtin-numeric-fragment	naga-ir	frexp	Official numeric builtin covered by IR roundtrip plus Naga validation.
-fwidth	derivative	ir-builtin-numeric-fragment	naga-ir	fwidth	Official derivative builtin covered by IR roundtrip plus Naga validation.
-fwidthCoarse	derivative	ir-builtin-numeric-fragment	naga-ir	fwidthCoarse	Official derivative builtin covered by IR roundtrip plus Naga validation.
-fwidthFine	derivative	ir-builtin-numeric-fragment	naga-ir	fwidthFine	Official derivative builtin covered by IR roundtrip plus Naga validation.
-insertBits	integer	ir-builtin-integer-compute	naga-ir	insertBits	Official integer builtin covered by IR roundtrip plus Naga validation.
-inverse	numeric	ir-builtin-oracle-blocked-fragment	ir	inverse	Lowerer-known builtin covered by IR while pinned Naga validation lacks this capability.
-inverseSqrt	numeric	ir-builtin-numeric-fragment	naga-ir	inverseSqrt	Official numeric builtin covered by IR roundtrip plus Naga validation.
-isInf	relational	ir-builtin-oracle-blocked-fragment	ir	isInf	Lowerer-known builtin covered by IR while pinned Naga validation lacks this capability.
-isNan	relational	ir-builtin-oracle-blocked-fragment	ir	isNan	Lowerer-known builtin covered by IR while pinned Naga validation lacks this capability.
-ldexp	numeric	ir-builtin-numeric-fragment	naga-ir	ldexp	Official numeric builtin covered by IR roundtrip plus Naga validation.
-length	numeric	ir-builtin-numeric-fragment	naga-ir	length	Official numeric builtin covered by IR roundtrip plus Naga validation.
-log	numeric	ir-builtin-numeric-fragment	naga-ir	log	Official numeric builtin covered by IR roundtrip plus Naga validation.
-log2	numeric	ir-builtin-numeric-fragment	naga-ir	log2	Official numeric builtin covered by IR roundtrip plus Naga validation.
-max	numeric	ir-builtin-numeric-fragment	naga-ir	max	Official numeric builtin covered by IR roundtrip plus Naga validation.
-min	numeric	ir-builtin-numeric-fragment	naga-ir	min	Official numeric builtin covered by IR roundtrip plus Naga validation.
-mix	numeric	ir-builtin-numeric-fragment	naga-ir	mix	Official numeric builtin covered by IR roundtrip plus Naga validation.
-modf	numeric	ir-builtin-numeric-fragment	naga-ir	modf	Official numeric builtin covered by IR roundtrip plus Naga validation.
-normalize	numeric	ir-builtin-numeric-fragment	naga-ir	normalize	Official numeric builtin covered by IR roundtrip plus Naga validation.
-pack2x16float	integer	ir-builtin-oracle-blocked-fragment	ir	pack2x16float	Lowerer-known builtin covered by IR while pinned Naga validation lacks this capability.
-pack2x16snorm	integer	ir-builtin-integer-compute	naga-ir	pack2x16snorm	Official packed builtin covered by IR roundtrip plus Naga validation.
-pack2x16unorm	integer	ir-builtin-integer-compute	naga-ir	pack2x16unorm	Official packed builtin covered by IR roundtrip plus Naga validation.
-pack4x8snorm	integer	ir-builtin-integer-compute	naga-ir	pack4x8snorm	Official packed builtin covered by IR roundtrip plus Naga validation.
-pack4x8unorm	integer	ir-builtin-integer-compute	naga-ir	pack4x8unorm	Official packed builtin covered by IR roundtrip plus Naga validation.
-pack4xI8	integer	ir-builtin-integer-compute	naga-ir	pack4xI8	Official packed integer builtin covered by IR roundtrip plus Naga validation.
-pack4xI8Clamp	integer	ir-builtin-integer-compute	naga-ir	pack4xI8Clamp	Official packed integer builtin covered by IR roundtrip plus Naga validation.
-pack4xU8	integer	ir-builtin-integer-compute	naga-ir	pack4xU8	Official packed integer builtin covered by IR roundtrip plus Naga validation.
-pack4xU8Clamp	integer	ir-builtin-integer-compute	naga-ir	pack4xU8Clamp	Official packed integer builtin covered by IR roundtrip plus Naga validation.
-pow	numeric	ir-builtin-numeric-fragment	naga-ir	pow	Official numeric builtin covered by IR roundtrip plus Naga validation.
-quantizeToF16	numeric	ir-builtin-oracle-blocked-fragment	ir	quantizeToF16	Lowerer-known builtin covered by IR while pinned Naga validation lacks this capability.
-radians	numeric	ir-builtin-numeric-fragment	naga-ir	radians	Official numeric builtin covered by IR roundtrip plus Naga validation.
-reflect	numeric	ir-builtin-numeric-fragment	naga-ir	reflect	Official numeric builtin covered by IR roundtrip plus Naga validation.
-refract	numeric	ir-builtin-numeric-fragment	naga-ir	refract	Official numeric builtin covered by IR roundtrip plus Naga validation.
-reverseBits	integer	ir-builtin-integer-compute	naga-ir	reverseBits	Official integer builtin covered by IR roundtrip plus Naga validation.
-round	numeric	ir-builtin-numeric-fragment	naga-ir	round	Official numeric builtin covered by IR roundtrip plus Naga validation.
-saturate	numeric	ir-builtin-numeric-fragment	naga-ir	saturate	Official numeric builtin covered by IR roundtrip plus Naga validation.
-sign	numeric	ir-builtin-numeric-fragment	naga-ir	sign	Official numeric builtin covered by IR roundtrip plus Naga validation.
-sin	numeric	ir-builtin-numeric-fragment	naga-ir	sin	Official numeric builtin covered by IR roundtrip plus Naga validation.
-sinh	numeric	ir-builtin-numeric-fragment	naga-ir	sinh	Official numeric builtin covered by IR roundtrip plus Naga validation.
-smoothstep	numeric	ir-builtin-numeric-fragment	naga-ir	smoothstep	Official numeric builtin covered by IR roundtrip plus Naga validation.
-sqrt	numeric	ir-builtin-numeric-fragment	naga-ir	sqrt	Official numeric builtin covered by IR roundtrip plus Naga validation.
-step	numeric	ir-builtin-numeric-fragment	naga-ir	step	Official numeric builtin covered by IR roundtrip plus Naga validation.
-tan	numeric	ir-builtin-numeric-fragment	naga-ir	tan	Official numeric builtin covered by IR roundtrip plus Naga validation.
-tanh	numeric	ir-builtin-numeric-fragment	naga-ir	tanh	Official numeric builtin covered by IR roundtrip plus Naga validation.
-transpose	numeric	ir-builtin-numeric-fragment	naga-ir	transpose	Official matrix builtin covered by IR roundtrip plus Naga validation.
-trunc	numeric	ir-builtin-numeric-fragment	naga-ir	trunc	Official numeric builtin covered by IR roundtrip plus Naga validation.
-unpack2x16float	integer	ir-builtin-oracle-blocked-fragment	ir	unpack2x16float	Lowerer-known builtin covered by IR while pinned Naga validation lacks this capability.
-unpack2x16snorm	integer	ir-builtin-integer-compute	naga-ir	unpack2x16snorm	Official packed builtin covered by IR roundtrip plus Naga validation.
-unpack2x16unorm	integer	ir-builtin-integer-compute	naga-ir	unpack2x16unorm	Official packed builtin covered by IR roundtrip plus Naga validation.
-unpack4x8snorm	integer	ir-builtin-integer-compute	naga-ir	unpack4x8snorm	Official packed builtin covered by IR roundtrip plus Naga validation.
-unpack4x8unorm	integer	ir-builtin-integer-compute	naga-ir	unpack4x8unorm	Official packed builtin covered by IR roundtrip plus Naga validation.
-unpack4xI8	integer	ir-builtin-integer-compute	naga-ir	unpack4xI8	Official packed integer builtin covered by IR roundtrip plus Naga validation.
-unpack4xU8	integer	ir-builtin-integer-compute	naga-ir	unpack4xU8	Official packed integer builtin covered by IR roundtrip plus Naga validation.
-arrayLength	storage	generated-storage-array-length-ir	naga-ir	arrayLength	Storage runtime-array builtin covered by IR roundtrip plus Naga validation.
-rayQueryConfirmIntersection	ray-query	ir-builtin-ray-query	naga-ir	rayQueryConfirmIntersection	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
-rayQueryGenerateIntersection	ray-query	ir-builtin-ray-query	naga-ir	rayQueryGenerateIntersection	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
-rayQueryGetCandidateIntersection	ray-query	ir-builtin-ray-query	naga-ir	rayQueryGetCandidateIntersection	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
-rayQueryGetCommittedIntersection	ray-query	ir-builtin-ray-query	naga-ir	rayQueryGetCommittedIntersection	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
-getCandidateHitVertexPositions	ray-query	ir-builtin-ray-query	naga-ir	getCandidateHitVertexPositions	Ray query vertex-return builtin covered by IR roundtrip and Naga validation.
-getCommittedHitVertexPositions	ray-query	ir-builtin-ray-query	naga-ir	getCommittedHitVertexPositions	Ray query vertex-return builtin covered by IR roundtrip and Naga validation.
-rayQueryInitialize	ray-query	ir-builtin-ray-query	naga-ir	rayQueryInitialize	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
-rayQueryProceed	ray-query	ir-builtin-ray-query	naga-ir	rayQueryProceed	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
-rayQueryTerminate	ray-query	ir-builtin-ray-query	naga-ir	rayQueryTerminate	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
-storageBarrier	barrier	ir-builtin-atomic-barrier-compute	naga-ir	storageBarrier	Official memory barrier builtin covered by IR roundtrip plus Naga validation.
-subgroupBarrier	barrier	ir-builtin-oracle-blocked-fragment	ir	subgroupBarrier	Lowerer-known subgroup barrier covered by IR while pinned Naga validation lacks the needed capability.
-textureBarrier	barrier	ir-builtin-atomic-barrier-compute	naga-ir	textureBarrier	Official memory barrier builtin covered by IR roundtrip plus Naga validation.
-textureDimensions	texture	ir-advanced-texture-fragment	naga-ir	textureDimensions	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureGather	texture	ir-advanced-texture-fragment	naga-ir	textureGather	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureGatherCompare	texture	ir-advanced-texture-fragment	naga-ir	textureGatherCompare	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureLoad	texture	ir-texture-load-queries-compute	naga-ir	textureLoad	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureNumLayers	texture	ir-texture-load-queries-compute	naga-ir	textureNumLayers	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureNumLevels	texture	ir-advanced-texture-fragment	naga-ir	textureNumLevels	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureNumSamples	texture	ir-texture-load-queries-compute	naga-ir	textureNumSamples	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureSample	texture	ir-advanced-texture-fragment	naga-ir	textureSample	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureSampleBaseClampToEdge	texture	ir-advanced-texture-fragment	naga-ir	textureSampleBaseClampToEdge	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureSampleBias	texture	ir-advanced-texture-fragment	naga-ir	textureSampleBias	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureSampleCompare	texture	ir-advanced-texture-fragment	naga-ir	textureSampleCompare	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureSampleCompareLevel	texture	ir-advanced-texture-fragment	naga-ir	textureSampleCompareLevel	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureSampleGrad	texture	ir-advanced-texture-fragment	naga-ir	textureSampleGrad	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureSampleLevel	texture	ir-advanced-texture-fragment	naga-ir	textureSampleLevel	Official texture builtin covered by IR roundtrip plus Naga validation.
-textureStore	texture	ir-texture-compute	naga-ir	textureStore	Official texture store builtin covered by IR roundtrip plus Naga validation.
-textureAtomicAdd	texture	ir-texture-atomic-compute	naga-ir	textureAtomicAdd	Storage texture atomic builtin covered by IR roundtrip plus Naga validation with texture-atomic capability.
-textureAtomicAnd	texture	ir-texture-atomic-compute	naga-ir	textureAtomicAnd	Storage texture atomic builtin covered by IR roundtrip plus Naga validation with texture-atomic capability.
-textureAtomicMax	texture	ir-texture-atomic-compute	naga-ir	textureAtomicMax	Storage texture atomic builtin covered by IR roundtrip plus Naga validation with texture-atomic capability.
-textureAtomicMin	texture	ir-texture-atomic-compute	naga-ir	textureAtomicMin	Storage texture atomic builtin covered by IR roundtrip plus Naga validation with texture-atomic capability.
-textureAtomicOr	texture	ir-texture-atomic-compute	naga-ir	textureAtomicOr	Storage texture atomic builtin covered by IR roundtrip plus Naga validation with texture-atomic capability.
-textureAtomicXor	texture	ir-texture-atomic-compute	naga-ir	textureAtomicXor	Storage texture atomic builtin covered by IR roundtrip plus Naga validation with texture-atomic capability.
-workgroupBarrier	barrier	ir-builtin-atomic-barrier-compute	naga-ir	workgroupBarrier	Official control barrier builtin covered by IR roundtrip plus Naga validation.
-subgroupAdd	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupAdd	Subgroup arithmetic builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupAll	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupAll	Subgroup vote builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupAnd	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupAnd	Subgroup bitwise builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupAny	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupAny	Subgroup vote builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupBallot	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupBallot	Subgroup ballot builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupBroadcast	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupBroadcast	Subgroup gather builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupBroadcastFirst	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupBroadcastFirst	Subgroup gather builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupExclusiveAdd	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupExclusiveAdd	Subgroup scan builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupExclusiveMul	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupExclusiveMul	Subgroup scan builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupInclusiveAdd	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupInclusiveAdd	Subgroup scan builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupInclusiveMul	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupInclusiveMul	Subgroup scan builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupMax	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupMax	Subgroup arithmetic builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupMin	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupMin	Subgroup arithmetic builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupMul	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupMul	Subgroup arithmetic builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupOr	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupOr	Subgroup bitwise builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupShuffle	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupShuffle	Subgroup shuffle builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupShuffleDown	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupShuffleDown	Subgroup shuffle builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupShuffleUp	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupShuffleUp	Subgroup shuffle builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupShuffleXor	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupShuffleXor	Subgroup shuffle builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-subgroupXor	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupXor	Subgroup bitwise builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-quadBroadcast	subgroup	ir-builtin-subgroup-compute	naga-ir	quadBroadcast	Quad subgroup builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-quadSwapDiagonal	subgroup	ir-builtin-subgroup-compute	naga-ir	quadSwapDiagonal	Quad subgroup builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-quadSwapX	subgroup	ir-builtin-subgroup-compute	naga-ir	quadSwapX	Quad subgroup builtin covered by IR roundtrip plus Naga validation with subgroup capability.
-quadSwapY	subgroup	ir-builtin-subgroup-compute	naga-ir	quadSwapY	Quad subgroup builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+abs	numeric	ir-builtin-numeric-fragment	ir	abs	abs is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+acos	numeric	ir-builtin-numeric-fragment	ir	acos	acos is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+acosh	numeric	ir-builtin-numeric-fragment	ir	acosh	acosh is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+all	relational	ir-builtin-numeric-fragment	ir	all	all is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+any	relational	ir-builtin-numeric-fragment	ir	any	any is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+asin	numeric	ir-builtin-numeric-fragment	ir	asin	asin is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+asinh	numeric	ir-builtin-numeric-fragment	ir	asinh	asinh is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+atan	numeric	ir-builtin-numeric-fragment	ir	atan	atan is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+atan2	numeric	ir-builtin-numeric-fragment	ir	atan2	atan2 is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+atanh	numeric	ir-builtin-numeric-fragment	ir	atanh	atanh is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+atomicAdd	atomic	ir-builtin-atomic-barrier-compute	ir	atomicAdd	atomicAdd is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+atomicAnd	atomic	ir-builtin-atomic-barrier-compute	ir	atomicAnd	atomicAnd is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+atomicCompareExchangeWeak	atomic	ir-builtin-atomic-barrier-compute	ir	atomicCompareExchangeWeak	atomicCompareExchangeWeak is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+atomicExchange	atomic	ir-builtin-atomic-barrier-compute	ir	atomicExchange	atomicExchange is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+atomicLoad	atomic	ir-builtin-atomic-barrier-compute	ir	atomicLoad	atomicLoad is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+atomicMax	atomic	ir-builtin-atomic-barrier-compute	ir	atomicMax	atomicMax is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+atomicMin	atomic	ir-builtin-atomic-barrier-compute	ir	atomicMin	atomicMin is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+atomicOr	atomic	ir-builtin-atomic-barrier-compute	ir	atomicOr	atomicOr is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+atomicStore	atomic	ir-builtin-atomic-barrier-compute	ir	atomicStore	atomicStore is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+atomicSub	atomic	ir-builtin-atomic-barrier-compute	ir	atomicSub	atomicSub is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+atomicXor	atomic	ir-builtin-atomic-barrier-compute	ir	atomicXor	atomicXor is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+ceil	numeric	ir-builtin-numeric-fragment	ir	ceil	ceil is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+clamp	numeric	ir-builtin-numeric-fragment	ir	clamp	clamp is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+cos	numeric	ir-builtin-numeric-fragment	ir	cos	cos is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+cosh	numeric	ir-builtin-numeric-fragment	ir	cosh	cosh is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+countLeadingZeros	integer	ir-builtin-integer-compute	ir	countLeadingZeros	countLeadingZeros is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+countOneBits	integer	ir-builtin-integer-compute	ir	countOneBits	countOneBits is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+countTrailingZeros	integer	ir-builtin-integer-compute	ir	countTrailingZeros	countTrailingZeros is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+cross	numeric	ir-builtin-numeric-fragment	ir	cross	cross is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+degrees	numeric	ir-builtin-numeric-fragment	ir	degrees	degrees is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+determinant	numeric	ir-builtin-numeric-fragment	ir	determinant	determinant is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+distance	numeric	ir-builtin-numeric-fragment	ir	distance	distance is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+dot	numeric	ir-builtin-numeric-fragment	ir	dot	dot is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+dot4I8Packed	integer	ir-builtin-integer-compute	ir	dot4I8Packed	dot4I8Packed is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+dot4U8Packed	integer	ir-builtin-integer-compute	ir	dot4U8Packed	dot4U8Packed is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+dpdx	derivative	ir-builtin-numeric-fragment	ir	dpdx	dpdx is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+dpdxCoarse	derivative	ir-builtin-numeric-fragment	ir	dpdxCoarse	dpdxCoarse is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+dpdxFine	derivative	ir-builtin-numeric-fragment	ir	dpdxFine	dpdxFine is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+dpdy	derivative	ir-builtin-numeric-fragment	ir	dpdy	dpdy is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+dpdyCoarse	derivative	ir-builtin-numeric-fragment	ir	dpdyCoarse	dpdyCoarse is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+dpdyFine	derivative	ir-builtin-numeric-fragment	ir	dpdyFine	dpdyFine is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+exp	numeric	ir-builtin-numeric-fragment	ir	exp	exp is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+exp2	numeric	ir-builtin-numeric-fragment	ir	exp2	exp2 is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+extractBits	integer	ir-builtin-integer-compute	ir	extractBits	extractBits is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+faceForward	numeric	ir-builtin-numeric-fragment	ir	faceForward	faceForward is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+firstLeadingBit	integer	ir-builtin-integer-compute	ir	firstLeadingBit	firstLeadingBit is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+firstTrailingBit	integer	ir-builtin-integer-compute	ir	firstTrailingBit	firstTrailingBit is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+floor	numeric	ir-builtin-numeric-fragment	ir	floor	floor is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+fma	numeric	ir-builtin-numeric-fragment	ir	fma	fma is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+fract	numeric	ir-builtin-numeric-fragment	ir	fract	fract is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+frexp	numeric	ir-builtin-numeric-fragment	ir	frexp	frexp is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+fwidth	derivative	ir-builtin-numeric-fragment	ir	fwidth	fwidth is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+fwidthCoarse	derivative	ir-builtin-numeric-fragment	ir	fwidthCoarse	fwidthCoarse is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+fwidthFine	derivative	ir-builtin-numeric-fragment	ir	fwidthFine	fwidthFine is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+insertBits	integer	ir-builtin-integer-compute	ir	insertBits	insertBits is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+inverse	numeric	ir-builtin-extended-fragment	ir	inverse	inverse is covered by the MoonBit IR roundtrip case ir-builtin-extended-fragment.
+inverseSqrt	numeric	ir-builtin-numeric-fragment	ir	inverseSqrt	inverseSqrt is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+isInf	relational	ir-builtin-extended-fragment	ir	isInf	isInf is covered by the MoonBit IR roundtrip case ir-builtin-extended-fragment.
+isNan	relational	ir-builtin-extended-fragment	ir	isNan	isNan is covered by the MoonBit IR roundtrip case ir-builtin-extended-fragment.
+ldexp	numeric	ir-builtin-numeric-fragment	ir	ldexp	ldexp is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+length	numeric	ir-builtin-numeric-fragment	ir	length	length is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+log	numeric	ir-builtin-numeric-fragment	ir	log	log is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+log2	numeric	ir-builtin-numeric-fragment	ir	log2	log2 is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+max	numeric	ir-builtin-numeric-fragment	ir	max	max is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+min	numeric	ir-builtin-numeric-fragment	ir	min	min is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+mix	numeric	ir-builtin-numeric-fragment	ir	mix	mix is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+modf	numeric	ir-builtin-numeric-fragment	ir	modf	modf is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+normalize	numeric	ir-builtin-numeric-fragment	ir	normalize	normalize is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+pack2x16float	integer	ir-builtin-extended-fragment	ir	pack2x16float	pack2x16float is covered by the MoonBit IR roundtrip case ir-builtin-extended-fragment.
+pack2x16snorm	integer	ir-builtin-integer-compute	ir	pack2x16snorm	pack2x16snorm is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+pack2x16unorm	integer	ir-builtin-integer-compute	ir	pack2x16unorm	pack2x16unorm is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+pack4x8snorm	integer	ir-builtin-integer-compute	ir	pack4x8snorm	pack4x8snorm is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+pack4x8unorm	integer	ir-builtin-integer-compute	ir	pack4x8unorm	pack4x8unorm is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+pack4xI8	integer	ir-builtin-integer-compute	ir	pack4xI8	pack4xI8 is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+pack4xI8Clamp	integer	ir-builtin-integer-compute	ir	pack4xI8Clamp	pack4xI8Clamp is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+pack4xU8	integer	ir-builtin-integer-compute	ir	pack4xU8	pack4xU8 is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+pack4xU8Clamp	integer	ir-builtin-integer-compute	ir	pack4xU8Clamp	pack4xU8Clamp is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+pow	numeric	ir-builtin-numeric-fragment	ir	pow	pow is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+quantizeToF16	numeric	ir-builtin-extended-fragment	ir	quantizeToF16	quantizeToF16 is covered by the MoonBit IR roundtrip case ir-builtin-extended-fragment.
+radians	numeric	ir-builtin-numeric-fragment	ir	radians	radians is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+reflect	numeric	ir-builtin-numeric-fragment	ir	reflect	reflect is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+refract	numeric	ir-builtin-numeric-fragment	ir	refract	refract is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+reverseBits	integer	ir-builtin-integer-compute	ir	reverseBits	reverseBits is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+round	numeric	ir-builtin-numeric-fragment	ir	round	round is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+saturate	numeric	ir-builtin-numeric-fragment	ir	saturate	saturate is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+sign	numeric	ir-builtin-numeric-fragment	ir	sign	sign is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+sin	numeric	ir-builtin-numeric-fragment	ir	sin	sin is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+sinh	numeric	ir-builtin-numeric-fragment	ir	sinh	sinh is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+smoothstep	numeric	ir-builtin-numeric-fragment	ir	smoothstep	smoothstep is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+sqrt	numeric	ir-builtin-numeric-fragment	ir	sqrt	sqrt is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+step	numeric	ir-builtin-numeric-fragment	ir	step	step is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+tan	numeric	ir-builtin-numeric-fragment	ir	tan	tan is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+tanh	numeric	ir-builtin-numeric-fragment	ir	tanh	tanh is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+transpose	numeric	ir-builtin-numeric-fragment	ir	transpose	transpose is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+trunc	numeric	ir-builtin-numeric-fragment	ir	trunc	trunc is covered by the MoonBit IR roundtrip case ir-builtin-numeric-fragment.
+unpack2x16float	integer	ir-builtin-extended-fragment	ir	unpack2x16float	unpack2x16float is covered by the MoonBit IR roundtrip case ir-builtin-extended-fragment.
+unpack2x16snorm	integer	ir-builtin-integer-compute	ir	unpack2x16snorm	unpack2x16snorm is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+unpack2x16unorm	integer	ir-builtin-integer-compute	ir	unpack2x16unorm	unpack2x16unorm is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+unpack4x8snorm	integer	ir-builtin-integer-compute	ir	unpack4x8snorm	unpack4x8snorm is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+unpack4x8unorm	integer	ir-builtin-integer-compute	ir	unpack4x8unorm	unpack4x8unorm is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+unpack4xI8	integer	ir-builtin-integer-compute	ir	unpack4xI8	unpack4xI8 is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+unpack4xU8	integer	ir-builtin-integer-compute	ir	unpack4xU8	unpack4xU8 is covered by the MoonBit IR roundtrip case ir-builtin-integer-compute.
+arrayLength	storage	generated-storage-array-length-ir	ir	arrayLength	arrayLength is covered by the MoonBit IR roundtrip case generated-storage-array-length-ir.
+rayQueryConfirmIntersection	ray-query	ir-builtin-ray-query	ir	rayQueryConfirmIntersection	rayQueryConfirmIntersection is covered by the MoonBit IR roundtrip case ir-builtin-ray-query.
+rayQueryGenerateIntersection	ray-query	ir-builtin-ray-query	ir	rayQueryGenerateIntersection	rayQueryGenerateIntersection is covered by the MoonBit IR roundtrip case ir-builtin-ray-query.
+rayQueryGetCandidateIntersection	ray-query	ir-builtin-ray-query	ir	rayQueryGetCandidateIntersection	rayQueryGetCandidateIntersection is covered by the MoonBit IR roundtrip case ir-builtin-ray-query.
+rayQueryGetCommittedIntersection	ray-query	ir-builtin-ray-query	ir	rayQueryGetCommittedIntersection	rayQueryGetCommittedIntersection is covered by the MoonBit IR roundtrip case ir-builtin-ray-query.
+getCandidateHitVertexPositions	ray-query	ir-builtin-ray-query	ir	getCandidateHitVertexPositions	getCandidateHitVertexPositions is covered by the MoonBit IR roundtrip case ir-builtin-ray-query.
+getCommittedHitVertexPositions	ray-query	ir-builtin-ray-query	ir	getCommittedHitVertexPositions	getCommittedHitVertexPositions is covered by the MoonBit IR roundtrip case ir-builtin-ray-query.
+rayQueryInitialize	ray-query	ir-builtin-ray-query	ir	rayQueryInitialize	rayQueryInitialize is covered by the MoonBit IR roundtrip case ir-builtin-ray-query.
+rayQueryProceed	ray-query	ir-builtin-ray-query	ir	rayQueryProceed	rayQueryProceed is covered by the MoonBit IR roundtrip case ir-builtin-ray-query.
+rayQueryTerminate	ray-query	ir-builtin-ray-query	ir	rayQueryTerminate	rayQueryTerminate is covered by the MoonBit IR roundtrip case ir-builtin-ray-query.
+storageBarrier	barrier	ir-builtin-atomic-barrier-compute	ir	storageBarrier	storageBarrier is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+subgroupBarrier	barrier	ir-builtin-extended-fragment	ir	subgroupBarrier	subgroupBarrier is covered by the MoonBit IR roundtrip case ir-builtin-extended-fragment.
+textureBarrier	barrier	ir-builtin-atomic-barrier-compute	ir	textureBarrier	textureBarrier is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+textureDimensions	texture	ir-advanced-texture-fragment	ir	textureDimensions	textureDimensions is covered by the MoonBit IR roundtrip case ir-advanced-texture-fragment.
+textureGather	texture	ir-advanced-texture-fragment	ir	textureGather	textureGather is covered by the MoonBit IR roundtrip case ir-advanced-texture-fragment.
+textureGatherCompare	texture	ir-advanced-texture-fragment	ir	textureGatherCompare	textureGatherCompare is covered by the MoonBit IR roundtrip case ir-advanced-texture-fragment.
+textureLoad	texture	ir-texture-load-queries-compute	ir	textureLoad	textureLoad is covered by the MoonBit IR roundtrip case ir-texture-load-queries-compute.
+textureNumLayers	texture	ir-texture-load-queries-compute	ir	textureNumLayers	textureNumLayers is covered by the MoonBit IR roundtrip case ir-texture-load-queries-compute.
+textureNumLevels	texture	ir-advanced-texture-fragment	ir	textureNumLevels	textureNumLevels is covered by the MoonBit IR roundtrip case ir-advanced-texture-fragment.
+textureNumSamples	texture	ir-texture-load-queries-compute	ir	textureNumSamples	textureNumSamples is covered by the MoonBit IR roundtrip case ir-texture-load-queries-compute.
+textureSample	texture	ir-advanced-texture-fragment	ir	textureSample	textureSample is covered by the MoonBit IR roundtrip case ir-advanced-texture-fragment.
+textureSampleBaseClampToEdge	texture	ir-advanced-texture-fragment	ir	textureSampleBaseClampToEdge	textureSampleBaseClampToEdge is covered by the MoonBit IR roundtrip case ir-advanced-texture-fragment.
+textureSampleBias	texture	ir-advanced-texture-fragment	ir	textureSampleBias	textureSampleBias is covered by the MoonBit IR roundtrip case ir-advanced-texture-fragment.
+textureSampleCompare	texture	ir-advanced-texture-fragment	ir	textureSampleCompare	textureSampleCompare is covered by the MoonBit IR roundtrip case ir-advanced-texture-fragment.
+textureSampleCompareLevel	texture	ir-advanced-texture-fragment	ir	textureSampleCompareLevel	textureSampleCompareLevel is covered by the MoonBit IR roundtrip case ir-advanced-texture-fragment.
+textureSampleGrad	texture	ir-advanced-texture-fragment	ir	textureSampleGrad	textureSampleGrad is covered by the MoonBit IR roundtrip case ir-advanced-texture-fragment.
+textureSampleLevel	texture	ir-advanced-texture-fragment	ir	textureSampleLevel	textureSampleLevel is covered by the MoonBit IR roundtrip case ir-advanced-texture-fragment.
+textureStore	texture	ir-texture-compute	ir	textureStore	textureStore is covered by the MoonBit IR roundtrip case ir-texture-compute.
+textureAtomicAdd	texture	ir-texture-atomic-compute	ir	textureAtomicAdd	textureAtomicAdd is covered by the MoonBit IR roundtrip case ir-texture-atomic-compute.
+textureAtomicAnd	texture	ir-texture-atomic-compute	ir	textureAtomicAnd	textureAtomicAnd is covered by the MoonBit IR roundtrip case ir-texture-atomic-compute.
+textureAtomicMax	texture	ir-texture-atomic-compute	ir	textureAtomicMax	textureAtomicMax is covered by the MoonBit IR roundtrip case ir-texture-atomic-compute.
+textureAtomicMin	texture	ir-texture-atomic-compute	ir	textureAtomicMin	textureAtomicMin is covered by the MoonBit IR roundtrip case ir-texture-atomic-compute.
+textureAtomicOr	texture	ir-texture-atomic-compute	ir	textureAtomicOr	textureAtomicOr is covered by the MoonBit IR roundtrip case ir-texture-atomic-compute.
+textureAtomicXor	texture	ir-texture-atomic-compute	ir	textureAtomicXor	textureAtomicXor is covered by the MoonBit IR roundtrip case ir-texture-atomic-compute.
+workgroupBarrier	barrier	ir-builtin-atomic-barrier-compute	ir	workgroupBarrier	workgroupBarrier is covered by the MoonBit IR roundtrip case ir-builtin-atomic-barrier-compute.
+subgroupAdd	subgroup	ir-builtin-subgroup-compute	ir	subgroupAdd	subgroupAdd is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupAll	subgroup	ir-builtin-subgroup-compute	ir	subgroupAll	subgroupAll is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupAnd	subgroup	ir-builtin-subgroup-compute	ir	subgroupAnd	subgroupAnd is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupAny	subgroup	ir-builtin-subgroup-compute	ir	subgroupAny	subgroupAny is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupBallot	subgroup	ir-builtin-subgroup-compute	ir	subgroupBallot	subgroupBallot is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupBroadcast	subgroup	ir-builtin-subgroup-compute	ir	subgroupBroadcast	subgroupBroadcast is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupBroadcastFirst	subgroup	ir-builtin-subgroup-compute	ir	subgroupBroadcastFirst	subgroupBroadcastFirst is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupExclusiveAdd	subgroup	ir-builtin-subgroup-compute	ir	subgroupExclusiveAdd	subgroupExclusiveAdd is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupExclusiveMul	subgroup	ir-builtin-subgroup-compute	ir	subgroupExclusiveMul	subgroupExclusiveMul is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupInclusiveAdd	subgroup	ir-builtin-subgroup-compute	ir	subgroupInclusiveAdd	subgroupInclusiveAdd is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupInclusiveMul	subgroup	ir-builtin-subgroup-compute	ir	subgroupInclusiveMul	subgroupInclusiveMul is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupMax	subgroup	ir-builtin-subgroup-compute	ir	subgroupMax	subgroupMax is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupMin	subgroup	ir-builtin-subgroup-compute	ir	subgroupMin	subgroupMin is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupMul	subgroup	ir-builtin-subgroup-compute	ir	subgroupMul	subgroupMul is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupOr	subgroup	ir-builtin-subgroup-compute	ir	subgroupOr	subgroupOr is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupShuffle	subgroup	ir-builtin-subgroup-compute	ir	subgroupShuffle	subgroupShuffle is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupShuffleDown	subgroup	ir-builtin-subgroup-compute	ir	subgroupShuffleDown	subgroupShuffleDown is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupShuffleUp	subgroup	ir-builtin-subgroup-compute	ir	subgroupShuffleUp	subgroupShuffleUp is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupShuffleXor	subgroup	ir-builtin-subgroup-compute	ir	subgroupShuffleXor	subgroupShuffleXor is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+subgroupXor	subgroup	ir-builtin-subgroup-compute	ir	subgroupXor	subgroupXor is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+quadBroadcast	subgroup	ir-builtin-subgroup-compute	ir	quadBroadcast	quadBroadcast is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+quadSwapDiagonal	subgroup	ir-builtin-subgroup-compute	ir	quadSwapDiagonal	quadSwapDiagonal is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+quadSwapX	subgroup	ir-builtin-subgroup-compute	ir	quadSwapX	quadSwapX is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.
+quadSwapY	subgroup	ir-builtin-subgroup-compute	ir	quadSwapY	quadSwapY is covered by the MoonBit IR roundtrip case ir-builtin-subgroup-compute.

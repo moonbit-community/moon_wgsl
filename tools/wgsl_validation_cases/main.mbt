@@ -179,25 +179,6 @@ fn validation_bevy_source(entry : String) -> String {
 }
 
 ///|
-fn validation_upstream_raycast_source() -> String {
-  let composer = @compose.Composer::default()
-  composer.clear_sources()
-  @wgsl_io.register_source_tree(
-    composer,
-    "testdata/naga_oil_upstream/compose_tests/raycast",
-    @wgsl_io.WgslSourceScanOptions::default(),
-  ) catch {
-    _ => abort("expected upstream raycast fixture registration success")
-  }
-  composer.compose_wgsl_runtime_valid(
-    "top.wgsl",
-    validation_compose_options(validation_empty_defines()),
-  ) catch {
-    err => abort("expected upstream raycast compose success: \{err.message()}")
-  }
-}
-
-///|
 fn validation_upstream_dual_source_blending_source() -> String {
   let composer = @compose.Composer::default()
   composer.clear_sources()
@@ -339,7 +320,7 @@ fn validation_case_arg() -> String {
   let args = @env.args()
   if args.length() == 0 {
     abort(
-      "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-diagnostic-filters|bevy-issue8|bevy-pbr-functions|bevy-pbr-forward|mgstudio-mesh3d-forward|upstream-raycast|upstream-dual-source-blending|issue9-type-identity|issue13-nested-alias-global|storage-array-length-ir",
+      "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-diagnostic-filters|bevy-issue8|bevy-pbr-functions|bevy-pbr-forward|mgstudio-mesh3d-forward|upstream-dual-source-blending|issue9-type-identity|issue13-nested-alias-global|storage-array-length-ir",
     )
   }
   args[args.length() - 1]
@@ -356,7 +337,6 @@ fn main {
     "bevy-pbr-functions" => validation_bevy_pbr_functions_source()
     "bevy-pbr-forward" => validation_bevy_pbr_forward_source()
     "mgstudio-mesh3d-forward" => validation_mgstudio_mesh3d_forward_source()
-    "upstream-raycast" => validation_upstream_raycast_source()
     "upstream-dual-source-blending" =>
       validation_upstream_dual_source_blending_source()
     "issue9-type-identity" => validation_issue9_type_identity_source()
@@ -365,7 +345,7 @@ fn main {
     "storage-array-length-ir" => validation_storage_array_length_ir_source()
     _ =>
       abort(
-        "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-diagnostic-filters|bevy-issue8|bevy-pbr-functions|bevy-pbr-forward|mgstudio-mesh3d-forward|upstream-raycast|upstream-dual-source-blending|issue9-type-identity|issue13-nested-alias-global|storage-array-length-ir",
+        "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-diagnostic-filters|bevy-issue8|bevy-pbr-functions|bevy-pbr-forward|mgstudio-mesh3d-forward|upstream-dual-source-blending|issue9-type-identity|issue13-nested-alias-global|storage-array-length-ir",
       )
   }
   println(source)

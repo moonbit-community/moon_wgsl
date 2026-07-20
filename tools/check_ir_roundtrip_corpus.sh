@@ -10,17 +10,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
-validate_wgsl() {
-  cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "$@"
-}
-
 roundtrip_case() {
   local label="$1"
   local input="$2"
   local output="$tmpdir/${label}.wgsl"
   echo "== IR roundtrip corpus: ${label} =="
   moon run tools/ir_roundtrip -- --input "$input" --output "$output"
-  validate_wgsl "$output"
 }
 
 compose_roundtrip_case() {
@@ -36,9 +31,7 @@ compose_roundtrip_case() {
     --entry "$entry" \
     "$@" \
     --output "$composed"
-  validate_wgsl "$composed"
   moon run tools/ir_roundtrip -- --input "$composed" --output "$output"
-  validate_wgsl "$output"
 }
 
 compose_runtime_valid_roundtrip_case() {
@@ -141,10 +134,6 @@ compose_roundtrip_case \
 compose_roundtrip_case \
   "upstream-problematic-expressions-compose" \
   "testdata/upstream_compose/problematic_expressions" \
-  "top.wgsl"
-compose_roundtrip_case \
-  "upstream-rusty-imports-compose" \
-  "testdata/upstream_compose/rusty_imports" \
   "top.wgsl"
 compose_roundtrip_case \
   "upstream-effective-defs-compose" \

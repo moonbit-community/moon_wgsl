@@ -48,10 +48,10 @@ new package from this repository, and only then deprecate the former repository.
 
 The public API comparison against 0.1.2 removes only `validate_wgsl`, which is a
 breaking change. The first workspace-owned replacement is therefore prepared as
-0.2.0. It pins WGSL Core 0.16.1, whose patch-level matrix validation correction
+0.17.0. It pins WGSL Core 0.16.1, whose patch-level matrix validation correction
 is required for equivalent behavior outside the source workspace. Its package
 repository points to `moonbit-community/moon_wgsl`; the old repository remains
-available until 0.2.0 has actually been published.
+available until 0.17.0 has actually been published.
 
 The imported `README.md -> README.mbt.md` symlink is removed during release
 preparation. Like the other publishable workspace modules, `moon.mod` now points

@@ -1,55 +1,53 @@
 # id	kind	input	entry	defines	additional_imports	capabilities	stages	notes
-ir-simple-compute	file	testdata/ir_corpus/simple_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: compute entry point, storage binding, and ordinary function body lowering.
-ir-switch-compute	file	testdata/ir_corpus/switch_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: switch lowering and emission.
-ir-for-compute	file	testdata/ir_corpus/for_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: for-loop lowering and emission.
-ir-struct-member-compute	file	testdata/ir_corpus/struct_member_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: struct member access and assignment.
-ir-texture-compute	file	testdata/ir_corpus/texture_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: texture type and binding coverage.
-ir-advanced-texture-fragment	file	testdata/ir_corpus/advanced_texture_fragment.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: fragment texture sampling coverage.
-ir-texture-load-queries-compute	file	testdata/ir_corpus/texture_load_queries_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: textureLoad and texture query builtins.
-ir-workgroup-override-compute	file	testdata/ir_corpus/workgroup_override_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: override constants in workgroup attributes.
-ir-const-assert-compute	file	testdata/ir_corpus/const_assert_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: top-level and function const_assert preservation.
-ir-large-u32-literal	file	testdata/ir_corpus/large_u32_literal.wgsl	-	-	-	-	parse,naga,ir,naga-ir	Static IR corpus: legal u32 literals above signed i32 range.
-ir-builtin-numeric-fragment	file	testdata/ir_corpus/builtin_numeric_fragment.wgsl	-	-	-	-	parse,naga,ir,naga-ir	Static IR corpus: official numeric, derivative, matrix, relational, and select builtin coverage.
-ir-builtin-integer-compute	file	testdata/ir_corpus/builtin_integer_compute.wgsl	-	-	-	-	parse,naga,ir,naga-ir	Static IR corpus: official integer bit, packed integer, and packed normalization builtin coverage.
-ir-builtin-atomic-barrier-compute	file	testdata/ir_corpus/builtin_atomic_barrier_compute.wgsl	-	-	-	-	parse,naga,ir,naga-ir	Static IR corpus: official atomic and workgroup/storage/texture barrier builtin coverage.
-ir-builtin-subgroup-compute	file	testdata/ir_corpus/builtin_subgroup_compute.wgsl	-	-	-	subgroups	parse,naga,ir,naga-ir	Static IR corpus: subgroup and quad builtin coverage with subgroup capability.
-ir-builtin-oracle-blocked-fragment	file	testdata/ir_corpus/builtin_oracle_blocked_fragment.wgsl	-	-	-	-	parse,ir	Static IR corpus: lowerer-known builtin coverage where the pinned Naga oracle lacks matching capability support.
-ir-builtin-ray-query	file	testdata/ir_corpus/builtin_ray_query.wgsl	-	-	-	ray-query,ray-hit-vertex-position	parse,naga,ir,naga-ir	Static IR corpus: full ray query builtin statement and expression coverage.
-ir-texture-atomic-compute	file	testdata/ir_corpus/texture_atomic_compute.wgsl	-	-	-	texture-atomic	parse,naga,ir,naga-ir	Static IR corpus: storage texture atomic builtin coverage.
-ir-texture-int64-atomic-compute	file	testdata/ir_corpus/texture_int64_atomic_compute.wgsl	-	-	-	texture-int64-atomic,shader-int64	parse,naga,ir,naga-ir	Static IR corpus: 64-bit storage texture atomic builtin coverage.
-ir-float64-vector-fragment	file	testdata/ir_corpus/float64_vector_fragment.wgsl	-	-	-	float64	parse,naga,ir,naga-ir	Static IR corpus: f64 scalar/vector type lowering and emission.
-ir-mesh-shader	file	testdata/ir_corpus/mesh_shader.wgsl	-	-	-	mesh-shader	parse,naga,ir,naga-ir	Static IR corpus: wgpu mesh/task shader stage, payload, mesh output, per-primitive IO, and mesh builtins.
-ir-builtin-functions-fragment	file	testdata/ir_corpus/builtin_functions_fragment.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: builtin function expression lowering.
-ir-packed-integer-builtins-compute	file	testdata/ir_corpus/packed_integer_builtins_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: packed integer builtin calls.
-compose-local-simple	compose	testdata/ir_corpus/compose	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Local compose fixture through compose, parse, validation, IR, and emitted validation.
-upstream-simple-compose	compose	testdata/upstream_compose/simple	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: simple import expansion.
-upstream-item-import-compose	compose	testdata/upstream_compose/item_import	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: explicit item imports.
-upstream-dup-import-compose	compose	testdata/upstream_compose/dup_import	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: duplicate import de-duplication.
-upstream-dup-struct-import-compose	compose	testdata/upstream_compose/dup_struct_import	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: duplicate struct import de-duplication.
-upstream-conditional-import-b-compose	compose	testdata/upstream_compose/conditional_import	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: default conditional import branch.
-upstream-conditional-import-a-compose	compose	testdata/upstream_compose/conditional_import	top.wgsl	USE_A	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: active USE_A conditional import branch.
-upstream-shared-global-compose	compose	testdata/upstream_compose/use_shared_global	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: shared global dependency emission.
-upstream-diagnostic-filters-compose	compose	testdata/upstream_compose/diagnostic_filters	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: diagnostic directive and ambient global preservation.
-upstream-atomics-compose	compose	testdata/upstream_compose/atomics	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: atomics and compare-exchange lowering.
-upstream-modf-compose	compose	testdata/upstream_compose/modf	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: modf builtin result member access.
-upstream-call-entrypoint-compose	compose	testdata/upstream_compose/call_entrypoint	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: imported entry point calls.
-upstream-add-imports-compose	compose	testdata/upstream_compose/add_imports	top.wgsl	-	plugin	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: root additional imports.
-upstream-const-in-decl-compose	compose	testdata/upstream_compose/const_in_decl	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: imported items referenced inside declarations.
-upstream-item-sub-point-compose	compose	testdata/upstream_compose/item_sub_point	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: nested item path imports.
-upstream-quoted-dup-compose	compose	testdata/upstream_compose/quoted_dup	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: quoted duplicate import names.
-upstream-problematic-expressions-compose	compose	testdata/upstream_compose/problematic_expressions	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: expression dependency edge cases.
-upstream-rusty-imports-compose	compose	testdata/upstream_compose/rusty_imports	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: Rust-style nested import paths.
-upstream-effective-defs-compose	compose	testdata/upstream_compose/effective_defs	top.wgsl	DEF_ONE,DEF_THREE	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: effective shader definition propagation.
-upstream-invalid-identifiers-compose	compose	testdata/upstream_compose/invalid_identifiers	top_valid.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Upstream compose mirror: invalid/reserved identifier normalization.
-generated-writer-boundary	generated	writer-boundary	-	-	-	-	parse,naga	Generated validation case: writer token boundary regression.
-generated-upstream-compute	generated	upstream-compute	-	-	-	-	parse,naga	Generated validation case: single-file compute export.
-generated-upstream-diagnostic-filters	generated	upstream-diagnostic-filters	-	-	-	-	parse,naga	Generated validation case: diagnostic filter compose output.
-generated-bevy-issue8	generated	bevy-issue8	-	-	-	-	parse,naga	Generated validation case: historical issue 8 alias binding.
-generated-issue9-type-identity	generated	issue9-type-identity	-	-	-	-	parse,naga	Generated validation case: imported type identity preservation.
-generated-issue13-nested-alias-global	generated	issue13-nested-alias-global	-	-	-	-	parse,naga	Generated validation case: nested alias global identity.
-generated-storage-array-length-ir	generated	storage-array-length-ir	-	-	-	-	parse,naga,ir,naga-ir	Generated validation case: storage access defaults and arrayLength IR.
-generated-bevy-pbr-functions	generated	bevy-pbr-functions	-	-	-	-	parse,naga,ir,naga-ir	Generated real shader case: Bevy PBR functions through compose and IR.
-generated-bevy-pbr-forward	generated	bevy-pbr-forward	-	-	-	-	parse,naga,ir,naga-ir	Generated real shader case: full Bevy PBR forward fragment through compose and IR.
-generated-mgstudio-mesh3d-forward	generated	mgstudio-mesh3d-forward	-	-	-	-	parse,naga,ir,naga-ir	Generated real shader case: MGStudio mesh3d forward fragment through compose and IR.
-generated-upstream-raycast	generated	upstream-raycast	-	-	-	ray-query	parse,naga,ir,naga-ir	Generated validation case: upstream ray query compose with capability.
-generated-upstream-dual-source-blending	generated	upstream-dual-source-blending	-	-	-	dual-source-blending	parse,naga	Generated validation case: upstream dual-source blending with capability.
+ir-simple-compute	file	testdata/ir_corpus/simple_compute.wgsl	-	-	-	-	ir	Static IR corpus: compute entry point, storage binding, and ordinary function body lowering.
+ir-switch-compute	file	testdata/ir_corpus/switch_compute.wgsl	-	-	-	-	ir	Static IR corpus: switch lowering and emission.
+ir-for-compute	file	testdata/ir_corpus/for_compute.wgsl	-	-	-	-	ir	Static IR corpus: for-loop lowering and emission.
+ir-struct-member-compute	file	testdata/ir_corpus/struct_member_compute.wgsl	-	-	-	-	ir	Static IR corpus: struct member access and assignment.
+ir-texture-compute	file	testdata/ir_corpus/texture_compute.wgsl	-	-	-	-	ir	Static IR corpus: texture type and binding coverage.
+ir-advanced-texture-fragment	file	testdata/ir_corpus/advanced_texture_fragment.wgsl	-	-	-	-	ir	Static IR corpus: fragment texture sampling coverage.
+ir-texture-load-queries-compute	file	testdata/ir_corpus/texture_load_queries_compute.wgsl	-	-	-	-	ir	Static IR corpus: textureLoad and texture query builtins.
+ir-workgroup-override-compute	file	testdata/ir_corpus/workgroup_override_compute.wgsl	-	-	-	-	ir	Static IR corpus: override constants in workgroup attributes.
+ir-const-assert-compute	file	testdata/ir_corpus/const_assert_compute.wgsl	-	-	-	-	ir	Static IR corpus: top-level and function const_assert preservation.
+ir-large-u32-literal	file	testdata/ir_corpus/large_u32_literal.wgsl	-	-	-	-	parse,ir	Static IR corpus: legal u32 literals above signed i32 range.
+ir-builtin-numeric-fragment	file	testdata/ir_corpus/builtin_numeric_fragment.wgsl	-	-	-	-	parse,ir	Static IR corpus: official numeric, derivative, matrix, relational, and select builtin coverage.
+ir-builtin-integer-compute	file	testdata/ir_corpus/builtin_integer_compute.wgsl	-	-	-	-	parse,ir	Static IR corpus: official integer bit, packed integer, and packed normalization builtin coverage.
+ir-builtin-atomic-barrier-compute	file	testdata/ir_corpus/builtin_atomic_barrier_compute.wgsl	-	-	-	-	parse,ir	Static IR corpus: official atomic and workgroup/storage/texture barrier builtin coverage.
+ir-builtin-subgroup-compute	file	testdata/ir_corpus/builtin_subgroup_compute.wgsl	-	-	-	subgroups	parse,ir	Static IR corpus: subgroup and quad builtin coverage with subgroup capability.
+ir-builtin-extended-fragment	file	testdata/ir_corpus/builtin_extended_fragment.wgsl	-	-	-	-	parse,ir	Static IR corpus: extended builtin coverage supported by the MoonBit lowering pipeline.
+ir-builtin-ray-query	file	testdata/ir_corpus/builtin_ray_query.wgsl	-	-	-	ray-query,ray-hit-vertex-position	parse,ir	Static IR corpus: full ray query builtin statement and expression coverage.
+ir-texture-atomic-compute	file	testdata/ir_corpus/texture_atomic_compute.wgsl	-	-	-	texture-atomic	parse,ir	Static IR corpus: storage texture atomic builtin coverage.
+ir-texture-int64-atomic-compute	file	testdata/ir_corpus/texture_int64_atomic_compute.wgsl	-	-	-	texture-int64-atomic,shader-int64	parse,ir	Static IR corpus: 64-bit storage texture atomic builtin coverage.
+ir-float64-vector-fragment	file	testdata/ir_corpus/float64_vector_fragment.wgsl	-	-	-	float64	parse,ir	Static IR corpus: f64 scalar/vector type lowering and emission.
+ir-mesh-shader	file	testdata/ir_corpus/mesh_shader.wgsl	-	-	-	mesh-shader	parse,ir	Static IR corpus: wgpu mesh/task shader stage, payload, mesh output, per-primitive IO, and mesh builtins.
+ir-builtin-functions-fragment	file	testdata/ir_corpus/builtin_functions_fragment.wgsl	-	-	-	-	ir	Static IR corpus: builtin function expression lowering.
+ir-packed-integer-builtins-compute	file	testdata/ir_corpus/packed_integer_builtins_compute.wgsl	-	-	-	-	ir	Static IR corpus: packed integer builtin calls.
+compose-local-simple	compose	testdata/ir_corpus/compose	top.wgsl	-	-	-	compose,parse,ir	Local compose fixture through compose, parse, validation, IR, and emitted validation.
+upstream-simple-compose	compose	testdata/upstream_compose/simple	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: simple import expansion.
+upstream-item-import-compose	compose	testdata/upstream_compose/item_import	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: explicit item imports.
+upstream-dup-import-compose	compose	testdata/upstream_compose/dup_import	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: duplicate import de-duplication.
+upstream-dup-struct-import-compose	compose	testdata/upstream_compose/dup_struct_import	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: duplicate struct import de-duplication.
+upstream-conditional-import-b-compose	compose	testdata/upstream_compose/conditional_import	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: default conditional import branch.
+upstream-conditional-import-a-compose	compose	testdata/upstream_compose/conditional_import	top.wgsl	USE_A	-	-	compose,parse,ir	Upstream compose mirror: active USE_A conditional import branch.
+upstream-shared-global-compose	compose	testdata/upstream_compose/use_shared_global	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: shared global dependency emission.
+upstream-diagnostic-filters-compose	compose	testdata/upstream_compose/diagnostic_filters	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: diagnostic directive and ambient global preservation.
+upstream-atomics-compose	compose	testdata/upstream_compose/atomics	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: atomics and compare-exchange lowering.
+upstream-modf-compose	compose	testdata/upstream_compose/modf	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: modf builtin result member access.
+upstream-call-entrypoint-compose	compose	testdata/upstream_compose/call_entrypoint	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: imported entry point calls.
+upstream-add-imports-compose	compose	testdata/upstream_compose/add_imports	top.wgsl	-	plugin	-	compose,parse,ir	Upstream compose mirror: root additional imports.
+upstream-const-in-decl-compose	compose	testdata/upstream_compose/const_in_decl	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: imported items referenced inside declarations.
+upstream-item-sub-point-compose	compose	testdata/upstream_compose/item_sub_point	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: nested item path imports.
+upstream-quoted-dup-compose	compose	testdata/upstream_compose/quoted_dup	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: quoted duplicate import names.
+upstream-problematic-expressions-compose	compose	testdata/upstream_compose/problematic_expressions	top.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: expression dependency edge cases.
+upstream-effective-defs-compose	compose	testdata/upstream_compose/effective_defs	top.wgsl	DEF_ONE,DEF_THREE	-	-	compose,parse,ir	Upstream compose mirror: effective shader definition propagation.
+upstream-invalid-identifiers-compose	compose	testdata/upstream_compose/invalid_identifiers	top_valid.wgsl	-	-	-	compose,parse,ir	Upstream compose mirror: invalid/reserved identifier normalization.
+generated-writer-boundary	generated	writer-boundary	-	-	-	-	parse	Generated validation case: writer token boundary regression.
+generated-upstream-compute	generated	upstream-compute	-	-	-	-	parse	Generated validation case: single-file compute export.
+generated-upstream-diagnostic-filters	generated	upstream-diagnostic-filters	-	-	-	-	parse	Generated validation case: diagnostic filter compose output.
+generated-bevy-issue8	generated	bevy-issue8	-	-	-	-	parse	Generated validation case: historical issue 8 alias binding.
+generated-issue9-type-identity	generated	issue9-type-identity	-	-	-	-	parse	Generated validation case: imported type identity preservation.
+generated-issue13-nested-alias-global	generated	issue13-nested-alias-global	-	-	-	-	parse	Generated validation case: nested alias global identity.
+generated-storage-array-length-ir	generated	storage-array-length-ir	-	-	-	-	parse,ir	Generated validation case: storage access defaults and arrayLength IR.
+generated-bevy-pbr-functions	generated	bevy-pbr-functions	-	-	-	-	parse,ir	Generated real shader case: Bevy PBR functions through compose and IR.
+generated-bevy-pbr-forward	generated	bevy-pbr-forward	-	-	-	-	parse,ir	Generated real shader case: full Bevy PBR forward fragment through compose and IR.
+generated-mgstudio-mesh3d-forward	generated	mgstudio-mesh3d-forward	-	-	-	-	parse,ir	Generated real shader case: MGStudio mesh3d forward fragment through compose and IR.
+generated-upstream-dual-source-blending	generated	upstream-dual-source-blending	-	-	-	dual-source-blending	parse	Generated validation case: upstream dual-source blending with capability.

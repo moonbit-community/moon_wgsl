@@ -37,7 +37,7 @@ test "WGSL directive parser keeps unknown directives structured" {
 }
 
 ///|
-test "WGSL directive parser accepts Rust regex Unicode whitespace" {
+test "WGSL directive parser accepts Unicode whitespace" {
   guard parse_wgsl_directive_line(
       "\u{00A0}#\u{00A0}define_import_path\u{3000}demo::module\u{2003}",
     )

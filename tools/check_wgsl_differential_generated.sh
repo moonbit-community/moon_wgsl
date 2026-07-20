@@ -21,34 +21,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-append_capability_args() {
-  local csv="$1"
-  local -a result=()
-  local item
-  if [[ "$csv" != "-" && -n "$csv" ]]; then
-    IFS=',' read -r -a items <<< "$csv"
-    for item in "${items[@]}"; do
-      [[ -n "$item" ]] || continue
-      result+=("--capability" "$item")
-    done
-  fi
-  if ((${#result[@]} > 0)); then
-    printf '%s\n' "${result[@]}"
-  fi
-}
-
-validate_wgsl() {
-  local source="$1"
-  local capabilities="$2"
-  local args=()
-  local arg
-  while IFS= read -r arg; do
-    [[ -n "$arg" ]] || continue
-    args+=("$arg")
-  done < <(append_capability_args "$capabilities")
-  cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "${args[@]+"${args[@]}"}" "$source" >/dev/null
-}
-
 assert_tokens() {
   local id="$1"
   local emitted="$2"
@@ -94,10 +66,8 @@ while IFS=$'\t' read -r id category capabilities checks notes; do
   emitted="$tmpdir/$id.emitted.wgsl"
   echo "== WGSL generated differential: $id =="
   node "$generator" "$id" > "$source"
-  validate_wgsl "$source" "$capabilities"
   moon run tools/ir_roundtrip -- --input "$source" --output "$emitted" >/dev/null
   moon run tools/ir_roundtrip -- --mode parse --input "$emitted" --output "$tmpdir/$id.parse.out" >/dev/null
-  validate_wgsl "$emitted" "$capabilities"
   assert_tokens "$id" "$emitted" "$checks"
   printf '%s\n' "$category" >> "$categories_file"
   case_count=$((case_count + 1))

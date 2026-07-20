@@ -5,7 +5,7 @@ version = "0.16.1"
 import {
   "Milky2018/wgsl@0.16.1",
   "Milky2018/moon_wgsl_naga_oil@0.16.1",
-  "Milky2018/moon_wesl@0.2.0",
+  "Milky2018/moon_wesl@0.17.0",
   "moonbitlang/x@0.4.43",
 }
 
@@ -20,5 +20,5 @@ keywords = [ "wgsl", "shader", "tools" ]
 description = "Workspace-only developer tools for moon_wgsl."
 
 options(
-  exclude: [ "naga_oil_oracle", "remotion_preprocess_demo", "wgpu_validation" ],
+  exclude: [ "remotion_preprocess_demo" ],
 )

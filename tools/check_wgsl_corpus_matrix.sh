@@ -6,12 +6,10 @@ cd "$repo_root"
 
 manifest="${WGSL_CORPUS_MANIFEST:-testdata/wgsl_corpus_manifest.tsv}"
 runtime_valid_compose_manifest="${WGSL_CORPUS_RUNTIME_VALID_COMPOSE_MANIFEST:-testdata/wgsl_corpus_runtime_valid_compose.txt}"
-expected_case_count="${WGSL_CORPUS_EXPECTED_CASES:-54}"
-expected_parse_count="${WGSL_CORPUS_EXPECTED_PARSE_CASES:-43}"
-expected_naga_count="${WGSL_CORPUS_EXPECTED_NAGA_CASES:-42}"
-expected_ir_count="${WGSL_CORPUS_EXPECTED_IR_CASES:-47}"
-expected_naga_ir_count="${WGSL_CORPUS_EXPECTED_NAGA_IR_CASES:-46}"
-expected_compose_count="${WGSL_CORPUS_EXPECTED_COMPOSE_CASES:-20}"
+expected_case_count="${WGSL_CORPUS_EXPECTED_CASES:-52}"
+expected_parse_count="${WGSL_CORPUS_EXPECTED_PARSE_CASES:-41}"
+expected_ir_count="${WGSL_CORPUS_EXPECTED_IR_CASES:-45}"
+expected_compose_count="${WGSL_CORPUS_EXPECTED_COMPOSE_CASES:-19}"
 expected_runtime_valid_compose_count="${WGSL_CORPUS_EXPECTED_RUNTIME_VALID_COMPOSE_CASES:-2}"
 
 fail() {
@@ -81,34 +79,6 @@ contains_csv() {
     [[ "$item" == "$needle" ]] && return 0
   done
   return 1
-}
-
-append_capability_args() {
-  local csv="$1"
-  local -a result=()
-  local item
-  if [[ "$csv" != "-" && -n "$csv" ]]; then
-    IFS=',' read -r -a items <<< "$csv"
-    for item in "${items[@]}"; do
-      [[ -n "$item" ]] || continue
-      result+=("--capability" "$item")
-    done
-  fi
-  if ((${#result[@]} > 0)); then
-    printf '%s\n' "${result[@]}"
-  fi
-}
-
-validate_wgsl() {
-  local source="$1"
-  local capabilities="$2"
-  local args=()
-  local arg
-  while IFS= read -r arg; do
-    [[ -n "$arg" ]] || continue
-    args+=("$arg")
-  done < <(append_capability_args "$capabilities")
-  cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "${args[@]+"${args[@]}"}" "$source" >/dev/null
 }
 
 parse_wgsl() {
@@ -188,9 +158,7 @@ materialize_source() {
 case_count=0
 compose_count=0
 parse_count=0
-naga_count=0
 ir_count=0
-naga_ir_count=0
 
 while IFS=$'\t' read -r id kind input entry defines additional_imports capabilities stages notes; do
   [[ -n "$notes" ]] || fail "case $id must have a note"
@@ -199,7 +167,7 @@ while IFS=$'\t' read -r id kind input entry defines additional_imports capabilit
   IFS=',' read -r -a stage_items <<< "$stages"
   for stage in "${stage_items[@]}"; do
     case "$stage" in
-      compose | parse | naga | ir | naga-ir)
+      compose | parse | ir)
         ;;
       *)
         fail "case $id has unknown stage: $stage"
@@ -220,18 +188,9 @@ while IFS=$'\t' read -r id kind input entry defines additional_imports capabilit
     parse_count=$((parse_count + 1))
   fi
 
-  if contains_csv "$stages" "naga"; then
-    validate_wgsl "$source" "$capabilities"
-    naga_count=$((naga_count + 1))
-  fi
-
-  if contains_csv "$stages" "ir" || contains_csv "$stages" "naga-ir"; then
+  if contains_csv "$stages" "ir"; then
     emitted="$(ir_roundtrip_wgsl "$id" "$source")"
     ir_count=$((ir_count + 1))
-    if contains_csv "$stages" "naga-ir"; then
-      validate_wgsl "$emitted" "$capabilities"
-      naga_ir_count=$((naga_ir_count + 1))
-    fi
   fi
 done < "$rows"
 
@@ -242,11 +201,7 @@ done < "$rows"
   fail "manifest contains $compose_count compose-stage case(s); expected exactly $expected_compose_count"
 ((parse_count == expected_parse_count)) ||
   fail "manifest contains $parse_count parse-stage case(s); expected exactly $expected_parse_count"
-((naga_count == expected_naga_count)) ||
-  fail "manifest contains $naga_count naga validation case(s); expected exactly $expected_naga_count"
 ((ir_count == expected_ir_count)) ||
   fail "manifest contains $ir_count IR roundtrip case(s); expected exactly $expected_ir_count"
-((naga_ir_count == expected_naga_ir_count)) ||
-  fail "manifest contains $naga_ir_count emitted-IR validation case(s); expected exactly $expected_naga_ir_count"
 
-echo "WGSL corpus matrix gate passed: cases=$case_count compose=$compose_count parse=$parse_count naga=$naga_count ir=$ir_count naga-ir=$naga_ir_count runtime-valid-compose=$runtime_valid_compose_count"
+echo "WGSL corpus matrix gate passed: cases=$case_count compose=$compose_count parse=$parse_count ir=$ir_count runtime-valid-compose=$runtime_valid_compose_count"

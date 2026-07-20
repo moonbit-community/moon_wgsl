@@ -1823,7 +1823,7 @@ test "naga_oil: uint comparison rejects unsigned suffix values" {
 }
 
 ///|
-test "naga_oil: preprocess uses Rust lines trailing newline semantics" {
+test "naga_oil: preprocess preserves trailing newline semantics" {
   let source = "fn main() -> f32 {\r\n  return 1.0;\r\n}\r\n"
   let output = @preprocess.Preprocessor::default().preprocess(
     source,

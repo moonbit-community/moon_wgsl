@@ -62,6 +62,24 @@ forbid_rg \
   "published modules must stay pure and leave host I/O to workspace/application adapters" \
   --glob 'moon.mod' --glob 'moon.pkg' --glob '*.mbt' --glob '*.mbti'
 
+rust_artifacts=""
+while IFS= read -r artifact; do
+  [[ -e "$artifact" || -L "$artifact" ]] || continue
+  rust_artifacts+="${rust_artifacts:+$'\n'}$artifact"
+done < <(git ls-files '*.rs' 'Cargo.toml' '**/Cargo.toml' 'Cargo.lock' '**/Cargo.lock')
+[[ -z "$rust_artifacts" ]] || {
+  printf '%s\n' "$rust_artifacts" >&2
+  fail "Rust source and Cargo manifests must not be tracked"
+}
+for rust_scan_root in .github tools modules/moon_wesl; do
+  forbid_rg \
+    '\b(cargo|rustc|rustup)\b|dtolnay/rust-toolchain' \
+    "$rust_scan_root" \
+    "workspace checks and WESL tooling must not invoke the Rust toolchain" \
+    --glob '*.yml' --glob '*.yaml' --glob '*.sh' --glob '*.py' --glob '*.md' \
+    --glob '!check_architecture_guardrails.sh'
+done
+
 required_boundary_files=(
   modules/wgsl/ir/pkg.mbti
   modules/wgsl/parser/pkg.mbti
@@ -87,6 +105,7 @@ for file in "${required_boundary_files[@]}"; do
 done
 
 legacy_paths=(
+  modules/moon_wesl/tools/wesl-ref-runner
   modules/wgsl/ir/wgsl_lower.mbt
   modules/wgsl/ir/wgsl_emit_compat_writer.mbt
   modules/wgsl/ir/wgsl_writer_trace.mbt
@@ -96,9 +115,12 @@ legacy_paths=(
   modules/moon_wgsl_naga/wgsl_emit_expression_types.mbt
   modules/moon_wgsl_naga/wgsl_emit_filter.mbt
   modules/moon_wgsl_naga/wgsl_emit_types.mbt
+  testdata/naga_oil_upstream
   testdata/gpuweb_cts_ir_allowlist.txt
   testdata/external_wgsl_corpus_skips.tsv
   testdata/external_wgsl_corpus_expected_failures.tsv
+  tools/naga_oil_oracle
+  tools/wgpu_validation
 )
 for path in "${legacy_paths[@]}"; do
   forbid_path "$path" "legacy architecture path must not be reintroduced"
@@ -192,12 +214,6 @@ required_manifests=(
   testdata/wgsl_builtin_coverage_manifest.tsv
   testdata/wgsl_differential_generated_manifest.tsv
   testdata/wgsl_corpus_runtime_valid_compose.txt
-  testdata/external_wgsl_corpus_expected_invalid.tsv
-  testdata/external_wgsl_corpus_expected_invalid_normalized_by_ir.tsv
-  testdata/naga_oil_upstream/compose_tests/parity_manifest.tsv
-  testdata/gpuweb_cts_invalid_accepted_by_oracle.txt
-  testdata/gpuweb_cts_template_ir_blocked_by_oracle.txt
-  testdata/gpuweb_cts_template_invalid_accepted_by_oracle.txt
 )
 for manifest in "${required_manifests[@]}"; do
   require_file "$manifest" "coverage/classification manifest must be owned by the repository"
@@ -207,18 +223,9 @@ required_ci_gates=(
   tools/check_architecture_guardrails.sh
   tools/check_moon_test_filters.sh
   tools/check_ir_roundtrip_corpus.sh
-  tools/check_wgsl_validation.sh
   tools/check_wgsl_corpus_matrix.sh
   tools/check_wgsl_builtin_coverage.sh
   tools/check_wgsl_differential_generated.sh
-  tools/check_wgpu_validation.sh
-  tools/check_moon_wgsl_byte_parity.sh
-  tools/check_external_naga_oil_compose_parity.sh
-  tools/check_moon_wgsl_error_parity.sh
-  tools/check_naga_oil_parity_inventory.sh
-  tools/check_preprocess_parity.sh
-  tools/check_official_wgsl_corpus.sh
-  tools/check_external_wgsl_corpus.sh
 )
 for gate in "${required_ci_gates[@]}"; do
   require_workflow_gate "$gate"
@@ -228,10 +235,5 @@ require_rg 'WGSL_CORPUS_EXPECTED_CASES|expected_case_count' tools/check_wgsl_cor
   "WGSL corpus matrix must exact-gate its case count"
 require_rg 'node "\$generator" --list' tools/check_wgsl_differential_generated.sh \
   "generated differential gate must compare manifest IDs against the generator catalog"
-require_rg 'load_official_cts_id_manifest' tools/check_official_wgsl_corpus.sh \
-  "official WGSL CTS oracle manifests must be schema-checked"
-require_rg 'skipped=0' tools/check_external_wgsl_corpus.sh \
-  "external WGSL corpus gate must report zero skipped files"
-
 section "done"
 echo "architecture guardrails passed"

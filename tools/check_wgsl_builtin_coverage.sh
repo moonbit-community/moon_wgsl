@@ -147,8 +147,7 @@ source_for_case() {
 }
 
 row_count=0
-naga_ir_count=0
-ir_only_count=0
+ir_count=0
 categories_file="$tmpdir/categories.txt"
 while IFS=$'\t' read -r builtin category corpus_id required_stage token notes; do
   [[ -n "$notes" ]] || fail "coverage row $builtin must have notes"
@@ -160,21 +159,18 @@ while IFS=$'\t' read -r builtin category corpus_id required_stage token notes; d
   rg -F "$token" "$source" >/dev/null ||
     fail "coverage row $builtin token '$token' not found in materialized corpus source $corpus_id"
   row_count=$((row_count + 1))
-  if [[ "$required_stage" == "naga-ir" ]]; then
-    naga_ir_count=$((naga_ir_count + 1))
-  elif [[ "$required_stage" == "ir" ]]; then
-    ir_only_count=$((ir_only_count + 1))
+  if [[ "$required_stage" == "ir" ]]; then
+    ir_count=$((ir_count + 1))
   fi
   printf '%s\n' "$category" >> "$categories_file"
 done < "$coverage_rows"
 
 ((row_count > 0)) || fail "coverage manifest contains no runnable rows"
-((naga_ir_count > 0)) || fail "coverage manifest must include Naga-validated IR rows"
-((ir_only_count > 0)) || fail "coverage manifest must explicitly track oracle-blocked IR-only rows"
+((ir_count == row_count)) || fail "every builtin coverage row must use the MoonBit IR stage"
 
 for required_category in numeric integer derivative relational atomic barrier texture storage ray-query subgroup; do
   rg -Fx "$required_category" "$categories_file" >/dev/null ||
     fail "coverage manifest has no $required_category builtin category"
 done
 
-echo "WGSL builtin coverage passed: builtins=$row_count naga-ir=$naga_ir_count ir-only=$ir_only_count"
+echo "WGSL builtin coverage passed: builtins=$row_count ir=$ir_count"

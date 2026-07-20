@@ -82,7 +82,7 @@ The result contains the final emitted syntax tree in `result.syntax`; call
 
 ## Migration from 0.1.x
 
-Version 0.2.0 moves official WGSL parsing and semantic validation to
+Version 0.17.0 moves official WGSL parsing and semantic validation to
 `Milky2018/wgsl`. The former public `validate_wgsl(...)` helper has been
 removed. Code that validates standalone WGSL should parse it with
 `@ir.parse_wgsl_module_to_ir(...)` and validate the result with

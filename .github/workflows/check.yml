@@ -129,40 +129,19 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install CI runtime packages
+      - name: Install CI tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            libvulkan1 \
-            mesa-vulkan-drivers \
-            ripgrep \
-            vulkan-tools
-
-      - name: Cache Cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/git
-            ~/.cargo/registry
-            tools/naga_oil_oracle/target
-            tools/wgpu_validation/.mooncakes/Milky2018/wgpu_mbt/src/c/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('tools/naga_oil_oracle/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          sudo apt-get install -y ripgrep
 
       - name: Tool versions
         run: |
           moon version --all
           node --version
-          cargo --version
 
       - name: Workspace Moon gates
         run: |
           moon update
-          moon -C tools/wgpu_validation update
           moon fmt
           moon info --target all
           moon check --target all --warn-list +73 --deny-warn
@@ -186,11 +165,6 @@ jobs:
           ulimit -s 8176
           bash tools/check_ir_roundtrip_corpus.sh
 
-      - name: WGSL validation corpus
-        run: |
-          ulimit -s 8176
-          bash tools/check_wgsl_validation.sh
-
       - name: WGSL corpus matrix
         run: |
           ulimit -s 8176
@@ -205,46 +179,6 @@ jobs:
         run: |
           ulimit -s 8176
           bash tools/check_wgsl_differential_generated.sh
-
-      - name: wgpu runtime validation
-        run: |
-          ulimit -s 8176
-          bash tools/check_wgpu_validation.sh
-
-      - name: Moon WGSL byte parity
-        run: |
-          ulimit -s 8176
-          bash tools/check_moon_wgsl_byte_parity.sh
-
-      - name: External naga-oil compose parity
-        run: |
-          ulimit -s 8176
-          bash tools/check_external_naga_oil_compose_parity.sh
-
-      - name: Moon WGSL error parity
-        run: |
-          ulimit -s 8176
-          bash tools/check_moon_wgsl_error_parity.sh
-
-      - name: Naga Oil parity inventory
-        run: bash tools/check_naga_oil_parity_inventory.sh
-
-      - name: Naga Oil preprocess parity
-        run: |
-          ulimit -s 8176
-          bash tools/check_preprocess_parity.sh
-
-      - name: Official GPUWeb WGSL CTS corpus
-        env:
-          WGSL_CTS_REF: 3b327ebc44f11212fd3872972a6dd394634fb9e3
-        run: |
-          ulimit -s 8176
-          bash tools/check_official_wgsl_corpus.sh
-
-      - name: External real-project WGSL corpus
-        run: |
-          ulimit -s 8176
-          bash tools/check_external_wgsl_corpus.sh
 
       - name: Bevy PBR compose performance
         run: |

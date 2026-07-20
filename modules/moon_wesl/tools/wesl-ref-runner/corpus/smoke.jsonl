@@ -1,4 +1,0 @@
-{"case":"parse-empty-fn","op":"parse-display","source":"fn main() {}"}
-{"case":"compile-basic","op":"compile-virtual","root":"package::main","modules":[{"path":"package::main","source":"@compute @workgroup_size(1) fn main() {}"}],"options":{"strip":false,"validate":false}}
-{"case":"compile-condcomp-enabled","op":"compile-virtual","root":"package::main","modules":[{"path":"package::main","source":"@if(PARTY_MODE)\nfn value() -> f32 { return 2.0; }\n@else\nfn value() -> f32 { return 1.0; }\n"}],"options":{"strip":false,"validate":false,"features":{"PARTY_MODE":"enable"}}}
-{"case":"compile-missing-feature-error","op":"compile-virtual","root":"package::main","modules":[{"path":"package::main","source":"@if(EXPERIMENTAL_SHADER)\nfn value() -> f32 { return 1.0; }\n"}],"options":{"strip":false,"validate":false,"feature-default":"error"}}

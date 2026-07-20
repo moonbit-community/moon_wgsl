@@ -324,7 +324,7 @@ test "naga_oil: composer preprocess supports multiline grouped imports" {
 }
 
 ///|
-test "naga_oil: composer directives use Rust regex Unicode whitespace" {
+test "naga_oil: composer directives use Unicode whitespace" {
   clear_composer_test_registry()
   register_composer_test_shader_source(
     "shared/inc.wgsl",

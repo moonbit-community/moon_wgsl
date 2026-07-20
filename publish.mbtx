@@ -28,7 +28,7 @@ fn usage() -> Unit {
   println(
     "usage: moon run --target js publish.mbtx <workspace-version> <wesl-version>",
   )
-  println("example: moon run --target js publish.mbtx 0.16.1 0.2.0")
+  println("example: moon run --target js publish.mbtx 0.16.1 0.17.0")
 }
 
 fn update_manifest(

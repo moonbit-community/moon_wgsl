@@ -1,6 +1,6 @@
 ///|
 fn compose_case_usage() -> String {
-  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--shader-type wgsl|glsl-vertex|glsl-fragment] [--module FILE] [--entry-only] [--check-only] [--def NAME] [--value-def NAME=VALUE] [--additional-import PATH] [--output FILE] [--pre-ir] [--runtime-valid] [--naga-oil-writer-parity] [--naga-writer-trace-function PREFIX] [--naga-writer-trace-module] [--repeat COUNT] [--file-path-prefix PREFIX] [--expect-error --error-output FILE]"
+  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--shader-type wgsl|glsl-vertex|glsl-fragment] [--module FILE] [--entry-only] [--check-only] [--def NAME] [--value-def NAME=VALUE] [--additional-import PATH] [--output FILE] [--pre-ir] [--runtime-valid] [--repeat COUNT] [--file-path-prefix PREFIX] [--expect-error --error-output FILE]"
 }
 
 ///|
@@ -15,9 +15,6 @@ priv struct ComposeCaseArgs {
   mut shader_type : String?
   mut pre_ir : Bool
   mut runtime_valid : Bool
-  mut naga_oil_writer_parity : Bool
-  mut naga_writer_trace_function : String?
-  mut naga_writer_trace_module : Bool
   mut repeat : Int
   mut entry_only : Bool
   mut check_only : Bool
@@ -39,9 +36,6 @@ fn ComposeCaseArgs::ComposeCaseArgs() -> ComposeCaseArgs {
     shader_type: None,
     pre_ir: false,
     runtime_valid: false,
-    naga_oil_writer_parity: false,
-    naga_writer_trace_function: None,
-    naga_writer_trace_module: false,
     repeat: 1,
     entry_only: false,
     check_only: false,
@@ -104,19 +98,6 @@ fn parse_compose_case_args() -> ComposeCaseArgs {
       }
       "--runtime-valid" => {
         parsed.runtime_valid = true
-        index = index + 1
-      }
-      "--naga-oil-writer-parity" => {
-        parsed.naga_oil_writer_parity = true
-        index = index + 1
-      }
-      "--naga-writer-trace-function" => {
-        guard index + 1 < args.length() else { abort(compose_case_usage()) }
-        parsed.naga_writer_trace_function = Some(args[index + 1])
-        index = index + 2
-      }
-      "--naga-writer-trace-module" => {
-        parsed.naga_writer_trace_module = true
         index = index + 1
       }
       "--repeat" => {
@@ -1135,23 +1116,12 @@ fn main {
   let mut output = ""
   for _ in 0..<args.repeat {
     output = try {
-      match args.naga_writer_trace_function {
-        Some(prefix) =>
-          @diagnostics.trace_writer_function_plan(
-            composer, entry, options, prefix,
-          )
-        None =>
-          if args.naga_writer_trace_module {
-            @diagnostics.trace_writer_module_plan(composer, entry, options)
-          } else if args.pre_ir {
-            @diagnostics.compose_before_ir(composer, entry, options)
-          } else if args.runtime_valid {
-            composer.compose_wgsl_runtime_valid(entry, options)
-          } else if args.naga_oil_writer_parity {
-            @diagnostics.compose_for_writer_parity(composer, entry, options)
-          } else {
-            composer.compose_wgsl(entry, options)
-          }
+      if args.pre_ir {
+        @diagnostics.compose_before_ir(composer, entry, options)
+      } else if args.runtime_valid {
+        composer.compose_wgsl_runtime_valid(entry, options)
+      } else {
+        composer.compose_wgsl(entry, options)
       }
     } catch {
       err =>

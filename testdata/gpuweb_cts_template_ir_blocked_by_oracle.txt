@@ -1,4 +1,0 @@
-# Valid GPUWeb CTS template-generated WGSL cases that moon_wgsl can parse and
-# IR-roundtrip, but the pinned Naga validation oracle cannot validate yet.
-src_webgpu_shader_validation_types_array_spec_ts_033_368e2f53ec26
-src_webgpu_shader_validation_types_array_spec_ts_034_814c3ad4ea92

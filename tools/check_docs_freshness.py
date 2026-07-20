@@ -12,15 +12,6 @@ def fail(message: str) -> None:
     sys.exit(1)
 
 
-def non_comment_rows(path: Path) -> int:
-    count = 0
-    for line in path.read_text().splitlines():
-        stripped = line.strip()
-        if stripped and not stripped.startswith("#") and stripped.split("\t")[0] != "id":
-            count += 1
-    return count
-
-
 def module_version(module: str) -> str:
     path = REPO_ROOT / "modules" / module / "moon.mod"
     text = path.read_text()
@@ -57,40 +48,27 @@ def check_tools_manifest_freshness(release: str) -> None:
             fail(f"tools/moon.mod dependency {package} is stale: expected {release}, found {dep_version}")
 
 
-def check_naga_oil_parity_doc() -> None:
-    docs = (REPO_ROOT / "docs" / "naga_oil-parity.md").read_text()
+def check_release_metadata() -> None:
     release = module_version("moon_wgsl")
     for module in ["wgsl", "moon_wgsl_naga", "moon_wgsl_naga_oil"]:
         other = module_version(module)
         if other != release:
             fail(f"workspace module versions are not synchronized: moon_wgsl={release}, {module}={other}")
     check_tools_manifest_freshness(release)
-    if f"workspace release line is `{release}`" not in docs:
-        fail(f"docs/naga_oil-parity.md does not record current release {release}")
-    if f"current `main` (workspace line `{release}`)" not in docs:
-        fail(f"docs/naga_oil-parity.md downstream verification still references a stale release")
 
-    cases = non_comment_rows(REPO_ROOT / "testdata" / "external_naga_oil_compose_parity.tsv")
-    oracle_blocked = non_comment_rows(
-        REPO_ROOT / "testdata" / "external_naga_oil_compose_oracle_blocked.tsv"
+    wesl_version = module_version("moon_wesl")
+    wesl_dependency = manifest_dependency_version(
+        REPO_ROOT / "tools" / "moon.mod", "Milky2018/moon_wesl"
     )
-    comparable = cases - oracle_blocked
-    trace_cases = non_comment_rows(REPO_ROOT / "testdata" / "naga_writer_trace_cases.tsv")
-    expected_fragments = [
-        f"`cases={cases}`",
-        f"`comparable={comparable}`",
-        f"`oracle-blocked={oracle_blocked}`",
-        f"`writer-exact={comparable}`",
-        f"`byte-exact={comparable}`",
-        f"passes {trace_cases} cases",
-    ]
-    for fragment in expected_fragments:
-        if fragment not in docs:
-            fail(f"docs/naga_oil-parity.md is missing current parity fragment: {fragment}")
+    if wesl_dependency != wesl_version:
+        fail(
+            "tools/moon.mod dependency Milky2018/moon_wesl is stale: "
+            f"expected {wesl_version}, found {wesl_dependency}"
+        )
 
 
 def main() -> None:
-    check_naga_oil_parity_doc()
+    check_release_metadata()
     print("documentation freshness checks passed")
 
 
