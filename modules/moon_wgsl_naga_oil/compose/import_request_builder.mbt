@@ -94,17 +94,20 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
   record_wgsl_emitted_item_extraction_facts(
     session, directive_source, extraction,
   )
+  let prepared = prepare_active_wgsl_compose_source(directive_source, session)
   let targets : Array[WgslImportTarget] = []
   collect_wgsl_import_targets_from_source_directives(
     session, directive_source, targets,
   )
-  let requests = self.build_wgsl_import_requests_from_targets(
+  collect_wgsl_semantic_qualified_module_targets_from_facts(
+    prepared.reference_scan_semantic_facts(session),
     current_rel_path,
+    self.registry,
+    session.modules,
     targets,
-    prepare_active_wgsl_compose_source(directive_source, session),
-    session,
-    importer_defs,
-    true,
+  )
+  let requests = self.build_wgsl_import_requests_from_targets(
+    current_rel_path, targets, prepared, session, importer_defs, true,
   )
   if dependency_scan_source != directive_source {
     self.merge_wgsl_dependency_scan_import_requests(
