@@ -1,6 +1,6 @@
 name = "Milky2018/wgsl"
 
-version = "0.16.1"
+version = "0.17.0"
 
 readme = "README.mbt.md"
 
