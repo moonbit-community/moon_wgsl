@@ -22,7 +22,7 @@ test "wesl io: file resolver compiles local imports" {
     @moon_wesl.ModulePath::from_path("/custom_material"),
     resolver,
     @moon_wesl.EscapeMangler::default(),
-    @moon_wesl.CompileOptions::default().with_keep_root(true),
+    { ..@moon_wesl.CompileOptions::default(), keep_root: true },
   )
   inspect(
     compiled.to_string().contains("fn package_util__2make_polka_dots"),

@@ -1108,9 +1108,9 @@ fn main {
   composer.clear_sources()
   compose_case_register_fixture_sources(composer, fixture_root, args)
   let options : @contract.WgslComposeOptions = {
+    ..@contract.WgslComposeOptions::default(),
     defines: compose_case_bool_defines(args.defines),
     value_defines: compose_case_value_defines(args.value_defines),
-    redirects: [],
     additional_imports: compose_case_additional_imports(args.additional_imports),
   }
   let mut output = ""

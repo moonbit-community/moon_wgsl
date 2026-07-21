@@ -50,10 +50,10 @@ fn export_test_compose_options(
   redirects : Array[@contract.WgslSymbolRedirect],
 ) -> @contract.WgslComposeOptions {
   {
+    ..@contract.WgslComposeOptions::default(),
     defines,
     value_defines: @profile.bevy_wgsl_value_defines(),
     redirects,
-    additional_imports: [],
   }
 }
 
@@ -410,10 +410,9 @@ test "naga_oil: export_wgsl_with_options uses composer-owned session config" {
     composer,
     "shaders/effects/main.wgsl",
     {
+      ..@contract.WgslComposeOptions::default(),
       defines: export_test_empty_defines(),
       value_defines: @profile.bevy_wgsl_value_defines(),
-      redirects: [],
-      additional_imports: [],
     },
     { root_items: ["shade"] },
   ) catch {

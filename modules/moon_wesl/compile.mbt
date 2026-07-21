@@ -71,7 +71,7 @@ fn CondValue::or_value(self : CondValue, other : CondValue) -> CondValue {
 }
 
 ///|
-pub struct Features {
+pub(all) struct Features {
   default : Feature
   flags : @hashmap.HashMap[String, Feature]
 }
@@ -82,13 +82,12 @@ pub fn Features::default() -> Features {
 }
 
 ///|
-pub fn Features::with_feature(
+pub fn Features::set_feature(
   self : Features,
   name : String,
   value : Feature,
-) -> Features {
+) -> Unit {
   self.flags.set(name, value)
-  self
 }
 
 ///|
@@ -105,7 +104,7 @@ fn Features::eval_cond(
 }
 
 ///|
-pub struct CompileOptions {
+pub(all) struct CompileOptions {
   imports : Bool
   condcomp : Bool
   generics : Bool
@@ -134,112 +133,6 @@ pub fn CompileOptions::default() -> CompileOptions {
     keep_root: false,
     features: Features::default(),
   }
-}
-
-///|
-pub fn CompileOptions::with_imports(
-  self : CompileOptions,
-  imports : Bool,
-) -> CompileOptions {
-  { ..self, imports, }
-}
-
-///|
-pub fn CompileOptions::with_condcomp(
-  self : CompileOptions,
-  condcomp : Bool,
-) -> CompileOptions {
-  { ..self, condcomp, }
-}
-
-///|
-pub fn CompileOptions::with_lower(
-  self : CompileOptions,
-  lower : Bool,
-) -> CompileOptions {
-  { ..self, lower, }
-}
-
-///|
-pub fn CompileOptions::with_generics(
-  self : CompileOptions,
-  generics : Bool,
-) -> CompileOptions {
-  { ..self, generics, }
-}
-
-///|
-pub fn CompileOptions::with_strip(
-  self : CompileOptions,
-  strip : Bool,
-) -> CompileOptions {
-  { ..self, strip, }
-}
-
-///|
-pub fn CompileOptions::with_lazy(
-  self : CompileOptions,
-  enabled : Bool,
-) -> CompileOptions {
-  { ..self, lazy_resolution: enabled }
-}
-
-///|
-pub fn CompileOptions::with_validate(
-  self : CompileOptions,
-  validate : Bool,
-) -> CompileOptions {
-  { ..self, validate, }
-}
-
-///|
-pub fn CompileOptions::with_mangle_root(
-  self : CompileOptions,
-  mangle_root : Bool,
-) -> CompileOptions {
-  { ..self, mangle_root, }
-}
-
-///|
-pub fn CompileOptions::with_keep_root(
-  self : CompileOptions,
-  keep_root : Bool,
-) -> CompileOptions {
-  { ..self, keep_root, }
-}
-
-///|
-pub fn CompileOptions::keep_declarations(
-  self : CompileOptions,
-  keep : Array[String],
-) -> CompileOptions {
-  { ..self, keep: Some(keep) }
-}
-
-///|
-pub fn CompileOptions::with_feature(
-  self : CompileOptions,
-  name : String,
-  value : Bool,
-) -> CompileOptions {
-  self.set_feature(name, Feature::from_bool(value))
-}
-
-///|
-pub fn CompileOptions::set_feature(
-  self : CompileOptions,
-  name : String,
-  value : Feature,
-) -> CompileOptions {
-  { ..self, features: self.features.with_feature(name, value) }
-}
-
-///|
-pub fn CompileOptions::set_missing_feature_behavior(
-  self : CompileOptions,
-  value : Feature,
-) -> CompileOptions {
-  { ..self, features: { ..self.features, default: value } }
 }
 
 ///|

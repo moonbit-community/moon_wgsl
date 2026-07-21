@@ -99,6 +99,7 @@ pub(all) struct WgslComposeOptions {
   value_defines : Map[String, ShaderDefValue]
   redirects : Array[WgslSymbolRedirect]
   additional_imports : Array[ImportDefinition]
+  immediate_specializations : Array[WgslImmediateSpecialization]
 } derive(Eq, @debug.Debug)
 pub fn WgslComposeOptions::default() -> Self
 
@@ -149,6 +150,13 @@ pub fn WgslExportOutput::source(Self) -> String
 pub fn WgslExportOutput::source_catalog(Self) -> Array[WgslSourceCatalogEntry]
 pub fn WgslExportOutput::source_map(Self) -> Array[WgslSourceMapEntry]
 pub fn WgslExportOutput::source_origins(Self) -> Array[WgslSourceOriginEntry]
+
+pub(all) struct WgslImmediateSpecialization {
+  rel_path : String
+  global_name : String
+  field_values : Map[String, ShaderDefValue]
+} derive(Eq, @debug.Debug)
+pub fn WgslImmediateSpecialization::WgslImmediateSpecialization(String, String, Map[String, ShaderDefValue]) -> Self
 
 pub(all) struct WgslImportTarget {
   raw_path : String

@@ -3,7 +3,9 @@ using @ast {
   type WgslFunction,
   type WgslGlobalDecl,
   type WgslGlobalDeclData,
+  type WgslGlobalVariable,
   type WgslIdent,
+  type WgslStruct,
 }
 
 ///|
@@ -46,3 +48,6 @@ using @source_rewrite {
   emit_wgsl_token_stream_canonical,
   tokenize_wgsl_absolute_source,
 }
+
+///|
+using @contract {type ShaderDefValue, type WgslImmediateSpecialization}

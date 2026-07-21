@@ -24,6 +24,28 @@ boundary.
 `WgslComposeOptions::default()` contains no project-specific shader values.
 Use `bevy_wgsl_value_defines()` explicitly when composing Bevy shaders.
 
+For a source that uses a backend-specific `var<immediate>` struct global, add
+a structured specialization to the compose options. It names the source and
+global declaration before import linking and must provide every struct field:
+
+```mbt check
+///|
+test "configure an immediate specialization" {
+  let options = {
+    ..WgslComposeOptions::default(),
+    immediate_specializations: [
+      WgslImmediateSpecialization("root.wgsl", "constants", {
+        "max_mip_level": UInt(12),
+      }),
+    ],
+  }
+  assert_eq(options.immediate_specializations.length(), 1)
+}
+```
+
+Composition lowers the declaration to a concrete WGSL `const`; callers do not
+need to patch the emitted shader text.
+
 ```mbt check
 ///|
 test "compose a shader through the facade" {

@@ -277,7 +277,12 @@ fn WgslImportGraphBuilder::plan_with_path(
           self.session,
           normalize_shader_rel_path(current_rel_path),
         )
-        prepare_wgsl_compose_source(source, self.session, active_defs)
+        prepare_wgsl_compose_source(
+          source,
+          current_rel_path,
+          self.session,
+          active_defs,
+        )
       }
       (active_defs, prepared)
     }

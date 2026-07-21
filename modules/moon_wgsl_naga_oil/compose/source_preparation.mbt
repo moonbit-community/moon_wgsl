@@ -81,6 +81,7 @@ fn build_wgsl_redirect_reference_plan(
 ///|
 fn prepare_wgsl_compose_source(
   source : String,
+  rel_path : String,
   session : WgslComposeSession,
   active_defs : WgslActiveComposeDefs,
 ) -> WgslPreparedComposeSource raise ComposerError {
@@ -94,10 +95,22 @@ fn prepare_wgsl_compose_source(
   ) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }
-  let active_source = apply_wgsl_template_consts(
+  let preprocessed_source = apply_wgsl_template_consts(
     apply_wgsl_ifdefs_strict_for_compose(redirected_source, active_defs),
     active_defs.value_defines,
   )
+  let relevant_specializations : Array[WgslImmediateSpecialization] = []
+  let normalized_rel_path = normalize_shader_rel_path(rel_path)
+  for specialization in session.immediate_specializations {
+    if normalize_shader_rel_path(specialization.rel_path) == normalized_rel_path {
+      relevant_specializations.push(specialization)
+    }
+  }
+  let active_source = specialize_wgsl_immediate_globals(
+    preprocessed_source, relevant_specializations,
+  ) catch {
+    error => raise ImmediateSpecializationFailed(error.message())
+  }
   ignore(get_preprocessor_metadata(active_source, collect_import_uses=false)) catch {
     error => raise composer_error_from_metadata_error(error)
   }

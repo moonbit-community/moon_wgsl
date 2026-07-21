@@ -31,10 +31,9 @@ fn compose_regression_options(
   defines : Map[String, Bool],
 ) -> @contract.WgslComposeOptions {
   {
+    ..@contract.WgslComposeOptions::default(),
     defines,
     value_defines: @profile.bevy_wgsl_value_defines(),
-    redirects: [],
-    additional_imports: [],
   }
 }
 

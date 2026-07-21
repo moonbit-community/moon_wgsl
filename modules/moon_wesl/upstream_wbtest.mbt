@@ -94,12 +94,10 @@ fn upstream_assert_standalone_compile_result(
   let root_path = upstream_fixture_module_path(path)
   resolver.add_module(root_path, source)
   let result = try
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_keep_root(true),
-    )
+    compile(root_path, resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      keep_root: true,
+    })
   catch {
     err => Err(err)
   } noraise {
@@ -193,10 +191,10 @@ fn upstream_assert_context_case_with_options(
 
 ///|
 fn upstream_assert_context_case(case : UpstreamContextCase) -> String? {
-  upstream_assert_context_case_with_options(
-    case,
-    CompileOptions::default().with_lower(case.lower),
-  )
+  upstream_assert_context_case_with_options(case, {
+    ..CompileOptions::default(),
+    lower: case.lower,
+  })
 }
 
 ///|
@@ -385,13 +383,16 @@ test "upstream: circular context cases" {
 test "upstream: type context cases" {
   for case in upstream_type_context_cases {
     match
-      upstream_assert_context_case_with_options(
-        case,
-        CompileOptions::default()
-        .with_lower(if case.expect_pass { case.lower } else { false })
-        .with_strip(false)
-        .with_keep_root(true),
-      ) {
+      upstream_assert_context_case_with_options(case, {
+        ..CompileOptions::default(),
+        lower: if case.expect_pass {
+          case.lower
+        } else {
+          false
+        },
+        strip: false,
+        keep_root: true,
+      }) {
       Some(message) => fail(message)
       None => ()
     }

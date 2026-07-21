@@ -38,10 +38,10 @@ fn composer_test_compose_options(
   redirects : Array[@contract.WgslSymbolRedirect],
 ) -> @contract.WgslComposeOptions {
   {
+    ..@contract.WgslComposeOptions::default(),
     defines,
     value_defines: @profile.bevy_wgsl_value_defines(),
     redirects,
-    additional_imports: [],
   }
 }
 
@@ -670,10 +670,9 @@ test "naga_oil: composer local registry can compose without test registry state"
     },
   ])
   let preprocessed = composer.compose_wgsl("shaders/effects/main.wgsl", {
+    ..@contract.WgslComposeOptions::default(),
     defines: empty_bool_defines(),
     value_defines: @profile.bevy_wgsl_value_defines(),
-    redirects: [],
-    additional_imports: [],
   }) catch {
     err =>
       abort(
@@ -702,10 +701,9 @@ test "issue 5: template constants handle non-BMP source text" {
       #|
     ),
     {
+      ..@contract.WgslComposeOptions::default(),
       defines: empty_bool_defines(),
       value_defines,
-      redirects: [],
-      additional_imports: [],
     },
   ) catch {
     err => abort("expected non-BMP template compose success: \{err.message()}")
@@ -725,10 +723,9 @@ test "template constants preserve large unsigned shader-def values" {
       #|
     ),
     {
+      ..@contract.WgslComposeOptions::default(),
       defines: empty_bool_defines(),
       value_defines,
-      redirects: [],
-      additional_imports: [],
     },
   ) catch {
     err =>
@@ -757,10 +754,9 @@ test "template constants support raw double-hash WGSL token placeholders" {
       #|
     ),
     {
+      ..@contract.WgslComposeOptions::default(),
       defines: empty_bool_defines(),
       value_defines,
-      redirects: [],
-      additional_imports: [],
     },
   ) catch {
     err =>
@@ -780,21 +776,20 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
   composer.clear_sources()
   ignore(
     composer.add_composable_module({
+      ..@contract.ComposableModuleDescriptor::default(),
       source: (
         #|#define_import_path demo::maths
         #|const PI_2: f32 = 6.28318f;
         #|
       ),
       file_path: "shaders/demo/maths.wgsl",
-      as_name: None,
-      additional_imports: [],
-      shader_defs: Map([]),
     }),
   ) catch {
     err => abort("expected maths module registration success: \{err.message()}")
   }
   ignore(
     composer.add_composable_module({
+      ..@contract.ComposableModuleDescriptor::default(),
       source: (
         #|#define_import_path demo::main
         #|#import demo::maths::PI_2
@@ -804,18 +799,14 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
         #|
       ),
       file_path: "shaders/demo/main.wgsl",
-      as_name: None,
-      additional_imports: [],
-      shader_defs: Map([]),
     }),
   ) catch {
     err => abort("expected main module registration success: \{err.message()}")
   }
   let preprocessed = composer.compose_wgsl("shaders/demo/main.wgsl", {
+    ..@contract.WgslComposeOptions::default(),
     defines: empty_bool_defines(),
     value_defines: @profile.bevy_wgsl_value_defines(),
-    redirects: [],
-    additional_imports: [],
   }) catch {
     err =>
       abort(
@@ -834,21 +825,20 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
   composer.clear_sources()
   ignore(
     composer.add_composable_module({
+      ..@contract.ComposableModuleDescriptor::default(),
       source: (
         #|# define_import_path demo::maths
         #|const PI_2: f32 = 6.28318f;
         #|
       ),
       file_path: "shaders/demo/maths.wgsl",
-      as_name: None,
-      additional_imports: [],
-      shader_defs: Map([]),
     }),
   ) catch {
     err => abort("expected maths module registration success: \{err.message()}")
   }
   ignore(
     composer.add_composable_module({
+      ..@contract.ComposableModuleDescriptor::default(),
       source: (
         #|# define_import_path demo::main
         #|# import demo::maths::PI_2
@@ -858,18 +848,14 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
         #|
       ),
       file_path: "shaders/demo/main.wgsl",
-      as_name: None,
-      additional_imports: [],
-      shader_defs: Map([]),
     }),
   ) catch {
     err => abort("expected main module registration success: \{err.message()}")
   }
   let preprocessed = composer.compose_wgsl("shaders/demo/main.wgsl", {
+    ..@contract.WgslComposeOptions::default(),
     defines: empty_bool_defines(),
     value_defines: @profile.bevy_wgsl_value_defines(),
-    redirects: [],
-    additional_imports: [],
   }) catch {
     err => abort("expected spaced-directive compose success: \{err.message()}")
   }
@@ -944,6 +930,7 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
   composer.clear_sources()
   ignore(
     composer.add_composable_module({
+      ..@contract.ComposableModuleDescriptor::default(),
       source: (
         #|#define_import_path plugin
         #|fn external_scale() -> f32 {
@@ -952,9 +939,6 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
         #|
       ),
       file_path: "shaders/demo/plugin.wgsl",
-      as_name: None,
-      additional_imports: [],
-      shader_defs: Map([]),
     }),
   ) catch {
     err =>
@@ -962,6 +946,7 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
   }
   ignore(
     composer.add_composable_module({
+      ..@contract.ComposableModuleDescriptor::default(),
       source: (
         #|#define_import_path demo::main
         #|fn demo() -> f32 {
@@ -970,18 +955,15 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
         #|
       ),
       file_path: "shaders/demo/main.wgsl",
-      as_name: None,
       additional_imports: [{ import_path: "plugin", items: [] }],
-      shader_defs: Map([]),
     }),
   ) catch {
     err => abort("expected main module registration success: \{err.message()}")
   }
   let preprocessed = composer.compose_wgsl("shaders/demo/main.wgsl", {
+    ..@contract.WgslComposeOptions::default(),
     defines: empty_bool_defines(),
     value_defines: @profile.bevy_wgsl_value_defines(),
-    redirects: [],
-    additional_imports: [],
   }) catch {
     err =>
       abort(
@@ -1467,6 +1449,7 @@ test "naga_oil: source catalog uses per-module strict shader defs" {
   module_defs.set("MODULE_FLAG", Bool(false))
   ignore(
     composer.add_composable_module({
+      ..@contract.ComposableModuleDescriptor::default(),
       source: (
         #|#define_import_path catalog::module
         #|#ifdef MODULE_FLAG
@@ -1481,8 +1464,6 @@ test "naga_oil: source catalog uses per-module strict shader defs" {
         #|
       ),
       file_path: "shaders/catalog/module.wgsl",
-      as_name: None,
-      additional_imports: [],
       shader_defs: module_defs,
     }),
   ) catch {
@@ -1524,6 +1505,7 @@ test "naga_oil: composable modules reject local define directives" {
   let composer = @compose.Composer::default()
   ignore(
     composer.add_composable_module({
+      ..@contract.ComposableModuleDescriptor::default(),
       source: (
         #|#define_import_path bad::module
         #|#define LOCAL_FLAG
@@ -1533,9 +1515,6 @@ test "naga_oil: composable modules reject local define directives" {
         #|
       ),
       file_path: "shaders/bad/module.wgsl",
-      as_name: None,
-      additional_imports: [],
-      shader_defs: Map([]),
     }),
   ) catch {
     err => {

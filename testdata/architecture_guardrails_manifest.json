@@ -223,7 +223,7 @@
         "pub fn\\[R : Resolver\\] compile_sourcemap\\(",
         "pub fn parse_translation_unit\\(",
         "pub fn validate_wesl\\(",
-        "pub struct CompileOptions",
+        "pub\\(all\\) struct CompileOptions",
         "pub struct CompileResult",
         "pub\\(all\\) struct ModulePath",
         "pub\\(open\\) trait Resolver",

@@ -45,6 +45,7 @@ pub(all) suberror ComposerError {
   GlslInvalidVersion
   InvalidWgslDirective(String, String)
   InvalidIr(String)
+  ImmediateSpecializationFailed(String)
   AmbiguousImportBinding(String)
   UnknownShaderDef(String)
   UnknownShaderDefOperator(String)
@@ -81,6 +82,8 @@ pub fn ComposerError::message(self : ComposerError) -> String {
     InvalidWgslDirective(line, reason) =>
       "invalid WGSL directive: \{line}: \{reason}"
     InvalidIr(message) => "invalid WGSL IR pipeline: \{message}"
+    ImmediateSpecializationFailed(message) =>
+      "invalid immediate specialization: \{message}"
     AmbiguousImportBinding(message) =>
       "ambiguous shader import binding: \{message}"
     UnknownShaderDef(name) => "unknown shader def: \{name}"

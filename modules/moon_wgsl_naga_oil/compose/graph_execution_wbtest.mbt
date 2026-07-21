@@ -1804,3 +1804,31 @@ test "selected dependency modules retain alias-qualified const side effects" {
     content="false",
   )
 }
+
+///|
+test "runtime composition specializes immediate struct globals" {
+  let composer = Composer::default()
+  let source =
+    #|struct Constants {
+    #|  max_mip_level: u32,
+    #|}
+    #|
+    #|var<immediate> constants: Constants;
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  let enabled = constants.max_mip_level > 1u;
+    #|}
+    #|
+  composer.register_source("root.wgsl", source)
+  let options = WgslComposeOptions::default()
+  options.immediate_specializations.push(
+    WgslImmediateSpecialization("root.wgsl", "constants", {
+      "max_mip_level": UInt(12),
+    }),
+  )
+  let composed = composer.compose_wgsl_runtime_valid("root.wgsl", options) catch {
+    err => abort("expected runtime-valid specialization: \{err.message()}")
+  }
+  assert_false(composed.contains("var<immediate>"))
+}

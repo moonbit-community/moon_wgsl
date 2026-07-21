@@ -263,10 +263,12 @@ fn upstream_resolver_for_case(
 
 ///|
 fn upstream_compile_options(case : UpstreamModuleCase) -> CompileOptions {
-  CompileOptions::default()
-  .with_keep_root(true)
-  .with_lazy(!case.requires_eager)
-  .with_validate(false)
+  {
+    ..CompileOptions::default(),
+    keep_root: true,
+    lazy_resolution: !case.requires_eager,
+    validate: false,
+  }
 }
 
 ///|

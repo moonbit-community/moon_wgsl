@@ -93,12 +93,13 @@ pub(all) enum WgslNagaImportEdgeKind {
   ItemBinding
 } derive(Eq, @debug.Debug)
 
-pub struct WgslNagaPipelineOptions {
-  // private fields
+pub(all) struct WgslNagaPipelineOptions {
+  compat_writer : Bool
+  entry_roots : Bool
 }
 pub fn WgslNagaPipelineOptions::compat() -> Self
+pub fn WgslNagaPipelineOptions::default() -> Self
 pub fn WgslNagaPipelineOptions::runtime() -> Self
-pub fn WgslNagaPipelineOptions::with_entry_roots(Self) -> Self
 
 // Type aliases
 

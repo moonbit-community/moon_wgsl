@@ -28,11 +28,18 @@ replacements and does not resolve symbols or composition policy itself.
 `WgslComposeOptions::default()` is language-neutral and has no predefined
 shader values. Select project policy explicitly:
 
+`WgslImmediateSpecialization` provides structured values for
+`var<immediate>` struct globals. It identifies the source and declaration before
+linking, requires a value for every field, and lowers the declaration to a
+concrete `const` during source preparation.
+
 ```mbt check
 ///|
 test "select the Bevy compatibility profile explicitly" {
-  let options = @contract.WgslComposeOptions::default()
-  options.value_defines = @profile.bevy_wgsl_value_defines()
+  let options = {
+    ..@contract.WgslComposeOptions::default(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
+  }
   assert_true(options.value_defines.contains("MATERIAL_BIND_GROUP"))
 }
 ```

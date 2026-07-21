@@ -5,11 +5,32 @@ pub(all) struct WgslSymbolRedirect {
 } derive(Eq, Debug)
 
 ///|
+/// Concrete values for one `var<immediate>` struct global.
+///
+/// `rel_path` and `global_name` identify the declaration before imports are
+/// linked. Every field in the struct must have a value.
+pub(all) struct WgslImmediateSpecialization {
+  rel_path : String
+  global_name : String
+  field_values : Map[String, ShaderDefValue]
+} derive(Eq, Debug)
+
+///|
+pub fn WgslImmediateSpecialization::WgslImmediateSpecialization(
+  rel_path : String,
+  global_name : String,
+  field_values : Map[String, ShaderDefValue],
+) -> WgslImmediateSpecialization {
+  { rel_path, global_name, field_values }
+}
+
+///|
 pub(all) struct WgslComposeOptions {
   defines : Map[String, Bool]
   value_defines : Map[String, ShaderDefValue]
   redirects : Array[WgslSymbolRedirect]
   additional_imports : Array[ImportDefinition]
+  immediate_specializations : Array[WgslImmediateSpecialization]
 } derive(Eq, Debug)
 
 ///|
@@ -19,6 +40,7 @@ pub fn WgslComposeOptions::default() -> WgslComposeOptions {
     value_defines: Map([]),
     redirects: [],
     additional_imports: [],
+    immediate_specializations: [],
   }
 }
 

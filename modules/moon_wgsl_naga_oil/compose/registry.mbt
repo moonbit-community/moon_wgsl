@@ -52,6 +52,9 @@ fn Composer::new_wgsl_compose_session(
     modules: self.registry.copy_import_module_paths(),
     redirects: options.redirects.copy(),
     additional_imports: copy_import_definitions(options.additional_imports),
+    immediate_specializations: copy_wgsl_immediate_specializations(
+      options.immediate_specializations,
+    ),
     global_alias_bindings: WgslComposeBindingSet(),
     redirect_match_counts: Map([]),
     visited: Set([]),

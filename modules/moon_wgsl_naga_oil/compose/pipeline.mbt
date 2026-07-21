@@ -172,6 +172,7 @@ fn WgslComposeEmitter::emit_source_with_path(
       )
       let prepared = prepare_wgsl_compose_source(
         source,
+        current_rel_path,
         self.session,
         active_defs,
       )
@@ -612,7 +613,10 @@ fn compose_wgsl_source_via_ir(
     symbols.generated_import_provenance(root_rel_path, source),
     symbols.naga_import_arena_events(),
   )
-  let naga_options = @moon_wgsl_naga.WgslNagaPipelineOptions::runtime().with_entry_roots()
+  let naga_options = {
+    ..@moon_wgsl_naga.WgslNagaPipelineOptions::runtime(),
+    entry_roots: true,
+  }
   @moon_wgsl_naga.roundtrip_wgsl_compose_source(
     source,
     naga_context,

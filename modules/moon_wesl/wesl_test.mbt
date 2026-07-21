@@ -496,12 +496,10 @@ test "wesl: compile result eval uses compiled const functions" {
   resolver.add_module(
     root_path, "@const\nfn test() -> u32 {\n  let base = 40u;\n  return base + 2u;\n}\n",
   )
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().keep_declarations(["test"]),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    keep: Some(["test"]),
+  })
 
   inspect(compiled.eval("test()").to_string(), content="42u")
 }
@@ -1996,7 +1994,7 @@ test "wesl: compile result returns WGSL text" {
   resolver.add_module(root, "fn artifact() {}\n")
   let result = Wesl::new_barebones()
     .set_custom_resolver(resolver)
-    .set_options(CompileOptions::default().with_strip(false))
+    .set_options({ ..CompileOptions::default(), strip: false })
     .compile(root)
   inspect(result.to_string().contains("fn artifact() {}"), content="true")
 }
@@ -2008,12 +2006,10 @@ test "wesl: compile result eval sees global const context" {
   resolver.add_module(
     root_path, "const BASE: u32 = 40u;\n\n@const\nfn add_two() -> u32 {\n  return BASE + 2u;\n}\n",
   )
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().keep_declarations(["BASE", "add_two"]),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    keep: Some(["BASE", "add_two"]),
+  })
 
   inspect(compiled.eval("BASE + add_two()").to_string(), content="82u")
 }
@@ -2025,12 +2021,10 @@ test "wesl: compile result eval passes arguments into const functions" {
   resolver.add_module(
     root_path, "const BASE: u32 = 40u;\n\n@const\nfn add(base: u32, extra: u32) -> u32 {\n  return base + extra;\n}\n",
   )
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().keep_declarations(["BASE", "add"]),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    keep: Some(["BASE", "add"]),
+  })
 
   inspect(compiled.eval("add(BASE, 2u)").to_string(), content="42u")
 }
@@ -2042,12 +2036,10 @@ test "wesl: compile result eval handles multiplied global constants" {
   resolver.add_module(
     root_path, "const PI: f32 = 3.0;\nconst TAU: f32 = PI * 2.0;\n",
   )
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().keep_declarations(["PI", "TAU"]),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    keep: Some(["PI", "TAU"]),
+  })
 
   inspect(compiled.eval("TAU").to_string(), content="6f")
 }
@@ -2059,14 +2051,10 @@ test "wesl: compile result eval handles bool global constants" {
   resolver.add_module(
     root_path, "const FLAG: bool = true;\nconst DISABLED: bool = !FLAG;\nconst HAS_SIZE: bool = 2u >= 2u;\nconst SIZE: u32 = 2u;\n",
   )
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().keep_declarations([
-      "FLAG", "DISABLED", "HAS_SIZE", "SIZE",
-    ]),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    keep: Some(["FLAG", "DISABLED", "HAS_SIZE", "SIZE"]),
+  })
 
   inspect(compiled.eval("FLAG").to_string(), content="true")
   inspect(compiled.eval("DISABLED").to_string(), content="false")
@@ -2092,9 +2080,9 @@ test "wesl: compile resolves imports and conditional translation" {
   resolver.add_module(
     root_path, "import super::util::make_polka_dots;\n@fragment\nfn fragment(v: f32) -> f32 {\n  return make_polka_dots(v);\n}\n",
   )
-  let options = CompileOptions::default()
-    .with_lower(true)
-    .with_feature("PARTY_MODE", true)
+  let features = Features::default()
+  features.set_feature("PARTY_MODE", Enable)
+  let options = { ..CompileOptions::default(), lower: true, features }
   let compiled = compile(root_path, resolver, EscapeMangler::default(), options)
   let compiled_text = compiled.to_string()
 
@@ -2143,12 +2131,10 @@ test "wesl: lazy strip does not load unused imports" {
     root_path, "import super::missing::unused_helper;\n@fragment\nfn fragment() -> f32 {\n  return 1.0;\n}\n",
   )
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_lower(true),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    lower: true,
+  })
 
   debug_inspect(compiled.to_string().contains("return 1.0;"), content="true")
 }
@@ -2161,12 +2147,10 @@ test "wesl: strip keeps entrypoints and their transitive dependencies only" {
     root_path, "fn helper_unused() -> f32 {\n  return 5.0;\n}\n\nfn helper_used() -> f32 {\n  return 7.0;\n}\n\n@fragment\nfn fragment() -> f32 {\n  return helper_used();\n}\n",
   )
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_lower(true),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    lower: true,
+  })
   let compiled_text = compiled.to_string()
 
   debug_inspect(compiled_text.contains("helper_unused"), content="false")
@@ -2206,12 +2190,10 @@ test "wesl: lowering removes aliases and global const declarations" {
     root_path, "alias Scalar = f32;\nconst SCALE = 2.0;\n\nfn helper(v: Scalar) -> Scalar {\n  return v * SCALE;\n}\n\n@fragment\nfn fragment() -> f32 {\n  return helper(1.0);\n}\n",
   )
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_lower(true),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    lower: true,
+  })
   let compiled_text = compiled.to_string()
 
   debug_inspect(compiled_text.contains("alias Scalar"), content="false")
@@ -2227,12 +2209,10 @@ test "wesl: lowering resolves forward transitive aliases" {
     root_path, "alias A = B;\nalias B = i32;\n\n@compute @workgroup_size(1)\nfn main() {\n  let x: A = 1i;\n}\n",
   )
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_lower(true),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    lower: true,
+  })
   let compiled_text = compiled.to_string()
 
   debug_inspect(compiled_text.contains("alias A"), content="false")
@@ -2248,12 +2228,10 @@ test "wesl: lowering resolves forward transitive constants" {
     root_path, "const OFFSET = BASE + 1i;\nconst BASE = 1i;\n\n@compute @workgroup_size(1)\nfn main() {\n  let x = OFFSET;\n}\n",
   )
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_lower(true),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    lower: true,
+  })
   let compiled_text = compiled.to_string()
 
   debug_inspect(compiled_text.contains("const OFFSET"), content="false")
@@ -2270,12 +2248,10 @@ test "wesl: lowering preserves local names that shadow constants" {
     root_path, "const SCALE = 2.0;\n\nfn helper(SCALE: f32) -> f32 {\n  return SCALE;\n}\n\n@fragment\nfn fragment() -> f32 {\n  return helper(1.0);\n}\n",
   )
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_lower(true),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    lower: true,
+  })
   let compiled_text = compiled.to_string()
 
   debug_inspect(compiled_text.contains("const SCALE"), content="false")
@@ -2295,12 +2271,10 @@ test "wesl: grouped imports expand and local aliases resolve correctly" {
     root_path, "import super::util::{make_value as renamed_value, helper_unused};\n@fragment\nfn fragment() -> f32 {\n  return renamed_value();\n}\n",
   )
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_lower(true),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    lower: true,
+  })
   let compiled_text = compiled.to_string()
 
   debug_inspect(
@@ -2320,12 +2294,10 @@ test "wesl: parse errors include module and line context" {
   )
 
   let result = try
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_lower(true),
-    )
+    compile(root_path, resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      lower: true,
+    })
   catch {
     err => Err(err)
   } noraise {
@@ -2382,12 +2354,11 @@ test "wesl: lowering preserves non-lowered declaration kinds" {
     root_path, "struct Payload {\n  value: f32,\n}\n\noverride SCALE: f32 = 2.0;\n\n@fragment\nfn fragment() -> f32 {\n  return 1.0;\n}\n",
   )
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_lower(true).with_strip(false),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    lower: true,
+    strip: false,
+  })
   let compiled_text = compiled.to_string()
 
   debug_inspect(compiled_text.contains("struct Payload"), content="true")
@@ -2402,12 +2373,10 @@ test "wesl: parser handles attribute arguments and generic var declarations" {
     root_path, "@group(0)\n@binding(1)\nvar<uniform> DATA: f32;\n\n@fragment\nfn fragment() -> f32 {\n  return DATA;\n}\n",
   )
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_strip(false),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    strip: false,
+  })
   let compiled_text = compiled.to_string()
 
   debug_inspect(compiled_text.contains("@group(0)"), content="true")
@@ -2455,12 +2424,10 @@ test "wesl: nested grouped imports resolve through syntax tree flattening" {
     root_path, "import super::{util::{make_value as renamed_value, helper_unused}, bridge::helper};\n@fragment\nfn fragment() -> f32 {\n  return renamed_value() + helper();\n}\n",
   )
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_lower(true),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    lower: true,
+  })
   let compiled_text = compiled.to_string()
 
   debug_inspect(
@@ -2484,12 +2451,10 @@ test "wesl: published imports can be re-exported across modules" {
     root_path, "import super::bridge::make_value;\n@fragment\nfn fragment() -> f32 {\n  return make_value();\n}\n",
   )
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_lower(true),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    lower: true,
+  })
   let compiled_text = compiled.to_string()
 
   debug_inspect(
@@ -2515,12 +2480,10 @@ test "wesl: private imports cannot be re-exported" {
   )
 
   let result = try
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_lower(true),
-    )
+    compile(root_path, resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      lower: true,
+    })
   catch {
     err => Err(err)
   } noraise {
@@ -2544,13 +2507,12 @@ test "wesl: missing conditional feature can be configured as an error" {
     root_path, "@if(EXPERIMENTAL_SHADER)\nfn enabled() -> f32 {\n  return 1.0;\n}\n@else\nfn disabled() -> f32 {\n  return 0.0;\n}\n",
   )
 
+  let features = { ..Features::default(), default: Error }
   let result = try
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().set_missing_feature_behavior(Error),
-    )
+    compile(root_path, resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      features,
+    })
   catch {
     err => Err(err)
   } noraise {
@@ -2574,15 +2536,13 @@ test "wesl: keep conditional feature preserves unresolved attributes" {
     root_path, "@if(EXPERIMENTAL_SHADER)\nfn enabled() -> f32 {\n  return 1.0;\n}\n@else\nfn disabled() -> f32 {\n  return 0.0;\n}\n",
   )
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default()
-    .with_strip(false)
-    .with_validate(false)
-    .set_missing_feature_behavior(Keep),
-  )
+  let features = { ..Features::default(), default: Keep }
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    strip: false,
+    validate: false,
+    features,
+  })
   let compiled_text = compiled.to_string()
 
   debug_inspect(
@@ -2629,12 +2589,13 @@ test "wesl: conditional translation handles top-level elif chains" {
     root_path, "@if(FIRST)\nfn selected() -> f32 {\n  return 1.0;\n}\n@elif(SECOND)\nfn selected() -> f32 {\n  return 2.0;\n}\n@else\nfn selected() -> f32 {\n  return 3.0;\n}\n\n@fragment\nfn fragment() -> f32 {\n  return selected();\n}\n",
   )
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_strip(false).with_feature("SECOND", true),
-  )
+  let features = Features::default()
+  features.set_feature("SECOND", Enable)
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    strip: false,
+    features,
+  })
   let compiled_text = compiled.to_string()
 
   debug_inspect(compiled_text.contains("return 1.0;"), content="false")
@@ -2651,12 +2612,10 @@ test "wesl: validate option controls semantic validation pass" {
   let failing_resolver = VirtualResolver::new()
   failing_resolver.add_module(root_path, source)
   let failing = try
-    compile(
-      root_path,
-      failing_resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_strip(false),
-    )
+    compile(root_path, failing_resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      strip: false,
+    })
   catch {
     err => Err(err)
   } noraise {
@@ -2678,7 +2637,7 @@ test "wesl: validate option controls semantic validation pass" {
     root_path,
     passing_resolver,
     EscapeMangler::default(),
-    CompileOptions::default().with_strip(false).with_validate(false),
+    { ..CompileOptions::default(), strip: false, validate: false },
   )
 
   debug_inspect(compiled.to_string().contains("mat2x2<i32>"), content="true")
@@ -2693,12 +2652,10 @@ test "wesl: validation checks matrix templates through AST type expressions" {
   )
 
   let result = try
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_strip(false),
-    )
+    compile(root_path, resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      strip: false,
+    })
   catch {
     err => Err(err)
   } noraise {
@@ -2722,12 +2679,10 @@ test "wesl: validation checks matrix constructors through AST calls" {
   resolver.add_module(root_path, "const m = mat2x2(1i, 0.0, 0.0, 0.0);\n")
 
   let result = try
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_strip(false),
-    )
+    compile(root_path, resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      strip: false,
+    })
   catch {
     err => Err(err)
   } noraise {
@@ -2749,12 +2704,10 @@ test "wesl: validation checks matrix assignments through AST lhs scopes" {
   )
 
   let result = try
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_strip(false),
-    )
+    compile(root_path, resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      strip: false,
+    })
   catch {
     err => Err(err)
   } noraise {
@@ -2819,12 +2772,10 @@ test "wesl: compile delegates user function arity validation to WGSL Core" {
   )
 
   try
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_strip(false),
-    )
+    compile(root_path, resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      strip: false,
+    })
   catch {
     Validation(message) =>
       debug_inspect(message.contains("takes_one"), content="true")
@@ -2843,12 +2794,10 @@ test "wesl: compile accepts WGSL builtin calls through WGSL Core" {
   )
 
   ignore(
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_strip(false),
-    ),
+    compile(root_path, resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      strip: false,
+    }),
   )
 }
 
@@ -2859,12 +2808,10 @@ test "wesl: compile delegates unknown types to WGSL Core" {
   resolver.add_module(root_path, "const value: MissingType = 1i;\n")
 
   let result = try
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_strip(false),
-    )
+    compile(root_path, resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      strip: false,
+    })
   catch {
     err => Err(err)
   } noraise {
@@ -2887,12 +2834,10 @@ test "wesl: compile validate runs assembled WGSL call checks" {
   )
 
   let result = try
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_strip(false),
-    )
+    compile(root_path, resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      strip: false,
+    })
   catch {
     err => Err(err)
   } noraise {
@@ -2919,12 +2864,10 @@ test "wesl: compile validation rejects invalid imported call statements" {
   )
 
   try
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_keep_root(true),
-    )
+    compile(root_path, resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      keep_root: true,
+    })
   catch {
     Validation(message) =>
       debug_inspect(message.contains("expected 1, got 0"), content="true")
@@ -2943,12 +2886,10 @@ test "wesl: WGSL Core accepts storage texture formats" {
   )
 
   ignore(
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_strip(false),
-    ),
+    compile(root_path, resolver, EscapeMangler::default(), {
+      ..CompileOptions::default(),
+      strip: false,
+    }),
   )
 }
 
@@ -2957,7 +2898,10 @@ test "wesl: compile options expose lazy resolution control" {
   let options = CompileOptions::default()
 
   debug_inspect(options.lazy_resolution, content="true")
-  debug_inspect(options.with_lazy(false).lazy_resolution, content="false")
+  debug_inspect(
+    ({ ..options, lazy_resolution: false } : CompileOptions).lazy_resolution,
+    content="false",
+  )
 }
 
 ///|
@@ -2970,9 +2914,7 @@ test "wesl: facade compile uses custom resolver and sourcemap option" {
 
   let compiled = Wesl::new_barebones()
     .set_custom_resolver(resolver)
-    .set_options(
-      CompileOptions::default().with_strip(false).with_validate(false),
-    )
+    .set_options({ ..CompileOptions::default(), strip: false, validate: false })
     .use_sourcemap(true)
     .compile(root_path)
 
@@ -3067,7 +3009,7 @@ test "wesl: diagnostic compile path attaches resolver source context" {
       root_path,
       resolver,
       EscapeMangler::default(),
-      CompileOptions::default().with_strip(false),
+      { ..CompileOptions::default(), strip: false },
     )
   catch {
     err => Err(err)
@@ -3142,7 +3084,7 @@ test "wesl: facade can select hash mangler" {
 
   let compiled = Wesl::new_barebones()
     .set_custom_resolver(resolver)
-    .set_options(CompileOptions::default().with_lower(true))
+    .set_options({ ..CompileOptions::default(), lower: true })
     .set_mangler(Hash)
     .compile(root_path)
   let compiled_text = compiled.to_string()
@@ -3175,9 +3117,7 @@ test "wesl: facade can set features in bulk and expose resolver" {
 
   let wesl = Wesl::new_barebones()
     .set_custom_resolver(resolver)
-    .set_options(
-      CompileOptions::default().with_strip(false).with_validate(false),
-    )
+    .set_options({ ..CompileOptions::default(), strip: false, validate: false })
     .set_features([("A", Enable), ("B", Enable)])
   let compiled = wesl.compile(root_path)
   let returned_resolver = wesl.resolver()
@@ -3303,12 +3243,10 @@ test "wesl: virtual resolver accepts translation units" {
   )
   resolver.add_translation_unit(root_path, unit)
 
-  let compiled = compile(
-    root_path,
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_strip(false),
-  )
+  let compiled = compile(root_path, resolver, EscapeMangler::default(), {
+    ..CompileOptions::default(),
+    strip: false,
+  })
 
   debug_inspect(compiled.to_string().contains("fn helper()"), content="true")
 }
@@ -3395,7 +3333,7 @@ test "wesl: preprocessor can transform resolved translation units" {
     root_path,
     Preprocessor::new(resolver, AppendDeclPreprocessor::{  }),
     EscapeMangler::default(),
-    CompileOptions::default().with_condcomp(false).with_strip(false),
+    { ..CompileOptions::default(), condcomp: false, strip: false },
   )
   let compiled_text = compiled.to_string()
 
@@ -3411,11 +3349,13 @@ test "wesl: conditional translation runs after custom module preprocessing" {
     root_path, "@fragment\nfn fragment() -> f32 {\n  return injected();\n}\n",
   )
 
+  let features = Features::default()
+  features.set_feature("EXTRA", Enable)
   let compiled = compile(
     root_path,
     Preprocessor::new(resolver, ConditionalAppendPreprocessor::{  }),
     EscapeMangler::default(),
-    CompileOptions::default().with_strip(false).with_feature("EXTRA", true),
+    { ..CompileOptions::default(), strip: false, features },
   )
   let compiled_text = compiled.to_string()
 

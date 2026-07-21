@@ -167,7 +167,7 @@ pub fn CodegenPkg::add_dependency(Self, Self) -> Unit
 pub fn CodegenPkg::new(String, CodegenModule) -> Self
 pub fn CodegenPkg::with_dependencies(Self, Array[Self]) -> Self
 
-pub struct CompileOptions {
+pub(all) struct CompileOptions {
   imports : Bool
   condcomp : Bool
   generics : Bool
@@ -181,19 +181,6 @@ pub struct CompileOptions {
   features : Features
 }
 pub fn CompileOptions::default() -> Self
-pub fn CompileOptions::keep_declarations(Self, Array[String]) -> Self
-pub fn CompileOptions::set_feature(Self, String, Feature) -> Self
-pub fn CompileOptions::set_missing_feature_behavior(Self, Feature) -> Self
-pub fn CompileOptions::with_condcomp(Self, Bool) -> Self
-pub fn CompileOptions::with_feature(Self, String, Bool) -> Self
-pub fn CompileOptions::with_generics(Self, Bool) -> Self
-pub fn CompileOptions::with_imports(Self, Bool) -> Self
-pub fn CompileOptions::with_keep_root(Self, Bool) -> Self
-pub fn CompileOptions::with_lazy(Self, Bool) -> Self
-pub fn CompileOptions::with_lower(Self, Bool) -> Self
-pub fn CompileOptions::with_mangle_root(Self, Bool) -> Self
-pub fn CompileOptions::with_strip(Self, Bool) -> Self
-pub fn CompileOptions::with_validate(Self, Bool) -> Self
 
 pub struct CompileResult {
   syntax : TranslationUnit
@@ -333,12 +320,12 @@ pub(all) enum Feature {
 pub fn Feature::default() -> Self
 pub fn Feature::from_bool(Bool) -> Self
 
-pub struct Features {
+pub(all) struct Features {
   default : Feature
   flags : @hashmap.HashMap[String, Feature]
 }
 pub fn Features::default() -> Self
-pub fn Features::with_feature(Self, String, Feature) -> Self
+pub fn Features::set_feature(Self, String, Feature) -> Unit
 
 pub(all) enum ForInitializer {
   Declaration(StatementDeclaration)

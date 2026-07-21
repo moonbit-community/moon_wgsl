@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-timeout_value="${MOON_WGSL_BEVY_PBR_COMPOSE_TIMEOUT:-45s}"
+timeout_value="${MOON_WGSL_BEVY_PBR_COMPOSE_TIMEOUT:-15s}"
 output="${TMPDIR:-/tmp}/moon_wgsl_bevy_pbr_compose_perf.wgsl"
 
 args=(
@@ -24,6 +24,8 @@ args=(
   --value-def WORLD_CACHE_SIZE=1048576
   --value-def PER_OBJECT_BUFFER_BATCH_SIZE=1
   --value-def SCREEN_SPACE_SPECULAR_TRANSMISSION_BLUR_TAPS=8
+  --runtime-valid
+  --repeat 2
   --output "$output"
 )
 
@@ -36,6 +38,11 @@ fi
 
 if [[ ! -s "$output" ]]; then
   echo "Bevy PBR compose performance gate failed: no output produced" >&2
+  exit 1
+fi
+
+if ! grep -q '@fragment' "$output" || grep -q '#import' "$output"; then
+  echo "Bevy PBR compose performance gate failed: output is incomplete" >&2
   exit 1
 fi
 

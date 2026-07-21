@@ -38,7 +38,30 @@ fn wgsl_processed_module_cache_key(
   active_defs : WgslActiveComposeDefs,
   session : WgslComposeSession,
 ) -> String {
-  "\{wgsl_active_defs_cache_key(rel_path, active_defs)}|redirects:\{wgsl_redirects_cache_text(session.redirects)}"
+  "\{wgsl_active_defs_cache_key(rel_path, active_defs)}|redirects:\{wgsl_redirects_cache_text(session.redirects)}|immediates:\{wgsl_immediate_specializations_cache_text(rel_path, session)}"
+}
+
+///|
+fn wgsl_immediate_specializations_cache_text(
+  rel_path : String,
+  session : WgslComposeSession,
+) -> String {
+  let normalized_rel_path = normalize_shader_rel_path(rel_path)
+  let entries : Array[String] = []
+  for specialization in session.immediate_specializations {
+    if normalize_shader_rel_path(specialization.rel_path) != normalized_rel_path {
+      continue
+    }
+    let fields : Array[String] = []
+    for entry in specialization.field_values.iter() {
+      let (field_name, value) = entry
+      fields.push("\{field_name}=\{wgsl_shader_def_value_cache_text(value)}")
+    }
+    fields.sort()
+    entries.push("\{specialization.global_name}{\{fields.join("|")}}")
+  }
+  entries.sort()
+  entries.join("|")
 }
 
 ///|
@@ -671,7 +694,7 @@ fn Composer::processed_wgsl_compose_module(
         }
         None => {
           let prepared = prepare_wgsl_compose_source(
-            raw_source, session, active_defs,
+            raw_source, rel_path, session, active_defs,
           )
           let processed = WgslProcessedComposeModule::{
             raw_source,

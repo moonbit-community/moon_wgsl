@@ -10,6 +10,7 @@ using @transform {
   new_wgsl_module_item_extractor_from_unit,
   rewrite_wgsl_declarations_with_binding_plan,
   rewrite_wgsl_references_with_binding_plan,
+  specialize_wgsl_immediate_globals,
 }
 
 ///|
@@ -23,6 +24,7 @@ using @contract {
   type WgslComposeSymbolIdentity,
   type WgslDiagnostic,
   type WgslImportTarget,
+  type WgslImmediateSpecialization,
   type WgslReferencePath,
   type WgslSourceCatalogEntry,
   type WgslSourceFile,

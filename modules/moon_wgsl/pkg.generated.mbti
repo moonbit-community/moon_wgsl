@@ -78,6 +78,8 @@ pub using @contract {type WgslExportOptions}
 
 pub using @contract {type WgslExportOutput}
 
+pub using @contract {type WgslImmediateSpecialization}
+
 pub using @contract {type WgslSourceCatalogEntry}
 
 pub using @contract {type WgslSourceFile}

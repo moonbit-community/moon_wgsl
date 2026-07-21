@@ -22,6 +22,23 @@ fn copy_import_definitions(
 }
 
 ///|
+fn copy_wgsl_immediate_specializations(
+  specializations : Array[WgslImmediateSpecialization],
+) -> Array[WgslImmediateSpecialization] {
+  let copied : Array[WgslImmediateSpecialization] = []
+  for specialization in specializations {
+    copied.push(
+      WgslImmediateSpecialization(
+        specialization.rel_path,
+        specialization.global_name,
+        copy_shader_def_values(specialization.field_values),
+      ),
+    )
+  }
+  copied
+}
+
+///|
 fn serialize_wgsl_import_definition(
   import_definition : ImportDefinition,
 ) -> String {
@@ -137,6 +154,7 @@ priv struct WgslComposeSession {
   modules : Map[String, String]
   redirects : Array[WgslSymbolRedirect]
   additional_imports : Array[ImportDefinition]
+  immediate_specializations : Array[WgslImmediateSpecialization]
   global_alias_bindings : WgslComposeBindingSet
   redirect_match_counts : Map[String, Int]
   visited : @set.Set[String]

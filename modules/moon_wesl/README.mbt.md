@@ -62,9 +62,13 @@ test {
     root_path, "import super::util::make_polka_dots;\n@fragment\nfn fragment(v: f32) -> f32 {\n  return make_polka_dots(v);\n}\n",
   )
 
-  let options = @moon_wesl.CompileOptions::default()
-    .with_lower(true)
-    .with_feature("PARTY_MODE", true)
+  let features = @moon_wesl.Features::default()
+  features.set_feature("PARTY_MODE", Enable)
+  let options = {
+    ..@moon_wesl.CompileOptions::default(),
+    lower: true,
+    features,
+  }
 
   let result = try! @moon_wesl.compile(
     root_path,
@@ -143,8 +147,9 @@ need stable global names. `EscapeMangler` converts `(module path, item name)`
 into emitted identifiers that preserve origin information and avoid collisions.
 
 By default, declarations in the root module keep their original names.
-Dependencies are mangled automatically. Call `with_mangle_root(true)` if you
-want the root module to be mangled as well.
+Dependencies are mangled automatically. Set `mangle_root: true` in a
+`CompileOptions::default()` record update if you want the root module to be
+mangled as well.
 
 ## Compilation Model
 
@@ -155,14 +160,14 @@ want the root module to be mangled as well.
 2. Recursively resolve imports and compute the reachable declaration set.
 3. Emit modules in dependency order while rewriting imported identifiers to
    mangled global names.
-4. Optionally lower top-level `alias` and `const` declarations with
-   `with_lower(true)`.
+4. Optionally lower top-level `alias` and `const` declarations when `lower` is
+   `true`.
 
 When stripping is enabled, the root set is determined by:
 
 - functions annotated with `@fragment`, `@vertex`, or `@compute`
-- any declarations named by `keep_declarations(...)`
-- all root declarations if `with_keep_root(true)` is enabled
+- any declarations named by the `keep` field
+- all root declarations if `keep_root` is `true`
 
 `const_assert` items are also scanned so their referenced declarations remain
 reachable.
@@ -181,19 +186,22 @@ reachable.
 - `keep = None`
 - `features = {}`
 
-Option behavior:
+Override only the fields you need. MoonBit record updates place the base first,
+for example `{ ..CompileOptions::default(), lower: true }`.
 
-| Option | Default | Meaning |
+Field behavior:
+
+| Field | Default | Meaning |
 | --- | --- | --- |
-| `with_imports(Bool)` | `true` | Parse and resolve import statements. If disabled, import declarations are ignored instead of resolved. |
-| `with_condcomp(Bool)` | `true` | Evaluate `@if` / `@else if` / `@else` blocks using the `features` map. |
-| `with_strip(Bool)` | `true` | Emit only reachable declarations instead of the full transitive module closure. |
-| `with_lower(Bool)` | `false` | Remove top-level `alias` and `const` declarations by textual substitution. |
-| `with_lazy(Bool)` | `true` | When stripping is enabled, avoid eagerly loading imports that are never used. |
-| `with_mangle_root(Bool)` | `false` | Mangle declarations from the root module too. |
-| `with_keep_root(Bool)` | `false` | Keep every declaration in the root module when stripping is enabled. |
-| `keep_declarations(Array[String])` | `None` | Keep a specific set of root declarations even if they are not entry points. |
-| `with_feature(String, Bool)` | `{}` | Set a feature flag used by conditional compilation. |
+| `imports` | `true` | Parse and resolve import statements. If disabled, import declarations are ignored instead of resolved. |
+| `condcomp` | `true` | Evaluate `@if` / `@else if` / `@else` blocks using the `features` map. |
+| `strip` | `true` | Emit only reachable declarations instead of the full transitive module closure. |
+| `lower` | `false` | Remove top-level `alias` and `const` declarations by textual substitution. |
+| `lazy_resolution` | `true` | When stripping is enabled, avoid eagerly loading imports that are never used. |
+| `mangle_root` | `false` | Mangle declarations from the root module too. |
+| `keep_root` | `false` | Keep every declaration in the root module when stripping is enabled. |
+| `keep` | `None` | Keep a specific set of root declarations even if they are not entry points. |
+| `features` | `{}` | Configure conditional compilation; start from `Features::default()` and call `set_feature`. |
 
 ## Re-exports and Visibility
 

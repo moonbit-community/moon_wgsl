@@ -27,6 +27,7 @@ pub using @contract {
   type WgslDirectives,
   type WgslExportOptions,
   type WgslExportOutput,
+  type WgslImmediateSpecialization,
   type WgslSourceCatalogEntry,
   type WgslSourceFile,
   type WgslSourceMapEntry,

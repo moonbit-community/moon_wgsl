@@ -31,10 +31,9 @@ fn validation_compose_options(
   defines : Map[String, Bool],
 ) -> @contract.WgslComposeOptions {
   {
+    ..@contract.WgslComposeOptions::default(),
     defines,
     value_defines: @profile.bevy_wgsl_value_defines(),
-    redirects: [],
-    additional_imports: [],
   }
 }
 
@@ -169,10 +168,9 @@ fn validation_bevy_source(entry : String) -> String {
     _ => abort("expected Bevy fixture registration success")
   }
   composer.compose_wgsl_runtime_valid(entry, {
+    ..@contract.WgslComposeOptions::default(),
     defines: validation_bool_defines(validation_bevy_forward_defines()),
     value_defines: validation_bevy_value_defines(),
-    redirects: [],
-    additional_imports: [],
   }) catch {
     err => abort("expected Bevy compose success for \{entry}: \{err.message()}")
   }

@@ -67,3 +67,75 @@ test "facade maps lower-level failures without exposing implementation errors" {
   )
   assert_true(error_message.contains("missing.wgsl"))
 }
+
+///|
+test "facade specializes immediate struct globals for runtime composition" {
+  let composer = Composer::default()
+  let source =
+    #|struct Constants {
+    #|  max_mip_level: u32,
+    #|}
+    #|
+    #|var<immediate> constants: Constants;
+    #|
+    #|fn mip_enabled() -> bool {
+    #|  return constants.max_mip_level > 1u;
+    #|}
+    #|
+  composer.register_source("root.wgsl", source)
+  let options = WgslComposeOptions::default()
+  options.immediate_specializations.push(
+    WgslImmediateSpecialization("root.wgsl", "constants", {
+      "max_mip_level": UInt(12),
+    }),
+  )
+  let composed = composer.compose("root.wgsl", options) catch {
+    err => abort("expected immediate specialization success: \{err.message()}")
+  }
+  assert_false(composed.contains("var<immediate>"))
+  assert_true(composed.contains("const constants"))
+  assert_true(composed.contains("Constants(12u)"))
+
+  let alternate_options = WgslComposeOptions::default()
+  alternate_options.immediate_specializations.push(
+    WgslImmediateSpecialization("root.wgsl", "constants", {
+      "max_mip_level": UInt(4),
+    }),
+  )
+  let alternate = composer.compose("root.wgsl", alternate_options) catch {
+    err =>
+      abort("expected alternate immediate specialization: \{err.message()}")
+  }
+  assert_true(alternate.contains("Constants(4u)"))
+  assert_false(alternate.contains("Constants(12u)"))
+}
+
+///|
+test "facade rejects incomplete immediate struct specialization" {
+  let composer = Composer::default()
+  let source =
+    #|struct Constants {
+    #|  max_mip_level: u32,
+    #|  enabled: bool,
+    #|}
+    #|
+    #|var<immediate> constants: Constants;
+    #|
+  composer.register_source("root.wgsl", source)
+  let options = WgslComposeOptions::default()
+  options.immediate_specializations.push(
+    WgslImmediateSpecialization("root.wgsl", "constants", {
+      "max_mip_level": UInt(12),
+    }),
+  )
+  let mut message = ""
+  ignore(
+    composer.compose("root.wgsl", options) catch {
+      err => {
+        message = err.message()
+        ""
+      }
+    },
+  )
+  assert_true(message.contains("missing field `enabled`"))
+}

@@ -61,10 +61,9 @@ fn bevy_parity_compose(rel_path : String, defines : Array[String]) -> String {
     _ => abort("expected Bevy fixture registration success")
   }
   composer.compose_wgsl(rel_path, {
+    ..@contract.WgslComposeOptions::default(),
     defines: bevy_parity_defines(defines),
     value_defines: bevy_parity_value_defines(),
-    redirects: [],
-    additional_imports: [],
   }) catch {
     err =>
       abort("expected complete Bevy WGSL compose success: \{err.message()}")
@@ -132,10 +131,9 @@ test "naga_oil regression: Bevy lighting keeps tree-shaken alias const targets l
   let source = composer.compose_wgsl(
     "mgstudio/render/renderer/issue8_lighting_repro.wgsl",
     {
+      ..@contract.WgslComposeOptions::default(),
       defines: bevy_parity_defines(bevy_parity_forward_defines()),
       value_defines: bevy_parity_value_defines(),
-      redirects: [],
-      additional_imports: [],
     },
   ) catch {
     err => abort("expected issue 8 lighting compose success: \{err.message()}")
@@ -196,10 +194,9 @@ test "issue 10: cached alias redirect stress compose completes" {
     issue10_alias_redirect_stress_root(80),
   )
   let source = composer.compose_wgsl("stress/root.wgsl", {
+    ..@contract.WgslComposeOptions::default(),
     defines: empty_bool_defines(),
     value_defines: @profile.bevy_wgsl_value_defines(),
-    redirects: [],
-    additional_imports: [],
   }) catch {
     err =>
       abort("expected issue 10 alias redirect stress success: \{err.message()}")
@@ -261,10 +258,9 @@ test "issue 13: nested alias global references use emitted symbol identity" {
     ),
   )
   let source = composer.compose_wgsl("bevy_pbr/src/render/pbr.wgsl", {
+    ..@contract.WgslComposeOptions::default(),
     defines: empty_bool_defines(),
     value_defines: @profile.bevy_wgsl_value_defines(),
-    redirects: [],
-    additional_imports: [],
   }) catch {
     err =>
       abort("expected issue 13 nested alias compose success: \{err.message()}")
@@ -303,10 +299,9 @@ test "naga_oil regression: prepared Bevy catalog resolves alias-qualified bindin
   let prepared = composer.prepare_wgsl_source(
     "mgstudio/render/renderer/issue8_lighting_repro.wgsl",
     {
+      ..@contract.WgslComposeOptions::default(),
       defines: bevy_parity_defines(bevy_parity_forward_defines()),
       value_defines: bevy_parity_value_defines(),
-      redirects: [],
-      additional_imports: [],
     },
   ) catch {
     err => abort("expected Bevy prepared source success: \{err.message()}")

@@ -18,7 +18,12 @@ fn composer_test_descriptor(
   file_path : String,
   shader_defs : Map[String, @contract.ShaderDefValue],
 ) -> @contract.ComposableModuleDescriptor {
-  { source, file_path, as_name: None, additional_imports: [], shader_defs }
+  {
+    ..@contract.ComposableModuleDescriptor::default(),
+    source,
+    file_path,
+    shader_defs,
+  }
 }
 
 ///|
@@ -195,10 +200,9 @@ test "naga_oil: add_composable_module resolves imports from the composer registr
   debug_inspect(child_definition.imports_module("test::plain"), content="true")
 
   let composed = composer.compose_wgsl("tests/child_against_registry.wgsl", {
+    ..@contract.WgslComposeOptions::default(),
     defines: Map([]),
     value_defines: @profile.bevy_wgsl_value_defines(),
-    redirects: [],
-    additional_imports: [],
   }) catch {
     err =>
       abort(

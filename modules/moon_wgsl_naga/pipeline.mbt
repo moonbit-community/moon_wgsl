@@ -32,9 +32,9 @@ pub fn WgslNagaPipelineError::message(self : WgslNagaPipelineError) -> String {
 }
 
 ///|
-pub struct WgslNagaPipelineOptions {
-  priv compat_writer : Bool
-  priv entry_roots : Bool
+pub(all) struct WgslNagaPipelineOptions {
+  compat_writer : Bool
+  entry_roots : Bool
 }
 
 ///|
@@ -45,20 +45,18 @@ pub struct WgslNagaComposeContext {
 }
 
 ///|
-pub fn WgslNagaPipelineOptions::runtime() -> WgslNagaPipelineOptions {
+pub fn WgslNagaPipelineOptions::default() -> WgslNagaPipelineOptions {
   { compat_writer: false, entry_roots: false }
 }
 
 ///|
-pub fn WgslNagaPipelineOptions::compat() -> WgslNagaPipelineOptions {
-  { compat_writer: true, entry_roots: false }
+pub fn WgslNagaPipelineOptions::runtime() -> WgslNagaPipelineOptions {
+  WgslNagaPipelineOptions::default()
 }
 
 ///|
-pub fn WgslNagaPipelineOptions::with_entry_roots(
-  self : WgslNagaPipelineOptions,
-) -> WgslNagaPipelineOptions {
-  { compat_writer: self.compat_writer, entry_roots: true }
+pub fn WgslNagaPipelineOptions::compat() -> WgslNagaPipelineOptions {
+  { ..WgslNagaPipelineOptions::default(), compat_writer: true }
 }
 
 ///|
@@ -203,7 +201,7 @@ fn roundtrip_runtime_entry_roots(
     WgslNagaComposeContext::from_import_graph(
       generated_import_provenance, import_arena_events,
     ),
-    options=WgslNagaPipelineOptions::runtime().with_entry_roots(),
+    options={ ..WgslNagaPipelineOptions::runtime(), entry_roots: true },
   )
 }
 
@@ -243,6 +241,6 @@ fn roundtrip_compat_entry_roots(
     WgslNagaComposeContext::from_import_graph(
       generated_import_provenance, import_arena_events,
     ),
-    options=WgslNagaPipelineOptions::compat().with_entry_roots(),
+    options={ ..WgslNagaPipelineOptions::compat(), entry_roots: true },
   )
 }
