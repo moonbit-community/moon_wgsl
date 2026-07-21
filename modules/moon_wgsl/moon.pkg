@@ -6,6 +6,7 @@ import {
   "Milky2018/moon_wgsl_naga_oil/preprocess",
   "Milky2018/moon_wgsl_naga_oil/profile",
   "Milky2018/moon_wgsl_naga_oil/resolver",
+  "Milky2018/moon_wesl",
 }
 
 import {

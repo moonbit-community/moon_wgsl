@@ -5,6 +5,7 @@ version = "0.17.0"
 import {
   "Milky2018/wgsl@0.17.0",
   "Milky2018/moon_wgsl_naga_oil@0.17.0",
+  "Milky2018/moon_wesl@0.17.0",
 }
 
 readme = "README.mbt.md"
@@ -15,4 +16,4 @@ license = "Apache-2.0"
 
 keywords = [ "wgsl", "shader" ]
 
-description = "User-facing facade for WGSL preprocess and composer utilities aligned with naga_oil."
+description = "User-facing facade for WGSL preprocessing, composition, and WESL compilation."

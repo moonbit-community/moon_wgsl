@@ -1,6 +1,6 @@
 # moon_wgsl workspace
 
-This repository contains four separately owned MoonBit modules:
+This repository contains five separately owned MoonBit modules:
 
 - `Milky2018/wgsl` — official WGSL lexer, AST, parser, semantic IR,
   validation, and runtime writer
@@ -8,12 +8,15 @@ This repository contains four separately owned MoonBit modules:
   and trace behavior
 - `Milky2018/moon_wgsl_naga_oil` — naga-oil directives, imports,
   preprocessing, resolution, composition, export, profiles, and diagnostics
-- `Milky2018/moon_wgsl` — the small user-facing workflow facade
+- `Milky2018/moon_wesl` — WESL resolution, conditional compilation, and source
+  assembly
+- `Milky2018/moon_wgsl` — the small user-facing workflow facade for both WGSL
+  composition and common WESL compilation
 
 Most applications should import `Milky2018/moon_wgsl`. Its opaque `Composer`
-supports exactly source/module registration, `prepare`, `compose`, and
-`export_wgsl`. Lower-level parser, IR, compatibility, graph, rewrite, and
-diagnostic stages are not facade methods.
+supports exactly source/module registration, `prepare`, `compose`,
+`compile_wesl`, and `export_wgsl`. Lower-level parser, resolver, AST, IR,
+compatibility, graph, rewrite, and diagnostic stages are not facade methods.
 
 ```mbt
 let composer = @moon_wgsl.Composer::default()

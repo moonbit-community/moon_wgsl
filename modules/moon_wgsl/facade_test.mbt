@@ -69,6 +69,76 @@ test "facade maps lower-level failures without exposing implementation errors" {
 }
 
 ///|
+test "facade compiles registered WESL modules through the shared source registry" {
+  let composer = Composer::default()
+  let util_source =
+    #|fn double(value: f32) -> f32 {
+    #|  return value * 2.0;
+    #|}
+    #|
+  composer.register_source("shaders/util.wgsl", util_source)
+  let root_source =
+    #|import super::util::double;
+    #|
+    #|@fragment
+    #|fn fragment(value: f32) -> f32 {
+    #|  return double(value);
+    #|}
+    #|
+  composer.register_source("shaders/root.wesl", root_source)
+
+  let output = composer.compile_wesl(
+    "shaders/root.wesl",
+    CompileOptions::default(),
+  ) catch {
+    error => abort("expected facade WESL compile success: \{error.message()}")
+  }
+  assert_true(output.contains("fn fragment"))
+  assert_true(output.contains("double"))
+  assert_true(output.contains("value * 2.0"))
+}
+
+///|
+test "facade maps missing WESL imports to its workflow error" {
+  let composer = Composer::default()
+  let root_source =
+    #|import super::missing::value;
+    #|
+    #|@fragment
+    #|fn root() -> @location(0) u32 {
+    #|  return value();
+    #|}
+    #|
+  composer.register_source("shaders/root.wesl", root_source)
+  let mut message = ""
+  ignore(
+    composer.compile_wesl("shaders/root.wesl", CompileOptions::default()) catch {
+      error => {
+        message = error.message()
+        ""
+      }
+    },
+  )
+  assert_true(message.contains("missing"))
+  assert_true(message.contains("composer source registry"))
+}
+
+///|
+test "facade rejects an empty WESL root path without aborting" {
+  let composer = Composer::default()
+  let mut message = ""
+  ignore(
+    composer.compile_wesl("", CompileOptions::default()) catch {
+      error => {
+        message = error.message()
+        ""
+      }
+    },
+  )
+  assert_eq(message, "WESL root path is empty")
+}
+
+///|
 test "facade specializes immediate struct globals for runtime composition" {
   let composer = Composer::default()
   let source =

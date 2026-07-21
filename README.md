@@ -11,23 +11,24 @@ by ownership instead of exposing every internal package through one module.
 - `Milky2018/moon_wgsl_naga_oil`: naga-oil-compatible preprocessing,
   import resolution, composition contracts, explicit project profiles, and
   export.
-- `Milky2018/moon_wgsl`: thin user-facing facade for ordinary preprocessing and
-  composition workflows.
+- `Milky2018/moon_wgsl`: thin user-facing facade for ordinary preprocessing,
+  composition, and WESL compilation workflows.
 - `Milky2018/moon_wesl`: WESL module resolution, conditional compilation,
   and source assembly. It is maintained and released from this workspace with
   its own semantic version while depending on WGSL Core for official WGSL
   parsing and validation.
 
-Most composition users should install `Milky2018/moon_wgsl`. Install
-`Milky2018/moon_wesl` when you need WESL imports, conditional compilation,
-or source assembly. Use the lower-level WGSL, Naga, and naga-oil modules only
-when you need their specific interfaces.
+Most shader users should install `Milky2018/moon_wgsl`, including applications
+that only need to compile registered WESL sources. Install
+`Milky2018/moon_wesl` directly when you need custom resolvers, source maps, AST
+access, or detailed compiler diagnostics. Use the lower-level WGSL, Naga, and
+naga-oil modules only when you need their specific interfaces.
 
 The facade owns an opaque `Composer` with only registration, `prepare`,
-`compose`, and `export_wgsl` workflows. Repository diagnostics use the explicit
-`Milky2018/moon_wgsl_naga_oil/diagnostics` adapter. Naga-oil directive parsing,
-import parsing, substitution, transformation, and source editing are
-compiler-enforced `internal/` packages.
+`compose`, `compile_wesl`, and `export_wgsl` workflows. Repository diagnostics
+use the explicit `Milky2018/moon_wgsl_naga_oil/diagnostics` adapter. Naga-oil
+directive parsing, import parsing, substitution, transformation, and source
+editing are compiler-enforced `internal/` packages.
 
 ## Migration
 

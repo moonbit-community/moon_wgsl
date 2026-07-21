@@ -2,6 +2,7 @@
 package "Milky2018/moon_wgsl"
 
 import {
+  "Milky2018/moon_wesl",
   "Milky2018/moon_wgsl_naga_oil/contract",
   "Milky2018/moon_wgsl_naga_oil/metadata",
   "Milky2018/moon_wgsl_naga_oil/preprocess",
@@ -37,6 +38,7 @@ pub struct Composer {
 }
 pub fn Composer::add_module(Self, @contract.ComposableModuleDescriptor) -> Unit raise WgslError
 pub fn Composer::clear_sources(Self) -> Unit
+pub fn Composer::compile_wesl(Self, String, @moon_wesl.CompileOptions) -> String raise WgslError
 pub fn Composer::compose(Self, String, @contract.WgslComposeOptions) -> String raise WgslError
 pub fn Composer::default() -> Self
 pub fn Composer::export_wgsl(Self, String, @contract.WgslComposeOptions, @contract.WgslExportOptions) -> @contract.WgslExportOutput raise WgslError
@@ -46,7 +48,13 @@ pub fn Composer::register_source_files(Self, Array[@contract.WgslSourceFile]) ->
 pub fn Composer::remove_module(Self, String) -> Unit
 
 // Type aliases
+pub using @moon_wesl {type CompileOptions}
+
 pub using @contract {type ComposableModuleDescriptor}
+
+pub using @moon_wesl {type Feature}
+
+pub using @moon_wesl {type Features}
 
 pub using @contract {type ImportDefWithOffset}
 

@@ -72,6 +72,7 @@ lower-level stage errors are mapped to `WgslError::WorkflowFailed`.
 | `remove_composable_module(name)` | `remove_module(name)`. |
 | `prepare_wgsl_source(path, options)` | `prepare(path, options)`. |
 | `compose_wgsl(path, options)` or normal uses of `compose_wgsl_source` | `compose(path, options)`. |
+| `@moon_wesl.compile(...)` with an in-memory resolver | Register `.wesl` / `.wgsl` sources and call `compile_wesl(path, options)`. Keep using `Milky2018/moon_wesl` directly for custom resolvers, source maps, AST access, or detailed diagnostics. |
 | `export_wgsl_with_options(composer, path, compose_options, export_options)` | `composer.export_wgsl(path, compose_options, export_options)`. |
 | `compose_wgsl_runtime_valid` / `prepare_wgsl_source_runtime_valid` | Use normal `compose` / `prepare`; runtime-valid output is the facade contract. |
 | `registered_source`, `contains_module` | No facade query. Keep registration state in the application, or deliberately use the lower-level `compose` package. |
@@ -80,7 +81,7 @@ lower-level stage errors are mapped to `WgslError::WorkflowFailed`.
 
 The facade's complete `Composer` method inventory is `default`,
 `register_source`, `register_source_files`, `clear_sources`, `add_module`,
-`remove_module`, `prepare`, `compose`, and `export_wgsl`.
+`remove_module`, `prepare`, `compose`, `compile_wesl`, and `export_wgsl`.
 
 ## Semantic IR and Naga compatibility
 

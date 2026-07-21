@@ -40,6 +40,9 @@ pub using @contract {
 pub using @profile {bevy_wgsl_value_defines}
 
 ///|
+pub using @moon_wesl {type CompileOptions, type Feature, type Features}
+
+///|
 pub using @metadata {
   collect_wgsl_source_local_shader_defines,
   get_preprocessor_metadata,
@@ -63,11 +66,12 @@ pub using @resolver {
 }
 
 ///|
-/// Error reported by the user-facing WGSL workflow.
+/// Error reported by the user-facing shader workflow.
 ///
-/// Lower-level parser, resolver, composer, and writer errors are deliberately
-/// collapsed at this boundary. Callers that need stage-specific diagnostics
-/// should use the dedicated naga-oil diagnostics package.
+/// Lower-level parser, resolver, compiler, composer, and writer errors are
+/// deliberately collapsed at this boundary. Callers that need stage-specific
+/// diagnostics should use the dedicated naga-oil diagnostics package or
+/// `Milky2018/moon_wesl` directly.
 pub(all) suberror WgslError {
   WorkflowFailed(String)
 }
@@ -82,10 +86,11 @@ pub fn WgslError::message(self : WgslError) -> String {
 ///|
 /// A user-facing WGSL workspace.
 ///
-/// Register all sources and modules before calling `prepare`, `compose`, or
-/// `export_wgsl`. Registration mutates only this workspace. Each output operation
-/// observes a stable snapshot of the registered inputs and does not expose
-/// preprocessing, graph, IR, writer-plan, or parity stages.
+/// Register all sources and modules before calling `prepare`, `compose`,
+/// `compile_wesl`, or `export_wgsl`. Registration mutates only this workspace.
+/// Each output operation observes a stable snapshot of the registered inputs
+/// and does not expose preprocessing, resolution, graph, IR, writer-plan, or
+/// parity stages.
 pub struct Composer {
   priv inner : @compose.Composer
 }

@@ -60,6 +60,7 @@
       "Milky2018/moon_wgsl_naga_oil/metadata",
       "Milky2018/moon_wgsl_naga_oil/profile",
       "Milky2018/moon_wgsl_naga_oil/resolver",
+      "Milky2018/moon_wesl",
       "Milky2018/moon_wgsl_naga_oil/contract",
       "Milky2018/wgsl/parser",
       "moonbitlang/core/encoding/utf8",
@@ -374,6 +375,7 @@
       "allowed": [
         "add_module",
         "clear_sources",
+        "compile_wesl",
         "compose",
         "default",
         "export_wgsl",

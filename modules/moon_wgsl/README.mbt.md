@@ -1,21 +1,22 @@
 # Milky2018/moon_wgsl
 
-User-facing facade for WGSL preprocessing and composition.
+User-facing facade for WGSL preprocessing, composition, and WESL compilation.
 
 Install this module when your application wants naga-oil-style shader
 preprocessing without importing internal parser, IR, writer, or rewrite
 packages directly.
 
 `Composer` is facade-owned and opaque. Its complete workflow is deliberately
-small: register sources/modules, prepare, compose, and export. Internal
-preprocessing stages, Compose graphs, semantic IR, writer plans, and parity
-entry points are not methods on this type. Tooling that needs those details
-imports `Milky2018/moon_wgsl_naga_oil/diagnostics` explicitly.
+small: register sources/modules, prepare, compose, compile WESL, and export.
+Internal preprocessing stages, Compose graphs, semantic IR, writer plans, and
+parity entry points are not methods on this type. Tooling that needs those
+details imports `Milky2018/moon_wgsl_naga_oil/diagnostics` explicitly.
 
 The implementation delegates to:
 
 - `Milky2018/wgsl` for WGSL parsing, IR, and validation
 - `Milky2018/moon_wgsl_naga_oil` for preprocessing and composition
+- `Milky2018/moon_wesl` for WESL resolution and compilation
 
 Legacy internal package paths from the old single-module layout are not
 preserved. Import lower-level modules explicitly when you need their ownership
@@ -70,3 +71,38 @@ test "compose a shader through the facade" {
   assert_true(source.contains("fn root"))
 }
 ```
+
+The same source registry can hold WESL and WGSL modules. Call
+`compile_wesl` explicitly when the root uses WESL imports:
+
+```mbt check
+///|
+test "compile WESL through the facade" {
+  let composer = Composer::default()
+  let util_source =
+    #|fn double(value: f32) -> f32 {
+    #|  return value * 2.0;
+    #|}
+    #|
+  composer.register_source("shaders/util.wgsl", util_source)
+  let root_source =
+    #|import super::util::double;
+    #|
+    #|@fragment
+    #|fn fragment(value: f32) -> f32 {
+    #|  return double(value);
+    #|}
+    #|
+  composer.register_source("shaders/root.wesl", root_source)
+  let source = composer.compile_wesl(
+    "shaders/root.wesl",
+    CompileOptions::default(),
+  )
+  assert_true(source.contains("fn fragment"))
+}
+```
+
+For each imported module, the facade prefers `<path>.wesl`, then
+`<path>.wgsl`. Applications that need custom resolvers, source maps, WESL AST
+access, or detailed WESL diagnostics should import `Milky2018/moon_wesl`
+directly.
