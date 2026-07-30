@@ -55,13 +55,13 @@ pub impl Show for TokenKind with fn output(self, logger) {
 ///|
 pub impl Debug for TokenKind with fn to_repr(self) {
   match self {
-    TK_ITEM => to_repr("ITEM")
-    TK_ENABLE => to_repr("enable")
-    TK_REQUIRES => to_repr("requires")
-    TK_DIAGNOSTIC => to_repr("diagnostic")
-    TK_LEFT_PAREN => to_repr("(")
-    TK_RIGHT_PAREN => to_repr(")")
-    TK_COMMA => to_repr(",")
-    TK_SEMI => to_repr(";")
+    TK_ITEM => Repr("ITEM")
+    TK_ENABLE => Repr("enable")
+    TK_REQUIRES => Repr("requires")
+    TK_DIAGNOSTIC => Repr("diagnostic")
+    TK_LEFT_PAREN => Repr("(")
+    TK_RIGHT_PAREN => Repr(")")
+    TK_COMMA => Repr(",")
+    TK_SEMI => Repr(";")
   }
 }

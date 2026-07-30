@@ -18,7 +18,7 @@ version has been verified and published from this workspace.
 The imported parser packages originally resolved `moonyacc` from a physical
 dependency-cache path. WGSL Core had the same workspace-layout assumption.
 Each published module now owns module-level `rule` declarations that invoke
-the pinned `moonbitlang/yacc@0.7.17` through `moon runwasm`; parser packages
+the pinned `moonbitlang/yacc@0.7.18` through `moon runwasm`; parser packages
 reference those rules with `dev_build`. Parser generation therefore does not
 depend on shell wrappers, cache placement, or the consumer's target backend.
 Generated parser sources remain committed.

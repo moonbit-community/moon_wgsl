@@ -18,10 +18,10 @@ description = "A WESL module compiler for MoonBit backed by WGSL Core."
 
 rule(
   name: "moonyacc-tokens",
-  command: "moon runwasm moonbitlang/yacc@0.7.17 $input --mode only-tokens -o $output && moonfmt -w $output",
+  command: "moon runwasm moonbitlang/yacc@0.7.18 $input --mode only-tokens -o $output && moonfmt -w $output",
 )
 
 rule(
   name: "moonyacc-external-array",
-  command: "moon runwasm moonbitlang/yacc@0.7.17 $input --external-tokens --input-mode array -o $output && moonfmt -w $output",
+  command: "moon runwasm moonbitlang/yacc@0.7.18 $input --external-tokens --input-mode array -o $output && moonfmt -w $output",
 )

@@ -55,13 +55,13 @@ pub impl Show for TokenKind with fn output(self, logger) {
 ///|
 pub impl Debug for TokenKind with fn to_repr(self) {
   match self {
-    TK_IDENT => to_repr("IDENT")
-    TK_TRUE => to_repr("true")
-    TK_FALSE => to_repr("false")
-    TK_BANG => to_repr("!")
-    TK_AMP_AMP => to_repr("&&")
-    TK_PIPE_PIPE => to_repr("||")
-    TK_LEFT_PAREN => to_repr("(")
-    TK_RIGHT_PAREN => to_repr(")")
+    TK_IDENT => Repr("IDENT")
+    TK_TRUE => Repr("true")
+    TK_FALSE => Repr("false")
+    TK_BANG => Repr("!")
+    TK_AMP_AMP => Repr("&&")
+    TK_PIPE_PIPE => Repr("||")
+    TK_LEFT_PAREN => Repr("(")
+    TK_RIGHT_PAREN => Repr(")")
   }
 }

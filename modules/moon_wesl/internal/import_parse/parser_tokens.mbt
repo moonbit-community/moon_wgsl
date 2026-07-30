@@ -47,11 +47,11 @@ pub impl Show for TokenKind with fn output(self, logger) {
 ///|
 pub impl Debug for TokenKind with fn to_repr(self) {
   match self {
-    TK_IDENT => to_repr("IDENT")
-    TK_AS => to_repr("as")
-    TK_DOUBLE_COLON => to_repr("::")
-    TK_COMMA => to_repr(",")
-    TK_LEFT_BRACE => to_repr("{")
-    TK_RIGHT_BRACE => to_repr("}")
+    TK_IDENT => Repr("IDENT")
+    TK_AS => Repr("as")
+    TK_DOUBLE_COLON => Repr("::")
+    TK_COMMA => Repr(",")
+    TK_LEFT_BRACE => Repr("{")
+    TK_RIGHT_BRACE => Repr("}")
   }
 }

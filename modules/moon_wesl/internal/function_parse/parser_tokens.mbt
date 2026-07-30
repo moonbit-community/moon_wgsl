@@ -55,13 +55,13 @@ pub impl Show for TokenKind with fn output(self, logger) {
 ///|
 pub impl Debug for TokenKind with fn to_repr(self) {
   match self {
-    TK_IDENT => to_repr("IDENT")
-    TK_GENERICS => to_repr("GENERICS")
-    TK_PARAM => to_repr("PARAM")
-    TK_RETURN_TYPE => to_repr("RETURN_TYPE")
-    TK_FN => to_repr("fn")
-    TK_LEFT_PAREN => to_repr("(")
-    TK_RIGHT_PAREN => to_repr(")")
-    TK_BODY => to_repr("BODY")
+    TK_IDENT => Repr("IDENT")
+    TK_GENERICS => Repr("GENERICS")
+    TK_PARAM => Repr("PARAM")
+    TK_RETURN_TYPE => Repr("RETURN_TYPE")
+    TK_FN => Repr("fn")
+    TK_LEFT_PAREN => Repr("(")
+    TK_RIGHT_PAREN => Repr(")")
+    TK_BODY => Repr("BODY")
   }
 }

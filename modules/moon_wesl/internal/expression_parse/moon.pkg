@@ -1,3 +1,6 @@
+// Moonyacc-generated guards intentionally abort on violated parser invariants.
+warnings = "-guard_inexhaustive"
+
 import {
   "moonbitlang/core/list",
 }

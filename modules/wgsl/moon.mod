@@ -14,5 +14,5 @@ description = "Official WGSL frontend for MoonBit."
 
 rule(
   name: "moonyacc-array",
-  command: "moon runwasm moonbitlang/yacc@0.7.17 $input --input-mode array -o $output && moonfmt -w $output",
+  command: "moon runwasm moonbitlang/yacc@0.7.18 $input --input-mode array -o $output && moonfmt -w $output",
 )

@@ -27,6 +27,6 @@ pub impl Show for TokenKind with fn output(self, logger) {
 ///|
 pub impl Debug for TokenKind with fn to_repr(self) {
   match self {
-    TK_STATEMENT => to_repr("STATEMENT")
+    TK_STATEMENT => Repr("STATEMENT")
   }
 }

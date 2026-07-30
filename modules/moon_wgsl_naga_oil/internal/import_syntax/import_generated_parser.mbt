@@ -51,13 +51,13 @@ pub impl Show for TokenKind with fn output(self, logger) {
 ///|
 pub impl Debug for TokenKind with fn to_repr(self) {
   match self {
-    TK_IDENT => to_repr("IDENT")
-    TK_AS => to_repr("as")
-    TK_LBRACE => to_repr("{")
-    TK_RBRACE => to_repr("}")
-    TK_COMMA => to_repr(",")
-    TK_SEMI => to_repr(";")
-    TK_EOF => to_repr("EOF")
+    TK_IDENT => Repr("IDENT")
+    TK_AS => Repr("as")
+    TK_LBRACE => Repr("{")
+    TK_RBRACE => Repr("}")
+    TK_COMMA => Repr(",")
+    TK_SEMI => Repr(";")
+    TK_EOF => Repr("EOF")
   }
 }
 

@@ -43,10 +43,10 @@ pub impl Show for TokenKind with fn output(self, logger) {
 ///|
 pub impl Debug for TokenKind with fn to_repr(self) {
   match self {
-    TK_SEGMENT => to_repr("SEGMENT")
-    TK_PACKAGE => to_repr("package")
-    TK_SELF => to_repr("self")
-    TK_SUPER => to_repr("super")
-    TK_DOUBLE_COLON => to_repr("::")
+    TK_SEGMENT => Repr("SEGMENT")
+    TK_PACKAGE => Repr("package")
+    TK_SELF => Repr("self")
+    TK_SUPER => Repr("super")
+    TK_DOUBLE_COLON => Repr("::")
   }
 }

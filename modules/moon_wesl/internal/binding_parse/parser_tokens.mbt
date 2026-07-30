@@ -71,17 +71,17 @@ pub impl Show for TokenKind with fn output(self, logger) {
 ///|
 pub impl Debug for TokenKind with fn to_repr(self) {
   match self {
-    TK_IDENT => to_repr("IDENT")
-    TK_VAR_TEMPLATE => to_repr("VAR_TEMPLATE")
-    TK_TYPE_TEXT => to_repr("TYPE_TEXT")
-    TK_INIT_TEXT => to_repr("INIT_TEXT")
-    TK_ALIAS => to_repr("alias")
-    TK_CONST => to_repr("const")
-    TK_OVERRIDE => to_repr("override")
-    TK_LET => to_repr("let")
-    TK_VAR => to_repr("var")
-    TK_COLON => to_repr(":")
-    TK_EQ => to_repr("=")
-    TK_SEMI => to_repr(";")
+    TK_IDENT => Repr("IDENT")
+    TK_VAR_TEMPLATE => Repr("VAR_TEMPLATE")
+    TK_TYPE_TEXT => Repr("TYPE_TEXT")
+    TK_INIT_TEXT => Repr("INIT_TEXT")
+    TK_ALIAS => Repr("alias")
+    TK_CONST => Repr("const")
+    TK_OVERRIDE => Repr("override")
+    TK_LET => Repr("let")
+    TK_VAR => Repr("var")
+    TK_COLON => Repr(":")
+    TK_EQ => Repr("=")
+    TK_SEMI => Repr(";")
   }
 }
