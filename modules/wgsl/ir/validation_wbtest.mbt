@@ -487,6 +487,44 @@ test "IR validator rejects address-of non-addressable expressions" {
 }
 
 ///|
+test "IR validator accepts direct scalar stores into atomics like Naga" {
+  // Naga IR explicitly allows storing a scalar into an `atomic<T>` target
+  // (naga src/valid/function.rs, `S::Store`), and resolves loads through a
+  // pointer-to-atomic as the underlying scalar. Bevy's auto_exposure.wgsl
+  // relies on both for its histogram buffers.
+  let source =
+    #|var<workgroup> histogram_shared: array<atomic<u32>, 64>;
+    #|
+    #|@group(0) @binding(0) var<storage, read_write> histogram: array<atomic<u32>, 64>;
+    #|
+    #|@group(0) @binding(1) var<storage, read_write> exposure: f32;
+    #|
+    #|@compute @workgroup_size(16, 16, 1)
+    #|fn main(@builtin(local_invocation_index) local_invocation_index: u32) {
+    #|  histogram_shared[local_invocation_index] = 0u;
+    #|  histogram[local_invocation_index] = histogram_shared[local_invocation_index];
+    #|  exposure = exposure + f32(histogram[local_invocation_index]);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let message = try {
+    validate_wgsl_ir_module(module_)
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(message, content="\"ok\"")
+  let roundtrip = try {
+    ignore(roundtrip_wgsl_source_via_ir(source))
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(roundtrip, content="\"ok\"")
+}
+
+///|
 fn validation_test_entry_point(function : Function) -> EntryPoint {
   {
     name: "main",

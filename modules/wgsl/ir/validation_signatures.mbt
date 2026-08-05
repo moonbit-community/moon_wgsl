@@ -115,10 +115,23 @@ fn WgslIrValidator::require_store(
     raise InvalidStoreTarget(pointer.index())
   }
   match self.function_expression_type(function, value) {
-    Some(actual) =>
-      if !self.type_assignable(value_ty, actual) {
+    Some(actual) => {
+      // The Naga IR allows storing a scalar into an `atomic<T>` target
+      // (naga src/valid/function.rs, `S::Store`); the relaxation is scoped
+      // to stores and does not extend to general type compatibility.
+      let assignable = match self.atomic_scalar_type(value_ty) {
+        Some(scalar) =>
+          match self.shader_module.types.get(actual) {
+            Some(actual_ty) =>
+              self.type_inner_assignable(Scalar(scalar), actual_ty.inner)
+            None => false
+          }
+        None => self.type_assignable(value_ty, actual)
+      }
+      if !assignable {
         raise InvalidStoreTarget(pointer.index())
       }
+    }
     None => ()
   }
 }
