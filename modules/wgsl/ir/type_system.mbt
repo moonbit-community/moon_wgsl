@@ -138,7 +138,7 @@ pub(all) struct Scalar {
 
 ///|
 pub fn Scalar::Scalar(kind : ScalarKind, width : Int) -> Scalar {
-  { kind, width }
+  { kind, width, }
 }
 
 ///|
@@ -295,3 +295,135 @@ pub fn SpecialTypes::SpecialTypes() -> SpecialTypes {
     predeclared_types: [],
   }
 }
+
+///|
+pub extend AddressSpace with Debug::{to_repr}
+
+///|
+pub extend AddressSpace with Eq::{not_equal, equal}
+
+///|
+pub extend ArraySize with Debug::{to_repr}
+
+///|
+pub extend ArraySize with Eq::{not_equal, equal}
+
+///|
+pub extend Binding with Debug::{to_repr}
+
+///|
+pub extend Binding with Eq::{not_equal, equal}
+
+///|
+pub extend BuiltIn with Debug::{to_repr}
+
+///|
+pub extend BuiltIn with Eq::{not_equal, equal}
+
+///|
+pub extend ConservativeDepth with Debug::{to_repr}
+
+///|
+pub extend ConservativeDepth with Eq::{not_equal, equal}
+
+///|
+pub extend CooperativeRole with Debug::{to_repr}
+
+///|
+pub extend CooperativeRole with Eq::{not_equal, equal}
+
+///|
+pub extend CooperativeSize with Debug::{to_repr}
+
+///|
+pub extend CooperativeSize with Eq::{not_equal, equal}
+
+///|
+pub extend EarlyDepthTest with Debug::{to_repr}
+
+///|
+pub extend EarlyDepthTest with Eq::{not_equal, equal}
+
+///|
+pub extend ImageClass with Debug::{to_repr}
+
+///|
+pub extend ImageClass with Eq::{not_equal, equal}
+
+///|
+pub extend ImageDimension with Debug::{to_repr}
+
+///|
+pub extend ImageDimension with Eq::{not_equal, equal}
+
+///|
+pub extend Interpolation with Debug::{to_repr}
+
+///|
+pub extend Interpolation with Eq::{not_equal, equal}
+
+///|
+pub extend PredeclaredType with Debug::{to_repr}
+
+///|
+pub extend PredeclaredType with Eq::{not_equal, equal}
+
+///|
+pub extend Sampling with Debug::{to_repr}
+
+///|
+pub extend Sampling with Eq::{not_equal, equal}
+
+///|
+pub extend Scalar with Debug::{to_repr}
+
+///|
+pub extend Scalar with Eq::{not_equal, equal}
+
+///|
+pub extend ScalarKind with Debug::{to_repr}
+
+///|
+pub extend ScalarKind with Eq::{not_equal, equal}
+
+///|
+pub extend ShaderStage with Debug::{to_repr}
+
+///|
+pub extend ShaderStage with Eq::{not_equal, equal}
+
+///|
+pub extend SpecialTypes with Debug::{to_repr}
+
+///|
+pub extend SpecialTypes with Eq::{not_equal, equal}
+
+///|
+pub extend StorageFormat with Debug::{to_repr}
+
+///|
+pub extend StorageFormat with Eq::{not_equal, equal}
+
+///|
+pub extend StructMember with Debug::{to_repr}
+
+///|
+pub extend StructMember with Eq::{not_equal, equal}
+
+///|
+pub extend Type with Debug::{to_repr}
+
+///|
+pub extend Type with Eq::{not_equal, equal}
+
+///|
+pub extend TypeInner with Debug::{to_repr}
+
+///|
+pub extend TypeInner with Eq::{not_equal, equal}
+
+///|
+pub extend VectorSize with Debug::{to_repr}
+
+///|
+pub extend VectorSize with Eq::{not_equal, equal}

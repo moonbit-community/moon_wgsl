@@ -204,7 +204,7 @@ test "semantic import target plan expands nested module aliases" {
       None,
     ),
   )
-  let targets = [WgslImportTarget::{ raw_path: "bevy_pbr", alias_name: "pbr" }]
+  let targets = [WgslImportTarget::{ raw_path: "bevy_pbr", alias_name: "pbr", }]
   let source =
     #|fn read() -> u32 { return pbr::bindings::view.value; }
     #|
@@ -246,7 +246,10 @@ test "semantic import target plan prefers exact nested module over base item spl
     ),
   )
   let targets = [
-    WgslImportTarget::{ raw_path: "bevy_pbr::prepass_bindings", alias_name: "" },
+    WgslImportTarget::{
+      raw_path: "bevy_pbr::prepass_bindings",
+      alias_name: "",
+    },
   ]
   let source = ""
   let plans = build_wgsl_semantic_import_target_plans(
@@ -331,8 +334,8 @@ test "semantic import target plans follow first AST reference order" {
     ),
   )
   let targets = [
-    WgslImportTarget::{ raw_path: "test::late::late_value", alias_name: "" },
-    { raw_path: "test::early::EarlyType", alias_name: "" },
+    WgslImportTarget::{ raw_path: "test::late::late_value", alias_name: "", },
+    { raw_path: "test::early::EarlyType", alias_name: "", },
   ]
   let source =
     #|#import test::{late::late_value, early::EarlyType}
@@ -397,7 +400,7 @@ test "semantic import target plans follow naga-oil substitution use order" {
       raw_path: "test::forward::VertexOutput",
       alias_name: "",
     },
-    { raw_path: "test::bindings::material", alias_name: "" },
+    { raw_path: "test::bindings::material", alias_name: "", },
   ]
   let source =
     #|#import test::forward::VertexOutput

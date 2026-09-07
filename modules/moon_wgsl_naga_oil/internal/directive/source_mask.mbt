@@ -1,6 +1,6 @@
 ///|
 fn blank_wgsl_directive_text_preserving_offsets(text : String) -> String {
-  let out = StringBuilder::new(size_hint=utf8_byte_length(text))
+  let out = StringBuilder(size_hint=utf8_byte_length(text))
   let mut line_start = 0
   let mut index = 0
   while index < text.length() {
@@ -28,7 +28,7 @@ fn blank_wgsl_directive_text_preserving_offsets(text : String) -> String {
 /// Removes naga-oil preprocessing syntax while preserving every source byte
 /// offset and line break expected by the strict WGSL parser.
 pub fn mask_naga_oil_directives_for_wgsl(source : String) -> String {
-  let out = StringBuilder::new(size_hint=utf8_byte_length(source))
+  let out = StringBuilder(size_hint=utf8_byte_length(source))
   for item in parse_wgsl_directive_scan_items(source) {
     match item.kind() {
       Source => out.write_string(item.source().original_text())

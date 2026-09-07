@@ -25,7 +25,7 @@ fn WgslIrLowerer::expression_arena_scheduler(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> ExpressionArenaScheduler {
-  { lowerer: self, function, scope }
+  { lowerer: self, function, scope, }
 }
 
 ///|

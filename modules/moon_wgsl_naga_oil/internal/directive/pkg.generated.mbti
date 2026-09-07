@@ -44,18 +44,21 @@ pub struct WgslDirectiveScanItem {
 pub fn WgslDirectiveScanItem::kind(Self) -> WgslDirectiveScanItemKind
 pub fn WgslDirectiveScanItem::source(Self) -> WgslDirectiveScanSource
 pub fn WgslDirectiveScanItem::start(Self) -> Int
+pub fn WgslDirectiveScanItem::to_repr(Self) -> @debug.Repr
 
 pub enum WgslDirectiveScanItemKind {
   Source
   GlslVersion(String)
   Directive(WgslPreprocessorDirective)
 } derive(@debug.Debug)
+pub fn WgslDirectiveScanItemKind::to_repr(Self) -> @debug.Repr
 
 pub struct WgslDirectiveScanSource {
   // private fields
 } derive(@debug.Debug)
 pub fn WgslDirectiveScanSource::cleaned_text(Self) -> String
 pub fn WgslDirectiveScanSource::original_text(Self) -> String
+pub fn WgslDirectiveScanSource::to_repr(Self) -> @debug.Repr
 
 pub struct WgslPreprocessorDirective {
   // private fields
@@ -69,6 +72,7 @@ pub fn WgslPreprocessorDirective::start(Self) -> Int
 pub fn WgslPreprocessorDirective::tail(Self) -> String
 pub fn WgslPreprocessorDirective::tail_end(Self) -> Int
 pub fn WgslPreprocessorDirective::tail_start(Self) -> Int
+pub fn WgslPreprocessorDirective::to_repr(Self) -> @debug.Repr
 
 pub(all) enum WgslPreprocessorDirectiveKind {
   Ifdef
@@ -84,10 +88,14 @@ pub(all) enum WgslPreprocessorDirectiveKind {
   Diagnostic
   Other
 } derive(Eq, @debug.Debug)
+pub fn WgslPreprocessorDirectiveKind::equal(Self, Self) -> Bool
+pub fn WgslPreprocessorDirectiveKind::not_equal(Self, Self) -> Bool
+pub fn WgslPreprocessorDirectiveKind::to_repr(Self) -> @debug.Repr
 
 pub struct WgslPreprocessorDirectiveTail {
   // private fields
 } derive(@debug.Debug)
+pub fn WgslPreprocessorDirectiveTail::to_repr(Self) -> @debug.Repr
 
 pub struct WgslPreprocessorIdent {
   // private fields
@@ -95,12 +103,14 @@ pub struct WgslPreprocessorIdent {
 pub fn WgslPreprocessorIdent::end(Self) -> Int
 pub fn WgslPreprocessorIdent::name(Self) -> String
 pub fn WgslPreprocessorIdent::start(Self) -> Int
+pub fn WgslPreprocessorIdent::to_repr(Self) -> @debug.Repr
 
 pub struct WgslShaderDefComparison {
   // private fields
 } derive(@debug.Debug)
 pub fn WgslShaderDefComparison::def_name(Self) -> String
 pub fn WgslShaderDefComparison::operator(Self) -> WgslShaderDefOperator
+pub fn WgslShaderDefComparison::to_repr(Self) -> @debug.Repr
 pub fn WgslShaderDefComparison::value_text(Self) -> String
 
 pub(all) enum WgslShaderDefOperator {
@@ -112,6 +122,9 @@ pub(all) enum WgslShaderDefOperator {
   LessEqual
   Unknown(String)
 } derive(Eq, @debug.Debug)
+pub fn WgslShaderDefOperator::equal(Self, Self) -> Bool
+pub fn WgslShaderDefOperator::not_equal(Self, Self) -> Bool
+pub fn WgslShaderDefOperator::to_repr(Self) -> @debug.Repr
 
 pub struct WgslShaderDefReference {
   // private fields
@@ -120,12 +133,14 @@ pub fn WgslShaderDefReference::end(Self) -> Int
 pub fn WgslShaderDefReference::is_delimited(Self) -> Bool
 pub fn WgslShaderDefReference::name(Self) -> String
 pub fn WgslShaderDefReference::start(Self) -> Int
+pub fn WgslShaderDefReference::to_repr(Self) -> @debug.Repr
 
 pub struct WgslSourceDirectiveItem {
   // private fields
 } derive(@debug.Debug)
 pub fn WgslSourceDirectiveItem::kind(Self) -> WgslSourceDirectiveItemKind
 pub fn WgslSourceDirectiveItem::line(Self) -> String
+pub fn WgslSourceDirectiveItem::to_repr(Self) -> @debug.Repr
 
 pub(all) enum WgslSourceDirectiveItemKind {
   Trivia
@@ -135,6 +150,9 @@ pub(all) enum WgslSourceDirectiveItemKind {
   PrefixCandidate
   Source
 } derive(Eq, @debug.Debug)
+pub fn WgslSourceDirectiveItemKind::equal(Self, Self) -> Bool
+pub fn WgslSourceDirectiveItemKind::not_equal(Self, Self) -> Bool
+pub fn WgslSourceDirectiveItemKind::to_repr(Self) -> @debug.Repr
 
 pub struct WgslTemplateConstReference {
   // private fields
@@ -142,8 +160,8 @@ pub struct WgslTemplateConstReference {
 pub fn WgslTemplateConstReference::end(Self) -> Int
 pub fn WgslTemplateConstReference::name(Self) -> String
 pub fn WgslTemplateConstReference::start(Self) -> Int
+pub fn WgslTemplateConstReference::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 
 // Traits
-

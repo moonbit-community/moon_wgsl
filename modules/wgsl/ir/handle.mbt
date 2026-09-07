@@ -38,7 +38,7 @@ pub(all) struct HandleRange {
 
 ///|
 pub fn HandleRange::HandleRange(start : Handle, end : Handle) -> HandleRange {
-  { start, end }
+  { start, end, }
 }
 
 ///|
@@ -48,22 +48,22 @@ pub(all) struct StorageAccess {
 
 ///|
 pub fn StorageAccess::empty() -> StorageAccess {
-  { bits: 0 }
+  { bits: 0, }
 }
 
 ///|
 pub fn StorageAccess::load() -> StorageAccess {
-  { bits: 1 }
+  { bits: 1, }
 }
 
 ///|
 pub fn StorageAccess::store() -> StorageAccess {
-  { bits: 2 }
+  { bits: 2, }
 }
 
 ///|
 pub fn StorageAccess::atomic_access() -> StorageAccess {
-  { bits: 4 }
+  { bits: 4, }
 }
 
 ///|
@@ -71,7 +71,7 @@ pub fn StorageAccess::union(
   self : StorageAccess,
   other : StorageAccess,
 ) -> StorageAccess {
-  { bits: self.bits | other.bits }
+  { bits: self.bits | other.bits, }
 }
 
 ///|
@@ -89,17 +89,17 @@ pub(all) struct MemoryDecorations {
 
 ///|
 pub fn MemoryDecorations::empty() -> MemoryDecorations {
-  { bits: 0 }
+  { bits: 0, }
 }
 
 ///|
 pub fn MemoryDecorations::coherent() -> MemoryDecorations {
-  { bits: 1 }
+  { bits: 1, }
 }
 
 ///|
 pub fn MemoryDecorations::volatile_decoration() -> MemoryDecorations {
-  { bits: 2 }
+  { bits: 2, }
 }
 
 ///|
@@ -107,7 +107,7 @@ pub fn MemoryDecorations::union(
   self : MemoryDecorations,
   other : MemoryDecorations,
 ) -> MemoryDecorations {
-  { bits: self.bits | other.bits }
+  { bits: self.bits | other.bits, }
 }
 
 ///|
@@ -117,32 +117,32 @@ pub(all) struct Barrier {
 
 ///|
 pub fn Barrier::empty() -> Barrier {
-  { bits: 0 }
+  { bits: 0, }
 }
 
 ///|
 pub fn Barrier::storage() -> Barrier {
-  { bits: 1 }
+  { bits: 1, }
 }
 
 ///|
 pub fn Barrier::work_group() -> Barrier {
-  { bits: 2 }
+  { bits: 2, }
 }
 
 ///|
 pub fn Barrier::sub_group() -> Barrier {
-  { bits: 4 }
+  { bits: 4, }
 }
 
 ///|
 pub fn Barrier::texture() -> Barrier {
-  { bits: 8 }
+  { bits: 8, }
 }
 
 ///|
 pub fn Barrier::union(self : Barrier, other : Barrier) -> Barrier {
-  { bits: self.bits | other.bits }
+  { bits: self.bits | other.bits, }
 }
 
 ///|
@@ -152,60 +152,96 @@ pub(all) struct RayFlag {
 
 ///|
 pub fn RayFlag::empty() -> RayFlag {
-  { bits: 0 }
+  { bits: 0, }
 }
 
 ///|
 pub fn RayFlag::force_opaque() -> RayFlag {
-  { bits: 1 }
+  { bits: 1, }
 }
 
 ///|
 pub fn RayFlag::force_no_opaque() -> RayFlag {
-  { bits: 2 }
+  { bits: 2, }
 }
 
 ///|
 pub fn RayFlag::terminate_on_first_hit() -> RayFlag {
-  { bits: 4 }
+  { bits: 4, }
 }
 
 ///|
 pub fn RayFlag::skip_closest_hit_shader() -> RayFlag {
-  { bits: 8 }
+  { bits: 8, }
 }
 
 ///|
 pub fn RayFlag::cull_back_facing() -> RayFlag {
-  { bits: 0x10 }
+  { bits: 0x10, }
 }
 
 ///|
 pub fn RayFlag::cull_front_facing() -> RayFlag {
-  { bits: 0x20 }
+  { bits: 0x20, }
 }
 
 ///|
 pub fn RayFlag::cull_opaque() -> RayFlag {
-  { bits: 0x40 }
+  { bits: 0x40, }
 }
 
 ///|
 pub fn RayFlag::cull_no_opaque() -> RayFlag {
-  { bits: 0x80 }
+  { bits: 0x80, }
 }
 
 ///|
 pub fn RayFlag::skip_triangles() -> RayFlag {
-  { bits: 0x100 }
+  { bits: 0x100, }
 }
 
 ///|
 pub fn RayFlag::skip_aabbs() -> RayFlag {
-  { bits: 0x200 }
+  { bits: 0x200, }
 }
 
 ///|
 pub fn RayFlag::union(self : RayFlag, other : RayFlag) -> RayFlag {
-  { bits: self.bits | other.bits }
+  { bits: self.bits | other.bits, }
 }
+
+///|
+pub extend Barrier with Debug::{to_repr}
+
+///|
+pub extend Barrier with Eq::{not_equal, equal}
+
+///|
+pub extend Handle with Debug::{to_repr}
+
+///|
+pub extend Handle with Eq::{not_equal, equal}
+
+///|
+pub extend HandleRange with Debug::{to_repr}
+
+///|
+pub extend HandleRange with Eq::{not_equal, equal}
+
+///|
+pub extend MemoryDecorations with Debug::{to_repr}
+
+///|
+pub extend MemoryDecorations with Eq::{not_equal, equal}
+
+///|
+pub extend RayFlag with Debug::{to_repr}
+
+///|
+pub extend RayFlag with Eq::{not_equal, equal}
+
+///|
+pub extend StorageAccess with Debug::{to_repr}
+
+///|
+pub extend StorageAccess with Eq::{not_equal, equal}

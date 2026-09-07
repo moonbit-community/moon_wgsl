@@ -76,6 +76,9 @@ pub(all) struct AliasDeclaration {
   target : String?
   target_type : TypeExpression?
 } derive(Eq, @debug.Debug)
+pub fn AliasDeclaration::equal(Self, Self) -> Bool
+pub fn AliasDeclaration::not_equal(Self, Self) -> Bool
+pub fn AliasDeclaration::to_repr(Self) -> @debug.Repr
 
 pub(all) enum AssignmentOperator {
   Equal
@@ -90,12 +93,18 @@ pub(all) enum AssignmentOperator {
   ShiftLeftAssign
   ShiftRightAssign
 } derive(Eq, @debug.Debug)
+pub fn AssignmentOperator::equal(Self, Self) -> Bool
+pub fn AssignmentOperator::not_equal(Self, Self) -> Bool
+pub fn AssignmentOperator::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AssignmentStatement {
   operator : AssignmentOperator
   lhs : Expression
   rhs : Expression
 } derive(Eq, @debug.Debug)
+pub fn AssignmentStatement::equal(Self, Self) -> Bool
+pub fn AssignmentStatement::not_equal(Self, Self) -> Bool
+pub fn AssignmentStatement::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Attribute {
   name : String
@@ -104,6 +113,9 @@ pub(all) struct Attribute {
   condition_expr : CondExpression?
   span : SyntaxSpan
 } derive(Eq, @debug.Debug)
+pub fn Attribute::equal(Self, Self) -> Bool
+pub fn Attribute::not_equal(Self, Self) -> Bool
+pub fn Attribute::to_repr(Self) -> @debug.Repr
 
 pub struct BasicSourceMap {
   root : ModulePath
@@ -120,6 +132,7 @@ pub fn BasicSourceMap::get_display_name(Self, ModulePath) -> String?
 pub fn BasicSourceMap::get_source(Self, ModulePath) -> String?
 pub fn BasicSourceMap::new() -> Self
 pub fn BasicSourceMap::set_default_source(Self, String) -> Unit
+pub fn BasicSourceMap::to_repr(Self) -> @debug.Repr
 pub fn BasicSourceMap::unmangle_identifier(Self, String) -> String?
 pub fn BasicSourceMap::unmangle_text(Self, String) -> String
 pub impl SourceMap for BasicSourceMap
@@ -144,10 +157,16 @@ pub(all) enum BinaryOperator {
   Division
   Remainder
 } derive(Eq, @debug.Debug)
+pub fn BinaryOperator::equal(Self, Self) -> Bool
+pub fn BinaryOperator::not_equal(Self, Self) -> Bool
+pub fn BinaryOperator::to_repr(Self) -> @debug.Repr
 
 pub(all) struct BlockStatement {
   body : FunctionBody
 } derive(Eq, @debug.Debug)
+pub fn BlockStatement::equal(Self, Self) -> Bool
+pub fn BlockStatement::not_equal(Self, Self) -> Bool
+pub fn BlockStatement::to_repr(Self) -> @debug.Repr
 
 pub struct CodegenModule {
   name : String
@@ -155,7 +174,10 @@ pub struct CodegenModule {
   submodules : Array[CodegenModule]
 } derive(Eq, @debug.Debug)
 pub fn CodegenModule::add_submodule(Self, Self) -> Unit
+pub fn CodegenModule::equal(Self, Self) -> Bool
 pub fn CodegenModule::new(String, String) -> Self
+pub fn CodegenModule::not_equal(Self, Self) -> Bool
+pub fn CodegenModule::to_repr(Self) -> @debug.Repr
 pub fn CodegenModule::with_submodules(Self, Array[Self]) -> Self
 
 pub struct CodegenPkg {
@@ -164,7 +186,10 @@ pub struct CodegenPkg {
   dependencies : Array[CodegenPkg]
 } derive(Eq, @debug.Debug)
 pub fn CodegenPkg::add_dependency(Self, Self) -> Unit
+pub fn CodegenPkg::equal(Self, Self) -> Bool
 pub fn CodegenPkg::new(String, CodegenModule) -> Self
+pub fn CodegenPkg::not_equal(Self, Self) -> Bool
+pub fn CodegenPkg::to_repr(Self) -> @debug.Repr
 pub fn CodegenPkg::with_dependencies(Self, Array[Self]) -> Self
 
 pub(all) struct CompileOptions {
@@ -191,6 +216,7 @@ pub fn CompileResult::default() -> Self
 pub fn CompileResult::eval(Self, String) -> EvalResult raise WeslCompileError
 pub fn CompileResult::exec(Self, String, Inputs, Array[ResourceBinding], Array[OverrideValue]) -> ExecResult raise WeslCompileError
 pub fn CompileResult::has_sourcemap(Self) -> Bool
+pub fn CompileResult::to_repr(Self) -> @debug.Repr
 pub fn CompileResult::to_string(Self) -> String
 pub fn CompileResult::unmangle_text(Self, String) -> String
 
@@ -198,6 +224,7 @@ pub struct CondCompPreprocessor {
   features : Features
 }
 pub fn CondCompPreprocessor::new(Features) -> Self
+pub fn CondCompPreprocessor::preprocess_module(Self, ModulePath, TranslationUnit) -> TranslationUnit raise ResolveError
 pub impl ModulePreprocessor for CondCompPreprocessor
 
 pub(all) enum CondExpression {
@@ -207,11 +234,17 @@ pub(all) enum CondExpression {
   And(CondExpression, CondExpression)
   Or(CondExpression, CondExpression)
 } derive(Eq, @debug.Debug)
+pub fn CondExpression::equal(Self, Self) -> Bool
+pub fn CondExpression::not_equal(Self, Self) -> Bool
+pub fn CondExpression::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ConstAssertDeclaration {
   assertion : String
   assertion_expr : Expression
 } derive(Eq, @debug.Debug)
+pub fn ConstAssertDeclaration::equal(Self, Self) -> Bool
+pub fn ConstAssertDeclaration::not_equal(Self, Self) -> Bool
+pub fn ConstAssertDeclaration::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ConstDeclaration {
   name : String
@@ -220,10 +253,16 @@ pub(all) struct ConstDeclaration {
   initializer : String?
   initializer_expr : Expression?
 } derive(Eq, @debug.Debug)
+pub fn ConstDeclaration::equal(Self, Self) -> Bool
+pub fn ConstDeclaration::not_equal(Self, Self) -> Bool
+pub fn ConstDeclaration::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ContinuingStatement {
   body : FunctionBody
 } derive(Eq, @debug.Debug)
+pub fn ContinuingStatement::equal(Self, Self) -> Bool
+pub fn ContinuingStatement::not_equal(Self, Self) -> Bool
+pub fn ContinuingStatement::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ControlStatement {
   Block(BlockStatement)
@@ -234,6 +273,9 @@ pub(all) enum ControlStatement {
   While(WhileStatement)
   Continuing(ContinuingStatement)
 } derive(Eq, @debug.Debug)
+pub fn ControlStatement::equal(Self, Self) -> Bool
+pub fn ControlStatement::not_equal(Self, Self) -> Bool
+pub fn ControlStatement::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Diagnostic {
   error : WeslCompileError
@@ -265,16 +307,25 @@ pub(all) struct DiagnosticDetail {
   message : String?
 } derive(Eq, @debug.Debug)
 pub fn DiagnosticDetail::default() -> Self
+pub fn DiagnosticDetail::equal(Self, Self) -> Bool
+pub fn DiagnosticDetail::not_equal(Self, Self) -> Bool
+pub fn DiagnosticDetail::to_repr(Self) -> @debug.Repr
 
 pub(all) struct DiagnosticDirectiveDeclaration {
   arguments : Array[String]
   severity : String?
   rule_name : String?
 } derive(Eq, @debug.Debug)
+pub fn DiagnosticDirectiveDeclaration::equal(Self, Self) -> Bool
+pub fn DiagnosticDirectiveDeclaration::not_equal(Self, Self) -> Bool
+pub fn DiagnosticDirectiveDeclaration::to_repr(Self) -> @debug.Repr
 
 pub(all) struct EnableDirectiveDeclaration {
   names : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn EnableDirectiveDeclaration::equal(Self, Self) -> Bool
+pub fn EnableDirectiveDeclaration::not_equal(Self, Self) -> Bool
+pub fn EnableDirectiveDeclaration::to_repr(Self) -> @debug.Repr
 
 pub struct EscapeMangler {
 }
@@ -286,7 +337,10 @@ pub(all) struct EvalResult {
   value : String
   buffer : Bytes?
 } derive(Eq, @debug.Debug)
+pub fn EvalResult::equal(Self, Self) -> Bool
+pub fn EvalResult::not_equal(Self, Self) -> Bool
 pub fn EvalResult::to_buffer(Self) -> Bytes?
+pub fn EvalResult::to_repr(Self) -> @debug.Repr
 pub fn EvalResult::to_string(Self) -> String
 
 pub(all) struct ExecResult {
@@ -294,9 +348,12 @@ pub(all) struct ExecResult {
   buffer : Bytes?
   resources : Array[ResourceBinding]
 } derive(Eq, @debug.Debug)
+pub fn ExecResult::equal(Self, Self) -> Bool
+pub fn ExecResult::not_equal(Self, Self) -> Bool
 pub fn ExecResult::resource(Self, Int, Int) -> ResourceBinding?
 pub fn ExecResult::return_value(Self) -> String?
 pub fn ExecResult::to_buffer(Self) -> Bytes?
+pub fn ExecResult::to_repr(Self) -> @debug.Repr
 pub fn ExecResult::to_string(Self) -> String
 
 pub(all) enum Expression {
@@ -310,6 +367,9 @@ pub(all) enum Expression {
   Binary(BinaryOperator, Expression, Expression)
   FunctionCall(FunctionCallExpression)
 } derive(Eq, @debug.Debug)
+pub fn Expression::equal(Self, Self) -> Bool
+pub fn Expression::not_equal(Self, Self) -> Bool
+pub fn Expression::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Feature {
   Enable
@@ -318,7 +378,10 @@ pub(all) enum Feature {
   Error
 } derive(Eq, @debug.Debug)
 pub fn Feature::default() -> Self
+pub fn Feature::equal(Self, Self) -> Bool
 pub fn Feature::from_bool(Bool) -> Self
+pub fn Feature::not_equal(Self, Self) -> Bool
+pub fn Feature::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Features {
   default : Feature
@@ -332,6 +395,9 @@ pub(all) enum ForInitializer {
   Assignment(AssignmentStatement)
   Expression(Expression)
 } derive(Eq, @debug.Debug)
+pub fn ForInitializer::equal(Self, Self) -> Bool
+pub fn ForInitializer::not_equal(Self, Self) -> Bool
+pub fn ForInitializer::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ForStatement {
   initializer : ForInitializer?
@@ -339,6 +405,9 @@ pub(all) struct ForStatement {
   update : ForUpdate?
   body : FunctionBody
 } derive(Eq, @debug.Debug)
+pub fn ForStatement::equal(Self, Self) -> Bool
+pub fn ForStatement::not_equal(Self, Self) -> Bool
+pub fn ForStatement::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ForUpdate {
   Assignment(AssignmentStatement)
@@ -346,15 +415,24 @@ pub(all) enum ForUpdate {
   Decrement(Expression)
   Expression(Expression)
 } derive(Eq, @debug.Debug)
+pub fn ForUpdate::equal(Self, Self) -> Bool
+pub fn ForUpdate::not_equal(Self, Self) -> Bool
+pub fn ForUpdate::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FunctionBody {
   statements : Array[Statement]
 } derive(Eq, @debug.Debug)
+pub fn FunctionBody::equal(Self, Self) -> Bool
+pub fn FunctionBody::not_equal(Self, Self) -> Bool
+pub fn FunctionBody::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FunctionCallExpression {
   callee : TypeExpression
   arguments : Array[Expression]
 } derive(Eq, @debug.Debug)
+pub fn FunctionCallExpression::equal(Self, Self) -> Bool
+pub fn FunctionCallExpression::not_equal(Self, Self) -> Bool
+pub fn FunctionCallExpression::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FunctionDeclaration {
   name : String
@@ -365,6 +443,9 @@ pub(all) struct FunctionDeclaration {
   return_attributes : Array[Attribute]
   body : FunctionBody
 } derive(Eq, @debug.Debug)
+pub fn FunctionDeclaration::equal(Self, Self) -> Bool
+pub fn FunctionDeclaration::not_equal(Self, Self) -> Bool
+pub fn FunctionDeclaration::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FunctionParameter {
   name : String
@@ -372,6 +453,9 @@ pub(all) struct FunctionParameter {
   type_expr : TypeExpression
   attributes : Array[Attribute]
 } derive(Eq, @debug.Debug)
+pub fn FunctionParameter::equal(Self, Self) -> Bool
+pub fn FunctionParameter::not_equal(Self, Self) -> Bool
+pub fn FunctionParameter::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GlobalDeclaration {
   header : GlobalDeclarationHeader
@@ -379,6 +463,9 @@ pub(all) struct GlobalDeclaration {
   source : String
   span : SyntaxSpan
 } derive(Eq, @debug.Debug)
+pub fn GlobalDeclaration::equal(Self, Self) -> Bool
+pub fn GlobalDeclaration::not_equal(Self, Self) -> Bool
+pub fn GlobalDeclaration::to_repr(Self) -> @debug.Repr
 
 pub(all) enum GlobalDeclarationHeader {
   Function(FunctionDeclaration)
@@ -394,10 +481,14 @@ pub(all) enum GlobalDeclarationHeader {
   DiagnosticDirective(DiagnosticDirectiveDeclaration)
   Other
 } derive(Eq, @debug.Debug)
+pub fn GlobalDeclarationHeader::equal(Self, Self) -> Bool
+pub fn GlobalDeclarationHeader::not_equal(Self, Self) -> Bool
+pub fn GlobalDeclarationHeader::to_repr(Self) -> @debug.Repr
 
 pub struct IdentityPreprocessor {
 }
 pub fn IdentityPreprocessor::new() -> Self
+pub fn IdentityPreprocessor::preprocess_module(Self, ModulePath, TranslationUnit) -> TranslationUnit raise ResolveError
 pub impl ModulePreprocessor for IdentityPreprocessor
 
 pub(all) struct IfStatement {
@@ -405,12 +496,18 @@ pub(all) struct IfStatement {
   body : FunctionBody
   else_body : FunctionBody?
 } derive(Eq, @debug.Debug)
+pub fn IfStatement::equal(Self, Self) -> Bool
+pub fn IfStatement::not_equal(Self, Self) -> Bool
+pub fn IfStatement::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ImportNode {
   path_segments : Array[String]
   rename : String?
   children : Array[ImportNode]
 } derive(Eq, @debug.Debug)
+pub fn ImportNode::equal(Self, Self) -> Bool
+pub fn ImportNode::not_equal(Self, Self) -> Bool
+pub fn ImportNode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ImportStatement {
   span : SyntaxSpan
@@ -418,7 +515,10 @@ pub(all) struct ImportStatement {
   entries : Array[ImportNode]
   source : String
 } derive(Eq, @debug.Debug)
+pub fn ImportStatement::equal(Self, Self) -> Bool
+pub fn ImportStatement::not_equal(Self, Self) -> Bool
 pub fn ImportStatement::source_text(Self) -> String
+pub fn ImportStatement::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ImportedName {
   export_module_path : ModulePath?
@@ -426,6 +526,9 @@ pub(all) struct ImportedName {
   namespace_path : ModulePath
   local_name : String
 } derive(Eq, @debug.Debug)
+pub fn ImportedName::equal(Self, Self) -> Bool
+pub fn ImportedName::not_equal(Self, Self) -> Bool
+pub fn ImportedName::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Inputs {
   vertex_index : Int?
@@ -447,7 +550,10 @@ pub(all) struct Inputs {
   view_index : Int?
   user_defined : Array[UserInput]
 } derive(Eq, @debug.Debug)
+pub fn Inputs::equal(Self, Self) -> Bool
 pub fn Inputs::new_zero_initialized() -> Self
+pub fn Inputs::not_equal(Self, Self) -> Bool
+pub fn Inputs::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LetDeclaration {
   name : String
@@ -456,10 +562,16 @@ pub(all) struct LetDeclaration {
   initializer : String?
   initializer_expr : Expression?
 } derive(Eq, @debug.Debug)
+pub fn LetDeclaration::equal(Self, Self) -> Bool
+pub fn LetDeclaration::not_equal(Self, Self) -> Bool
+pub fn LetDeclaration::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LoopStatement {
   body : FunctionBody
 } derive(Eq, @debug.Debug)
+pub fn LoopStatement::equal(Self, Self) -> Bool
+pub fn LoopStatement::not_equal(Self, Self) -> Bool
+pub fn LoopStatement::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ManglerKind {
   Escape
@@ -468,17 +580,26 @@ pub(all) enum ManglerKind {
   None
 } derive(Eq, @debug.Debug)
 pub fn ManglerKind::default() -> Self
+pub fn ManglerKind::equal(Self, Self) -> Bool
 pub fn ManglerKind::mangle(Self, ModulePath, String) -> String
+pub fn ManglerKind::not_equal(Self, Self) -> Bool
+pub fn ManglerKind::to_repr(Self) -> @debug.Repr
 pub fn ManglerKind::unmangle(Self, String) -> (ModulePath, String)?
 
 type ModuleItemRef derive(Eq, @debug.Debug)
+pub fn ModuleItemRef::equal(Self, Self) -> Bool
+pub fn ModuleItemRef::not_equal(Self, Self) -> Bool
+pub fn ModuleItemRef::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ModulePath {
   origin : PathOrigin
   components : Array[String]
 } derive(Eq, Hash, @debug.Debug)
+pub fn ModulePath::equal(Self, Self) -> Bool
 pub fn ModulePath::first(Self) -> String?
 pub fn ModulePath::from_path(String) -> Self
+pub fn ModulePath::hash(Self) -> Int
+pub fn ModulePath::hash_combine(Self, Hasher) -> Unit
 pub fn ModulePath::is_package(Self) -> Bool
 pub fn ModulePath::is_relative(Self) -> Bool
 pub fn ModulePath::is_root(Self) -> Bool
@@ -487,21 +608,31 @@ pub fn ModulePath::join_path(Self, Self) -> Self
 pub fn ModulePath::last(Self) -> String?
 pub fn ModulePath::new(PathOrigin, Array[String]) -> Self
 pub fn ModulePath::new_root() -> Self
+pub fn ModulePath::not_equal(Self, Self) -> Bool
 pub fn ModulePath::push(Self, String) -> Unit
 pub fn ModulePath::starts_with(Self, Self) -> Bool
 pub fn ModulePath::to_path_string(Self) -> String
+pub fn ModulePath::to_repr(Self) -> @debug.Repr
 pub fn ModulePath::to_string(Self) -> String
 
 pub struct NoResolver {
 }
 pub fn NoResolver::default() -> Self
+pub fn NoResolver::display_name(Self, ModulePath) -> String?
 pub fn NoResolver::new() -> Self
+pub fn NoResolver::resolve_module(Self, ModulePath) -> TranslationUnit raise ResolveError
+pub fn NoResolver::resolve_source(Self, ModulePath) -> String raise ResolveError
 pub impl Resolver for NoResolver
 
 pub struct NoSourceMap {
 }
 pub fn NoSourceMap::default() -> Self
+pub fn NoSourceMap::get_decl(Self, String) -> (ModulePath, String)?
+pub fn NoSourceMap::get_default_source(Self) -> String?
+pub fn NoSourceMap::get_display_name(Self, ModulePath) -> String?
+pub fn NoSourceMap::get_source(Self, ModulePath) -> String?
 pub fn NoSourceMap::new() -> Self
+pub fn NoSourceMap::unmangle_text(Self, String) -> String
 pub impl SourceMap for NoSourceMap
 
 pub(all) struct OverrideDeclaration {
@@ -511,17 +642,28 @@ pub(all) struct OverrideDeclaration {
   initializer : String?
   initializer_expr : Expression?
 } derive(Eq, @debug.Debug)
+pub fn OverrideDeclaration::equal(Self, Self) -> Bool
+pub fn OverrideDeclaration::not_equal(Self, Self) -> Bool
+pub fn OverrideDeclaration::to_repr(Self) -> @debug.Repr
 
 pub(all) struct OverrideValue {
   name : String
   value : String
 } derive(Eq, @debug.Debug)
+pub fn OverrideValue::equal(Self, Self) -> Bool
+pub fn OverrideValue::not_equal(Self, Self) -> Bool
+pub fn OverrideValue::to_repr(Self) -> @debug.Repr
 
 pub(all) enum PathOrigin {
   Absolute
   Relative(Int)
   Package(String)
 } derive(Eq, Hash, @debug.Debug)
+pub fn PathOrigin::equal(Self, Self) -> Bool
+pub fn PathOrigin::hash(Self) -> Int
+pub fn PathOrigin::hash_combine(Self, Hasher) -> Unit
+pub fn PathOrigin::not_equal(Self, Self) -> Bool
+pub fn PathOrigin::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Pkg {
   crate_name : String
@@ -546,19 +688,28 @@ pub struct PkgResolver {
 }
 pub fn PkgResolver::add_package(Self, CodegenPkg) -> Unit
 pub fn PkgResolver::default() -> Self
+pub fn PkgResolver::display_name(Self, ModulePath) -> String?
 pub fn PkgResolver::new() -> Self
+pub fn PkgResolver::resolve_module(Self, ModulePath) -> TranslationUnit raise ResolveError
+pub fn PkgResolver::resolve_source(Self, ModulePath) -> String raise ResolveError
 pub impl Resolver for PkgResolver
 
 pub struct Preprocessor[R, P] {
   resolver : R
   preprocess : P
 }
+pub fn[R : Resolver, P : ModulePreprocessor] Preprocessor::display_name(Self[R, P], ModulePath) -> String?
 pub fn[R, P] Preprocessor::new(R, P) -> Self[R, P]
+pub fn[R : Resolver, P : ModulePreprocessor] Preprocessor::resolve_module(Self[R, P], ModulePath) -> TranslationUnit raise ResolveError
+pub fn[R : Resolver, P : ModulePreprocessor] Preprocessor::resolve_source(Self[R, P], ModulePath) -> String raise ResolveError
 pub impl[R : Resolver, P : ModulePreprocessor] Resolver for Preprocessor[R, P]
 
 pub(all) struct RequiresDirectiveDeclaration {
   names : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn RequiresDirectiveDeclaration::equal(Self, Self) -> Bool
+pub fn RequiresDirectiveDeclaration::not_equal(Self, Self) -> Bool
+pub fn RequiresDirectiveDeclaration::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ResourceBinding {
   group : Int
@@ -566,16 +717,22 @@ pub(all) struct ResourceBinding {
   kind : String
   data : Bytes
 } derive(Eq, @debug.Debug)
+pub fn ResourceBinding::equal(Self, Self) -> Bool
+pub fn ResourceBinding::not_equal(Self, Self) -> Bool
+pub fn ResourceBinding::to_repr(Self) -> @debug.Repr
 
 pub struct Router {
   // private fields
 }
 pub fn Router::default() -> Self
+pub fn Router::display_name(Self, ModulePath) -> String?
 pub fn Router::mount_fallback_resolver(Self, VirtualResolver) -> Unit
 pub fn Router::mount_pkg_resolver(Self, ModulePath, PkgResolver) -> Unit
 pub fn Router::mount_resolver(Self, ModulePath, VirtualResolver) -> Unit
 pub fn Router::mount_standard_resolver(Self, ModulePath, StandardResolver) -> Unit
 pub fn Router::new() -> Self
+pub fn Router::resolve_module(Self, ModulePath) -> TranslationUnit raise ResolveError
+pub fn Router::resolve_source(Self, ModulePath) -> String raise ResolveError
 pub impl Resolver for Router
 
 pub struct SourceMapper[R] {
@@ -584,10 +741,13 @@ pub struct SourceMapper[R] {
   mangler : ManglerKind
   sourcemap : BasicSourceMap
 }
+pub fn[R : Resolver] SourceMapper::display_name(Self[R], ModulePath) -> String?
 pub fn[R] SourceMapper::finish(Self[R]) -> BasicSourceMap
 pub fn[R] SourceMapper::mangle(Self[R], ModulePath, String) -> String
 pub fn[R] SourceMapper::mangler(Self[R]) -> ManglerKind
 pub fn[R] SourceMapper::new(ModulePath, R, ManglerKind) -> Self[R]
+pub fn[R : Resolver] SourceMapper::resolve_module(Self[R], ModulePath) -> TranslationUnit raise ResolveError
+pub fn[R : Resolver] SourceMapper::resolve_source(Self[R], ModulePath) -> String raise ResolveError
 pub fn[R] SourceMapper::sourcemap(Self[R]) -> BasicSourceMap
 pub fn[R] SourceMapper::unmangle(Self[R], String) -> (ModulePath, String)?
 pub impl[R : Resolver] Resolver for SourceMapper[R]
@@ -597,14 +757,20 @@ pub(all) struct SourcePosition {
   column : Int
   offset : Int
 } derive(Eq, @debug.Debug)
+pub fn SourcePosition::equal(Self, Self) -> Bool
 pub fn SourcePosition::new(Int, Int, Int) -> Self
+pub fn SourcePosition::not_equal(Self, Self) -> Bool
+pub fn SourcePosition::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SourceSpan {
   start : SourcePosition
   end : SourcePosition
 } derive(Eq, @debug.Debug)
+pub fn SourceSpan::equal(Self, Self) -> Bool
 pub fn SourceSpan::from_line_range(String, Int, Int) -> Self
 pub fn SourceSpan::new(SourcePosition, SourcePosition) -> Self
+pub fn SourceSpan::not_equal(Self, Self) -> Bool
+pub fn SourceSpan::to_repr(Self) -> @debug.Repr
 
 pub struct StandardResolver {
   pkg : PkgResolver
@@ -614,8 +780,11 @@ pub struct StandardResolver {
 pub fn StandardResolver::add_constant(Self, String, Double) -> Unit
 pub fn StandardResolver::add_module(Self, ModulePath, String) -> Unit
 pub fn StandardResolver::add_package(Self, CodegenPkg) -> Unit
+pub fn StandardResolver::display_name(Self, ModulePath) -> String?
 pub fn StandardResolver::generate_constant_module(Self) -> String
 pub fn StandardResolver::new() -> Self
+pub fn StandardResolver::resolve_module(Self, ModulePath) -> TranslationUnit raise ResolveError
+pub fn StandardResolver::resolve_source(Self, ModulePath) -> String raise ResolveError
 pub impl Resolver for StandardResolver
 
 pub(all) struct Statement {
@@ -628,6 +797,9 @@ pub(all) struct Statement {
   control : ControlStatement?
   attributes : Array[Attribute]
 } derive(Eq, @debug.Debug)
+pub fn Statement::equal(Self, Self) -> Bool
+pub fn Statement::not_equal(Self, Self) -> Bool
+pub fn Statement::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StatementDeclaration {
   kind : StatementDeclarationKind
@@ -638,12 +810,18 @@ pub(all) struct StatementDeclaration {
   initializer : String?
   initializer_expr : Expression?
 } derive(Eq, @debug.Debug)
+pub fn StatementDeclaration::equal(Self, Self) -> Bool
+pub fn StatementDeclaration::not_equal(Self, Self) -> Bool
+pub fn StatementDeclaration::to_repr(Self) -> @debug.Repr
 
 pub(all) enum StatementDeclarationKind {
   Const
   Let
   Var
 } derive(Eq, @debug.Debug)
+pub fn StatementDeclarationKind::equal(Self, Self) -> Bool
+pub fn StatementDeclarationKind::not_equal(Self, Self) -> Bool
+pub fn StatementDeclarationKind::to_repr(Self) -> @debug.Repr
 
 pub(all) enum StatementKind {
   Empty
@@ -670,11 +848,17 @@ pub(all) enum StatementKind {
   Call
   Other
 } derive(Eq, @debug.Debug)
+pub fn StatementKind::equal(Self, Self) -> Bool
+pub fn StatementKind::not_equal(Self, Self) -> Bool
+pub fn StatementKind::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StructDeclaration {
   name : String
   members : Array[StructMember]
 } derive(Eq, @debug.Debug)
+pub fn StructDeclaration::equal(Self, Self) -> Bool
+pub fn StructDeclaration::not_equal(Self, Self) -> Bool
+pub fn StructDeclaration::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StructMember {
   name : String
@@ -682,6 +866,9 @@ pub(all) struct StructMember {
   type_expr : TypeExpression
   attributes : Array[Attribute]
 } derive(Eq, @debug.Debug)
+pub fn StructMember::equal(Self, Self) -> Bool
+pub fn StructMember::not_equal(Self, Self) -> Bool
+pub fn StructMember::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SwitchCase {
   selectors : Array[Expression]
@@ -689,22 +876,34 @@ pub(all) struct SwitchCase {
   body : FunctionBody
   attributes : Array[Attribute]
 } derive(Eq, @debug.Debug)
+pub fn SwitchCase::equal(Self, Self) -> Bool
+pub fn SwitchCase::not_equal(Self, Self) -> Bool
+pub fn SwitchCase::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SwitchStatement {
   selector : Expression
   cases : Array[SwitchCase]
 } derive(Eq, @debug.Debug)
+pub fn SwitchStatement::equal(Self, Self) -> Bool
+pub fn SwitchStatement::not_equal(Self, Self) -> Bool
+pub fn SwitchStatement::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SyntaxSpan {
   start_line : Int
   end_line : Int
 } derive(Eq, @debug.Debug)
+pub fn SyntaxSpan::equal(Self, Self) -> Bool
+pub fn SyntaxSpan::not_equal(Self, Self) -> Bool
+pub fn SyntaxSpan::to_repr(Self) -> @debug.Repr
 
 pub(all) struct TranslationUnit {
   imports : Array[ImportStatement]
   global_declarations : Array[GlobalDeclaration]
 } derive(Eq, @debug.Debug)
 pub fn TranslationUnit::default() -> Self
+pub fn TranslationUnit::equal(Self, Self) -> Bool
+pub fn TranslationUnit::not_equal(Self, Self) -> Bool
+pub fn TranslationUnit::to_repr(Self) -> @debug.Repr
 pub fn TranslationUnit::to_string(Self) -> String
 
 pub(all) struct TypeExpression {
@@ -713,11 +912,17 @@ pub(all) struct TypeExpression {
   template_text : String?
   template_args : Array[TypeTemplateArgument]
 } derive(Eq, @debug.Debug)
+pub fn TypeExpression::equal(Self, Self) -> Bool
+pub fn TypeExpression::not_equal(Self, Self) -> Bool
+pub fn TypeExpression::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TypeTemplateArgument {
   Type(TypeExpression)
   Literal(String)
 } derive(Eq, @debug.Debug)
+pub fn TypeTemplateArgument::equal(Self, Self) -> Bool
+pub fn TypeTemplateArgument::not_equal(Self, Self) -> Bool
+pub fn TypeTemplateArgument::to_repr(Self) -> @debug.Repr
 
 pub(all) enum UnaryOperator {
   Negation
@@ -726,11 +931,17 @@ pub(all) enum UnaryOperator {
   Indirection
   AddressOf
 } derive(Eq, @debug.Debug)
+pub fn UnaryOperator::equal(Self, Self) -> Bool
+pub fn UnaryOperator::not_equal(Self, Self) -> Bool
+pub fn UnaryOperator::to_repr(Self) -> @debug.Repr
 
 pub(all) struct UserInput {
   location : Int
   value : UserInputValue
 } derive(Eq, @debug.Debug)
+pub fn UserInput::equal(Self, Self) -> Bool
+pub fn UserInput::not_equal(Self, Self) -> Bool
+pub fn UserInput::to_repr(Self) -> @debug.Repr
 
 pub(all) enum UserInputValue {
   Bool(Bool)
@@ -741,6 +952,9 @@ pub(all) enum UserInputValue {
   U32Vector(Array[Int])
   F32Vector(Array[Double])
 } derive(Eq, @debug.Debug)
+pub fn UserInputValue::equal(Self, Self) -> Bool
+pub fn UserInputValue::not_equal(Self, Self) -> Bool
+pub fn UserInputValue::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VarDeclaration {
   name : String?
@@ -750,6 +964,9 @@ pub(all) struct VarDeclaration {
   initializer : String?
   initializer_expr : Expression?
 } derive(Eq, @debug.Debug)
+pub fn VarDeclaration::equal(Self, Self) -> Bool
+pub fn VarDeclaration::not_equal(Self, Self) -> Bool
+pub fn VarDeclaration::to_repr(Self) -> @debug.Repr
 
 pub struct VirtualResolver {
   files : @hashmap.HashMap[ModulePath, String]
@@ -757,9 +974,12 @@ pub struct VirtualResolver {
 pub fn VirtualResolver::add_module(Self, ModulePath, String) -> Unit
 pub fn VirtualResolver::add_translation_unit(Self, ModulePath, TranslationUnit) -> Unit
 pub fn VirtualResolver::default() -> Self
+pub fn VirtualResolver::display_name(Self, ModulePath) -> String?
 pub fn VirtualResolver::get_module(Self, ModulePath) -> String raise ResolveError
 pub fn VirtualResolver::modules(Self) -> Array[(ModulePath, String)]
 pub fn VirtualResolver::new() -> Self
+pub fn VirtualResolver::resolve_module(Self, ModulePath) -> TranslationUnit raise ResolveError
+pub fn VirtualResolver::resolve_source(Self, ModulePath) -> String raise ResolveError
 pub impl Resolver for VirtualResolver
 
 pub struct Wesl[R] {
@@ -800,6 +1020,9 @@ pub(all) struct WhileStatement {
   condition : Expression
   body : FunctionBody
 } derive(Eq, @debug.Debug)
+pub fn WhileStatement::equal(Self, Self) -> Bool
+pub fn WhileStatement::not_equal(Self, Self) -> Bool
+pub fn WhileStatement::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 
@@ -821,4 +1044,3 @@ pub(open) trait SourceMap {
   fn get_default_source(Self) -> String? = _
   fn unmangle_text(Self, String) -> String = _
 }
-

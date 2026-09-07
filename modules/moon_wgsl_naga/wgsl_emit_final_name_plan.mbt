@@ -19,7 +19,7 @@ priv struct WgslIrFinalNamePlan {
 
 ///|
 fn WgslIrFinalNamePlan::empty() -> WgslIrFinalNamePlan {
-  { names: Map([]) }
+  { names: Map([]), }
 }
 
 ///|
@@ -35,7 +35,7 @@ priv enum WgslIrEmitFunctionOrigin {
 
 ///|
 fn WgslIrWriterNamer::WgslIrWriterNamer() -> WgslIrWriterNamer {
-  { unique: Map([]) }
+  { unique: Map([]), }
 }
 
 ///|

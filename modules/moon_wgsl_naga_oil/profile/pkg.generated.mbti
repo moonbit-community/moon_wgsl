@@ -15,4 +15,3 @@ pub fn bevy_wgsl_value_defines() -> Map[String, @contract.ShaderDefValue]
 // Type aliases
 
 // Traits
-

@@ -15,12 +15,16 @@ pub suberror ParseError {
   UnexpectedToken(Token, (Int, Int), Array[TokenKind])
   UnexpectedEndOfInput(Int, Array[TokenKind])
 } derive(@debug.Debug)
+pub fn ParseError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) struct BindingParseDiagnostic {
   offset : Int
   incomplete : Bool
 } derive(Eq, @debug.Debug)
+pub fn BindingParseDiagnostic::equal(Self, Self) -> Bool
+pub fn BindingParseDiagnostic::not_equal(Self, Self) -> Bool
+pub fn BindingParseDiagnostic::to_repr(Self) -> @debug.Repr
 
 pub(all) enum BindingParseKind {
   Alias
@@ -29,6 +33,9 @@ pub(all) enum BindingParseKind {
   Let
   Var
 } derive(Eq, @debug.Debug)
+pub fn BindingParseKind::equal(Self, Self) -> Bool
+pub fn BindingParseKind::not_equal(Self, Self) -> Bool
+pub fn BindingParseKind::to_repr(Self) -> @debug.Repr
 
 pub(all) struct BindingParseNode {
   kind : BindingParseKind
@@ -37,11 +44,17 @@ pub(all) struct BindingParseNode {
   type_text : String?
   initializer : String?
 } derive(Eq, @debug.Debug)
+pub fn BindingParseNode::equal(Self, Self) -> Bool
+pub fn BindingParseNode::not_equal(Self, Self) -> Bool
+pub fn BindingParseNode::to_repr(Self) -> @debug.Repr
 
 pub(all) enum BindingParseResult {
   Parsed(BindingParseNode)
   Failed(BindingParseDiagnostic)
 } derive(Eq, @debug.Debug)
+pub fn BindingParseResult::equal(Self, Self) -> Bool
+pub fn BindingParseResult::not_equal(Self, Self) -> Bool
+pub fn BindingParseResult::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Token {
   IDENT(String)
@@ -58,6 +71,7 @@ pub(all) enum Token {
   SEMI
 } derive(@debug.Debug)
 pub fn Token::kind(Self) -> TokenKind
+pub fn Token::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TokenKind {
   TK_IDENT
@@ -73,10 +87,12 @@ pub(all) enum TokenKind {
   TK_EQ
   TK_SEMI
 }
+pub fn TokenKind::output(Self, &Logger) -> Unit
+pub fn TokenKind::to_repr(Self) -> @debug.Repr
+pub fn TokenKind::to_string(Self) -> String
 pub impl Show for TokenKind
 pub impl @debug.Debug for TokenKind
 
 // Type aliases
 
 // Traits
-

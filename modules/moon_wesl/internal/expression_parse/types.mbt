@@ -96,7 +96,7 @@ pub fn ExpressionTypeParseNode::from_path(
   for index in 0..<(path.length() - 1) {
     prefix.push(path[index])
   }
-  { path: prefix, ident: path[path.length() - 1], template_text: None }
+  { path: prefix, ident: path[path.length() - 1], template_text: None, }
 }
 
 ///|
@@ -104,7 +104,7 @@ pub fn ExpressionTypeParseNode::with_template(
   self : ExpressionTypeParseNode,
   template_text : String,
 ) -> ExpressionTypeParseNode {
-  { path: self.path, ident: self.ident, template_text: Some(template_text) }
+  { path: self.path, ident: self.ident, template_text: Some(template_text), }
 }
 
 ///|
@@ -117,7 +117,7 @@ pub fn ExpressionTypeParseNode::qualified_child(
     path.push(segment)
   }
   path.push(self.ident)
-  { path, ident, template_text: None }
+  { path, ident, template_text: None, }
 }
 
 ///|
@@ -467,9 +467,57 @@ pub fn parse_expression_source(source : String) -> ExpressionParseResult {
   }
   let parsed = parse_expression(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed({ offset: start, incomplete: false, message: None })
+      return Failed({ offset: start, incomplete: false, message: None, })
     UnexpectedEndOfInput(start, _) =>
-      return Failed({ offset: start, incomplete: true, message: None })
+      return Failed({ offset: start, incomplete: true, message: None, })
   }
   Parsed(parsed)
 }
+
+///|
+pub extend ExpressionBinaryOperator with Debug::{to_repr}
+
+///|
+pub extend ExpressionBinaryOperator with Eq::{not_equal, equal}
+
+///|
+pub extend ExpressionFunctionCallParseNode with Debug::{to_repr}
+
+///|
+pub extend ExpressionFunctionCallParseNode with Eq::{not_equal, equal}
+
+///|
+pub extend ExpressionParseDiagnostic with Debug::{to_repr}
+
+///|
+pub extend ExpressionParseDiagnostic with Eq::{not_equal, equal}
+
+///|
+pub extend ExpressionParseNode with Debug::{to_repr}
+
+///|
+pub extend ExpressionParseNode with Eq::{not_equal, equal}
+
+///|
+pub extend ExpressionParseResult with Debug::{to_repr}
+
+///|
+pub extend ExpressionParseResult with Eq::{not_equal, equal}
+
+///|
+pub extend ExpressionPostfixSuffix with Debug::{to_repr}
+
+///|
+pub extend ExpressionPostfixSuffix with Eq::{not_equal, equal}
+
+///|
+pub extend ExpressionTypeParseNode with Debug::{to_repr}
+
+///|
+pub extend ExpressionTypeParseNode with Eq::{not_equal, equal}
+
+///|
+pub extend ExpressionUnaryOperator with Debug::{to_repr}
+
+///|
+pub extend ExpressionUnaryOperator with Eq::{not_equal, equal}

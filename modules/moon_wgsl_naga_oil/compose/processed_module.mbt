@@ -199,7 +199,7 @@ fn wgsl_processed_summary_insert(
 ) -> Unit {
   match name {
     Some(name) if name != "" && !summaries.contains(name) =>
-      summaries.set(name, { kind, has_resource_binding })
+      summaries.set(name, { kind, has_resource_binding, })
     _ => ()
   }
 }

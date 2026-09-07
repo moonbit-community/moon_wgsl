@@ -407,7 +407,7 @@ fn init {
 
 ///|
 fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__ast_WgslTypeRef(value)
+  guard! _args[0].0 is YYObj__ast_WgslTypeRef(value)
   YYObj__ast_WgslTypeRef(
     {
       ()
@@ -421,7 +421,7 @@ fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj_Array__ast_WgslTypeRef_(args)
+  guard! _args[1].0 is YYObj_Array__ast_WgslTypeRef_(args)
   YYObj_Array__ast_WgslTypeRef_(
     {
       ()
@@ -438,8 +438,8 @@ fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array__ast_WgslTypeRef_(args)
-  guard _args[2].0 is YYObj__ast_WgslTypeRef(value)
+  guard! _args[0].0 is YYObj_Array__ast_WgslTypeRef_(args)
+  guard! _args[2].0 is YYObj__ast_WgslTypeRef(value)
   YYObj_Array__ast_WgslTypeRef_(
     {
       ()
@@ -456,7 +456,7 @@ fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_3(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__ast_WgslTypeRef(value)
+  guard! _args[0].0 is YYObj__ast_WgslTypeRef(value)
   YYObj_Array__ast_WgslTypeRef_(
     {
       ()
@@ -472,8 +472,8 @@ fn yy_action_3(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_4(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__ast_WgslTypeAtom(atom)
-  guard _args[1].0 is YYObj__Array__ast_WgslTypeArgument___Int_(args)
+  guard! _args[0].0 is YYObj__ast_WgslTypeAtom(atom)
+  guard! _args[1].0 is YYObj__Array__ast_WgslTypeArgument___Int_(args)
   YYObj__ast_WgslTypeRef(
     {
       ()
@@ -489,9 +489,9 @@ fn yy_action_4(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_5(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__ast_WgslTypeAtom(atom)
-  guard _args[2].0 is YYObj_Array__ast_WgslTypeRef_(args)
-  guard _args[3].0 is YYObj_Int(gt)
+  guard! _args[0].0 is YYObj__ast_WgslTypeAtom(atom)
+  guard! _args[2].0 is YYObj_Array__ast_WgslTypeRef_(args)
+  guard! _args[3].0 is YYObj_Int(gt)
   YYObj__ast_WgslTypeRef(
     {
       ()
@@ -508,8 +508,8 @@ fn yy_action_5(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array__ast_WgslTypeRef_(args)
-  guard _args[2].0 is YYObj__ast_WgslTypeRef(value)
+  guard! _args[0].0 is YYObj_Array__ast_WgslTypeRef_(args)
+  guard! _args[2].0 is YYObj__ast_WgslTypeRef(value)
   YYObj_Array__ast_WgslTypeRef_(
     {
       ()
@@ -526,7 +526,7 @@ fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_7(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__ast_WgslTypeRef(value)
+  guard! _args[0].0 is YYObj__ast_WgslTypeRef(value)
   YYObj_Array__ast_WgslTypeRef_(
     {
       ()
@@ -542,7 +542,7 @@ fn yy_action_7(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__ast_WgslTypeAtom(atom)
+  guard! _args[0].0 is YYObj__ast_WgslTypeAtom(atom)
   YYObj__ast_WgslTypeRef(
     {
       ()
@@ -569,7 +569,7 @@ fn yy_action_9(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_10(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj_Array__ast_WgslFunctionArgument_(args)
+  guard! _args[1].0 is YYObj_Array__ast_WgslFunctionArgument_(args)
   YYObj_Array__ast_WgslFunctionArgument_(
     {
       ()
@@ -592,9 +592,9 @@ fn yy_action_10(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_11(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
-  guard _args[1].0 is YYObj__ast_WgslIdent(name)
-  guard _args[3].0 is YYObj__ast_WgslTypeRef(ty)
+  guard! _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
+  guard! _args[1].0 is YYObj__ast_WgslIdent(name)
+  guard! _args[3].0 is YYObj__ast_WgslTypeRef(ty)
   YYObj__ast_WgslFunctionArgument(
     {
       ()
@@ -616,8 +616,8 @@ fn yy_action_11(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_12(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array__ast_WgslFunctionArgument_(args)
-  guard _args[2].0 is YYObj__ast_WgslFunctionArgument(value)
+  guard! _args[0].0 is YYObj_Array__ast_WgslFunctionArgument_(args)
+  guard! _args[2].0 is YYObj__ast_WgslFunctionArgument(value)
   YYObj_Array__ast_WgslFunctionArgument_(
     {
       ()
@@ -660,7 +660,7 @@ fn yy_action_14(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_15(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__ast_WgslFunctionArgument(value)
+  guard! _args[0].0 is YYObj__ast_WgslFunctionArgument(value)
   YYObj_Array__ast_WgslFunctionArgument_(
     {
       ()
@@ -676,9 +676,9 @@ fn yy_action_15(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_16(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Int(arrow)
-  guard _args[1].0 is YYObj_Array__ast_WgslAttribute_(attrs)
-  guard _args[2].0 is YYObj__ast_WgslTypeRef(ty)
+  guard! _args[0].0 is YYObj_Int(arrow)
+  guard! _args[1].0 is YYObj_Array__ast_WgslAttribute_(attrs)
+  guard! _args[2].0 is YYObj__ast_WgslTypeRef(ty)
   YYObj__ast_WgslFunctionResult_(
     {
       ()
@@ -707,7 +707,7 @@ fn yy_action_17(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_18(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj_Array__ast_WgslStructMember_(members)
+  guard! _args[1].0 is YYObj_Array__ast_WgslStructMember_(members)
   YYObj_Array__ast_WgslStructMember_(
     {
       ()
@@ -725,8 +725,8 @@ fn yy_action_18(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_19(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(_dollar1)
-  guard _args[1].0 is YYObj__ast_WgslAttribute(_dollar2)
+  guard! _args[0].0 is YYObj_Array__ast_WgslAttribute_(_dollar1)
+  guard! _args[1].0 is YYObj__ast_WgslAttribute(_dollar2)
   YYObj_Array__ast_WgslAttribute_(
     {
       ()
@@ -754,9 +754,9 @@ fn yy_action_19(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_20(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Int(at)
-  guard _args[1].0 is YYObj__ast_WgslIdent(name)
-  guard _args[2].0 is YYObj___ast_WgslExprRef___Int__(args)
+  guard! _args[0].0 is YYObj_Int(at)
+  guard! _args[1].0 is YYObj__ast_WgslIdent(name)
+  guard! _args[2].0 is YYObj___ast_WgslExprRef___Int__(args)
   YYObj__ast_WgslAttribute(
     {
       ()
@@ -778,7 +778,7 @@ fn yy_action_20(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_21(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj___ast_WgslExprRef___Int_(_dollar1)
+  guard! _args[0].0 is YYObj___ast_WgslExprRef___Int_(_dollar1)
   YYObj___ast_WgslExprRef___Int__(
     {
       ()
@@ -815,9 +815,9 @@ fn yy_action_22(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_23(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
-  guard _args[1].0 is YYObj__ast_WgslIdent(name)
-  guard _args[3].0 is YYObj__ast_WgslTypeRef(ty)
+  guard! _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
+  guard! _args[1].0 is YYObj__ast_WgslIdent(name)
+  guard! _args[3].0 is YYObj__ast_WgslTypeRef(ty)
   YYObj__ast_WgslStructMember(
     {
       ()
@@ -839,8 +839,8 @@ fn yy_action_23(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_24(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array__ast_WgslStructMember_(members)
-  guard _args[2].0 is YYObj__ast_WgslStructMember(value)
+  guard! _args[0].0 is YYObj_Array__ast_WgslStructMember_(members)
+  guard! _args[2].0 is YYObj__ast_WgslStructMember(value)
   YYObj_Array__ast_WgslStructMember_(
     {
       ()
@@ -909,7 +909,7 @@ fn yy_action_28(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_29(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__ast_WgslStructMember(value)
+  guard! _args[0].0 is YYObj__ast_WgslStructMember(value)
   YYObj_Array__ast_WgslStructMember_(
     {
       ()
@@ -951,8 +951,8 @@ fn yy_action_31(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_32(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj__ast_WgslTypeRef(ty)
-  guard _args[2].0 is YYObj__ast_WgslExprRef_(init)
+  guard! _args[1].0 is YYObj__ast_WgslTypeRef(ty)
+  guard! _args[2].0 is YYObj__ast_WgslExprRef_(init)
   YYObj___ast_WgslTypeRef____ast_WgslExprRef__(
     {
       ()
@@ -966,7 +966,7 @@ fn yy_action_32(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_33(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__ast_WgslExprRef_(_dollar1)
+  guard! _args[0].0 is YYObj__ast_WgslExprRef_(_dollar1)
   YYObj__ast_WgslExprRef_(
     {
       ()
@@ -995,7 +995,7 @@ fn yy_action_34(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_35(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__ast_WgslExprRef_(init)
+  guard! _args[0].0 is YYObj__ast_WgslExprRef_(init)
   YYObj___ast_WgslTypeRef____ast_WgslExprRef__(
     {
       ()
@@ -1011,7 +1011,7 @@ fn yy_action_35(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_36(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj__ast_WgslExprRef(expr)
+  guard! _args[1].0 is YYObj__ast_WgslExprRef(expr)
   YYObj__ast_WgslExprRef_(
     {
       ()
@@ -1027,7 +1027,7 @@ fn yy_action_36(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_37(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj__ast_WgslTypeRef(ty)
+  guard! _args[1].0 is YYObj__ast_WgslTypeRef(ty)
   YYObj__ast_WgslTypeRef(
     {
       ()
@@ -1058,9 +1058,9 @@ fn yy_action_37(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_38(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_String(text)
-  guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  guard _args[2].0 is YYObj__String__Int__Int_(tail)
+  guard! _args[0].0 is YYObj_String(text)
+  guard! _args[1].0 is YYObj__ast_WgslIdent(keyword)
+  guard! _args[2].0 is YYObj__String__Int__Int_(tail)
   YYObj__ast_WgslDirective(
     {
       ()
@@ -1101,9 +1101,9 @@ fn yy_action_38(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_39(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_String(text)
-  guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  guard _args[2].0 is YYObj__String__Int__Int_(tail)
+  guard! _args[0].0 is YYObj_String(text)
+  guard! _args[1].0 is YYObj__ast_WgslIdent(keyword)
+  guard! _args[2].0 is YYObj__String__Int__Int_(tail)
   YYObj__ast_WgslDirective(
     {
       ()
@@ -1127,7 +1127,7 @@ fn yy_action_39(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_40(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__String__Int__Int_(_dollar1)
+  guard! _args[0].0 is YYObj__String__Int__Int_(_dollar1)
   YYObj__String__Int__Int_(
     {
       ()
@@ -1158,9 +1158,9 @@ fn yy_action_40(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_41(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_String(text)
-  guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  guard _args[2].0 is YYObj__String__Int__Int_(tail)
+  guard! _args[0].0 is YYObj_String(text)
+  guard! _args[1].0 is YYObj__ast_WgslIdent(keyword)
+  guard! _args[2].0 is YYObj__String__Int__Int_(tail)
   YYObj__ast_WgslDirective(
     {
       ()
@@ -1197,7 +1197,7 @@ fn yy_action_42(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_43(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__ast_WgslExprRef(_dollar1)
+  guard! _args[0].0 is YYObj__ast_WgslExprRef(_dollar1)
   YYObj__ast_WgslExprRef(
     {
       ()
@@ -1213,9 +1213,9 @@ fn yy_action_43(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_44(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Int(open)
-  guard _args[2].0 is YYObj_Int(close)
-  guard _args[1].0 is YYObj_Array__ast_WgslStatement_(_dollar2)
+  guard! _args[0].0 is YYObj_Int(open)
+  guard! _args[2].0 is YYObj_Int(close)
+  guard! _args[1].0 is YYObj_Array__ast_WgslStatement_(_dollar2)
   YYObj__ast_WgslBlock(
     {
       ()
@@ -1233,8 +1233,8 @@ fn yy_action_44(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_45(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array__ast_WgslStatement_(_dollar1)
-  guard _args[1].0 is YYObj__ast_WgslStatement(_dollar2)
+  guard! _args[0].0 is YYObj_Array__ast_WgslStatement_(_dollar1)
+  guard! _args[1].0 is YYObj__ast_WgslStatement(_dollar2)
   YYObj_Array__ast_WgslStatement_(
     {
       ()
@@ -2425,7 +2425,7 @@ fn[T] yy_parse(
     match decision {
       Accept => return return_(data_stack.unsafe_pop().0)
       Shift(next_state) => {
-        guard lookahead is Some(la)
+        guard! lookahead is Some(la)
         data_stack.push(la.1)
         state_stack = @list.cons(next_state, state_stack)
         last_shifted_state_stack = state_stack
@@ -2488,7 +2488,7 @@ fn error(
             Reduce(count, symbol, _) | ReduceNoLookahead(count, symbol, _) => {
               fn inner_go(stack : @list.List[YYState], count, symbol) {
                 let stack = stack.drop(count)
-                guard stack is More(state, ..)
+                guard! stack is More(state, ..)
                 match state(symbol) {
                   Shift(state) => go(@list.cons(state, stack))
                   Reduce(count, symbol, _)
@@ -2556,7 +2556,7 @@ pub fn type_ref(
     tokens,
     yy_state_103,
     it => {
-      guard it is YYObj__ast_WgslTypeRef(result)
+      guard! it is YYObj__ast_WgslTypeRef(result)
       result
     },
     initial_pos?,
@@ -2572,7 +2572,7 @@ pub fn template_list(
     tokens,
     yy_state_86,
     it => {
-      guard it is YYObj_Array__ast_WgslTypeRef_(result)
+      guard! it is YYObj_Array__ast_WgslTypeRef_(result)
       result
     },
     initial_pos?,
@@ -2588,7 +2588,7 @@ pub fn function_args(
     tokens,
     yy_state_70,
     it => {
-      guard it is YYObj_Array__ast_WgslFunctionArgument_(result)
+      guard! it is YYObj_Array__ast_WgslFunctionArgument_(result)
       result
     },
     initial_pos?,
@@ -2604,7 +2604,7 @@ pub fn function_result(
     tokens,
     yy_state_64,
     it => {
-      guard it is YYObj__ast_WgslFunctionResult_(result)
+      guard! it is YYObj__ast_WgslFunctionResult_(result)
       result
     },
     initial_pos?,
@@ -2620,7 +2620,7 @@ pub fn struct_members(
     tokens,
     yy_state_41,
     it => {
-      guard it is YYObj_Array__ast_WgslStructMember_(result)
+      guard! it is YYObj_Array__ast_WgslStructMember_(result)
       result
     },
     initial_pos?,
@@ -2636,7 +2636,7 @@ pub fn typed_initializer_tail(
     tokens,
     yy_state_29,
     it => {
-      guard it is YYObj___ast_WgslTypeRef____ast_WgslExprRef__(result)
+      guard! it is YYObj___ast_WgslTypeRef____ast_WgslExprRef__(result)
       result
     },
     initial_pos?,
@@ -2652,7 +2652,7 @@ pub fn type_alias_tail(
     tokens,
     yy_state_24,
     it => {
-      guard it is YYObj__ast_WgslTypeRef(result)
+      guard! it is YYObj__ast_WgslTypeRef(result)
       result
     },
     initial_pos?,
@@ -2668,7 +2668,7 @@ pub fn source_directive(
     tokens,
     yy_state_11,
     it => {
-      guard it is YYObj__ast_WgslDirective(result)
+      guard! it is YYObj__ast_WgslDirective(result)
       result
     },
     initial_pos?,
@@ -2684,7 +2684,7 @@ pub fn const_assert_expr(
     tokens,
     yy_state_7,
     it => {
-      guard it is YYObj__ast_WgslExprRef(result)
+      guard! it is YYObj__ast_WgslExprRef(result)
       result
     },
     initial_pos?,
@@ -2700,7 +2700,7 @@ pub fn block(
     tokens,
     yy_state_0,
     it => {
-      guard it is YYObj__ast_WgslBlock(result)
+      guard! it is YYObj__ast_WgslBlock(result)
       result
     },
     initial_pos?,

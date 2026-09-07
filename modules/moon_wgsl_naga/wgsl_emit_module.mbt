@@ -3,7 +3,7 @@ fn WgslIrEmitter::emit_module(
   self : WgslIrEmitter,
 ) -> String raise WgslIrEmitError {
   let module_ = self.writer_module
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let mut needs_blank = false
   let mut last_item_is_entry_point = false
   if self.options.emit_source_directives() {

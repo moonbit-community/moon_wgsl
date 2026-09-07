@@ -68,10 +68,10 @@ fn WgslIrLowerer::entry_point_name_is_lowered(
 fn wgsl_ir_strip_function_io_bindings(function : Function) -> Function {
   let arguments : Array[FunctionArgument] = []
   for argument in function.arguments {
-    arguments.push({ name: argument.name, ty: argument.ty, binding: None })
+    arguments.push({ name: argument.name, ty: argument.ty, binding: None, })
   }
   let result = match function.result {
-    Some(value) => Some(FunctionResult::{ ty: value.ty, binding: None })
+    Some(value) => Some(FunctionResult::{ ty: value.ty, binding: None, })
     None => None
   }
   {

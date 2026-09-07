@@ -402,7 +402,7 @@ fn statement_parse_lex(source : String) -> StatementLexResult {
   while index < source.length() {
     let (start, ok) = statement_parse_skip_layout(source, index)
     if !ok {
-      return LexFailed({ offset: index, incomplete: true })
+      return LexFailed({ offset: index, incomplete: true, })
     }
     index = start
     if index >= source.length() {
@@ -410,7 +410,7 @@ fn statement_parse_lex(source : String) -> StatementLexResult {
     }
     let (end_, ok) = statement_parse_statement_end(source, index)
     if !ok {
-      return LexFailed({ offset: index, incomplete: true })
+      return LexFailed({ offset: index, incomplete: true, })
     }
     let text = source[index:end_].trim().to_owned()
     tokens.push(
@@ -435,13 +435,43 @@ pub fn parse_function_body_source(source : String) -> StatementParseResult {
     LexFailed(diagnostic) => return Failed(diagnostic)
   }
   if tokens.is_empty() {
-    return Parsed({ statements: [] })
+    return Parsed({ statements: [], })
   }
   let parsed = parse_function_body(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed({ offset: start, incomplete: false })
+      return Failed({ offset: start, incomplete: false, })
     UnexpectedEndOfInput(start, _) =>
-      return Failed({ offset: start, incomplete: true })
+      return Failed({ offset: start, incomplete: true, })
   }
   Parsed(parsed)
 }
+
+///|
+pub extend FunctionBodyParseNode with Debug::{to_repr}
+
+///|
+pub extend FunctionBodyParseNode with Eq::{not_equal, equal}
+
+///|
+pub extend StatementParseDiagnostic with Debug::{to_repr}
+
+///|
+pub extend StatementParseDiagnostic with Eq::{not_equal, equal}
+
+///|
+pub extend StatementParseKind with Debug::{to_repr}
+
+///|
+pub extend StatementParseKind with Eq::{not_equal, equal}
+
+///|
+pub extend StatementParseNode with Debug::{to_repr}
+
+///|
+pub extend StatementParseNode with Eq::{not_equal, equal}
+
+///|
+pub extend StatementParseResult with Debug::{to_repr}
+
+///|
+pub extend StatementParseResult with Eq::{not_equal, equal}

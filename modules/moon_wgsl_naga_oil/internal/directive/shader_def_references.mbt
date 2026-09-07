@@ -13,7 +13,7 @@ fn WgslShaderDefReference::WgslShaderDefReference(
   end : Int,
   delimited : Bool,
 ) -> WgslShaderDefReference {
-  { name, start, end, delimited }
+  { name, start, end, delimited, }
 }
 
 ///|
@@ -114,3 +114,6 @@ pub fn parse_wgsl_shader_def_references(
 ) -> Array[WgslShaderDefReference] {
   parse_wgsl_shader_def_references_at(line, 0)
 }
+
+///|
+pub extend WgslShaderDefReference with Debug::{to_repr}

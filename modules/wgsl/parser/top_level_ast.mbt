@@ -59,7 +59,7 @@ fn top_level_push_span_item(
   start : Int,
   end_ : Int,
 ) -> Unit {
-  items.push({ kind, start, end: end_ })
+  items.push({ kind, start, end: end_, })
 }
 
 ///|

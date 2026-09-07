@@ -216,7 +216,7 @@ fn WgslIrWriterPlanner::const_assert_slots(
 ) -> Array[WgslIrWriterConstAssertSlot] {
   let slots : Array[WgslIrWriterConstAssertSlot] = []
   for source_index in 0..<self.shader_module.const_asserts.length() {
-    slots.push({ condition: self.shader_module.const_asserts[source_index] })
+    slots.push({ condition: self.shader_module.const_asserts[source_index], })
   }
   slots
 }

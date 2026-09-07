@@ -47,7 +47,7 @@ fn Composer::compose_wgsl_import_requests(
   importer_defs : WgslActiveComposeDefs,
   alias_prefixes : Array[String],
 ) -> String raise ComposerError {
-  let merged = StringBuilder::new()
+  let merged = StringBuilder()
   record_wgsl_import_request_batch_link_edges(
     session.link_graph,
     current_rel_path,

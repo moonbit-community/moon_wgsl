@@ -368,7 +368,7 @@ fn WgslIrLowerer::local_let_identifier_has_literal_initializer(
 ) -> Bool {
   ignore(self)
   match scope.local_constants.get(name) {
-    Some({ value: LazyConstant(local_constant), source: LocalLet }) =>
+    Some({ value: LazyConstant(local_constant), source: LocalLet, }) =>
       match local_constant.expr_ref.root() {
         Some(root) => wgsl_ir_expr_node_is_literal_like(root)
         None => false

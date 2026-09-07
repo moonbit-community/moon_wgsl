@@ -35,7 +35,7 @@ fn WgslShaderDefComparison::WgslShaderDefComparison(
   operator : WgslShaderDefOperator,
   value : String,
 ) -> WgslShaderDefComparison {
-  { def, operator, value }
+  { def, operator, value, }
 }
 
 ///|
@@ -231,3 +231,12 @@ pub fn wgsl_effective_directive_kind(
     _ => directive.kind()
   }
 }
+
+///|
+pub extend WgslShaderDefComparison with Debug::{to_repr}
+
+///|
+pub extend WgslShaderDefOperator with Debug::{to_repr}
+
+///|
+pub extend WgslShaderDefOperator with Eq::{not_equal, equal}

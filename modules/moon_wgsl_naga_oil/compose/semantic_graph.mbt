@@ -975,12 +975,12 @@ fn build_wgsl_semantic_import_target_plans(
     }
   }
   if unresolved_targets.length() > 0 {
-    return { plans, unresolved_targets }
+    return { plans, unresolved_targets, }
   }
   let ordered_plans = wgsl_semantic_order_import_target_plans_by_reference(
     session, source, plans,
   )
-  { plans: ordered_plans, unresolved_targets }
+  { plans: ordered_plans, unresolved_targets, }
 }
 
 ///|

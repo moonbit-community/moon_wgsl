@@ -25,4 +25,3 @@ pub fn WgslTokenReplacement::WgslTokenReplacement(Int, Int, String) -> Self
 // Type aliases
 
 // Traits
-

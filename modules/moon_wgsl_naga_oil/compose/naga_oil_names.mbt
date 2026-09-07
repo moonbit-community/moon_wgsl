@@ -1,7 +1,7 @@
 ///|
 fn wgsl_naga_oil_base32_nopad(text : String) -> String {
   let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let mut buffer = 0
   let mut bits = 0
   for ch in text {

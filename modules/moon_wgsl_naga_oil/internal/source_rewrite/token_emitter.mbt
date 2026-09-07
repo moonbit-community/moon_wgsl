@@ -11,7 +11,7 @@ pub fn WgslTokenReplacement::WgslTokenReplacement(
   end : Int,
   replacement : String,
 ) -> WgslTokenReplacement {
-  { start, end, replacement }
+  { start, end, replacement, }
 }
 
 ///|
@@ -169,7 +169,7 @@ pub fn emit_wgsl_token_stream_canonical(
   tokens : Array[WgslToken],
   replacements : Array[WgslTokenReplacement],
 ) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let mut previous = ""
   let mut skip_until = -1
   for token in tokens {

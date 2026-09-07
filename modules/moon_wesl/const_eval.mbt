@@ -1613,3 +1613,45 @@ pub fn CompileResult::exec(
     ),
   }
 }
+
+///|
+pub extend EvalResult with Debug::{to_repr}
+
+///|
+pub extend EvalResult with Eq::{not_equal, equal}
+
+///|
+pub extend ExecResult with Debug::{to_repr}
+
+///|
+pub extend ExecResult with Eq::{not_equal, equal}
+
+///|
+pub extend Inputs with Debug::{to_repr}
+
+///|
+pub extend Inputs with Eq::{not_equal, equal}
+
+///|
+pub extend OverrideValue with Debug::{to_repr}
+
+///|
+pub extend OverrideValue with Eq::{not_equal, equal}
+
+///|
+pub extend ResourceBinding with Debug::{to_repr}
+
+///|
+pub extend ResourceBinding with Eq::{not_equal, equal}
+
+///|
+pub extend UserInput with Debug::{to_repr}
+
+///|
+pub extend UserInput with Eq::{not_equal, equal}
+
+///|
+pub extend UserInputValue with Debug::{to_repr}
+
+///|
+pub extend UserInputValue with Eq::{not_equal, equal}

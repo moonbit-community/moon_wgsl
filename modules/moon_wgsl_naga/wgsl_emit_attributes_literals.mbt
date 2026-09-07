@@ -372,7 +372,7 @@ fn wgsl_ir_find_scientific_exponent_index(text : String) -> Int {
 
 ///|
 fn wgsl_ir_decimal_digits_without_dot(text : String) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for index in 0..<text.length() {
     let code = text.code_unit_at(index).to_int()
     if code >= 48 && code <= 57 {
@@ -384,7 +384,7 @@ fn wgsl_ir_decimal_digits_without_dot(text : String) -> String {
 
 ///|
 fn wgsl_ir_repeat_ascii_zero(count : Int) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for _ in 0..<count {
     out.write_string("0")
   }
@@ -437,7 +437,7 @@ fn wgsl_ir_increment_decimal_digit_string(text : String) -> String {
       carry = false
     }
   }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   if carry {
     out.write_string("1")
   }

@@ -11,7 +11,7 @@ fn WgslTemplateConstReference::WgslTemplateConstReference(
   start : Int,
   end : Int,
 ) -> WgslTemplateConstReference {
-  { name, start, end }
+  { name, start, end, }
 }
 
 ///|
@@ -158,3 +158,6 @@ pub fn parse_wgsl_template_const_references(
   }
   references
 }
+
+///|
+pub extend WgslTemplateConstReference with Debug::{to_repr}

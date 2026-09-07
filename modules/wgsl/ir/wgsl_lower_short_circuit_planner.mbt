@@ -27,7 +27,7 @@ fn WgslIrLowerer::short_circuit_planner(
   scope : WgslIrFunctionScope,
   block : Block,
 ) -> ShortCircuitPlanner {
-  { lowerer: self, function, scope, block }
+  { lowerer: self, function, scope, block, }
 }
 
 ///|
@@ -62,7 +62,7 @@ fn ShortCircuitPlanner::with_block(
   self : ShortCircuitPlanner,
   block : Block,
 ) -> ShortCircuitPlanner {
-  { lowerer: self.lowerer, function: self.function, scope: self.scope, block }
+  { lowerer: self.lowerer, function: self.function, scope: self.scope, block, }
 }
 
 ///|

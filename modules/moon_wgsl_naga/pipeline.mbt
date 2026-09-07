@@ -46,7 +46,7 @@ pub struct WgslNagaComposeContext {
 
 ///|
 pub fn WgslNagaPipelineOptions::default() -> WgslNagaPipelineOptions {
-  { compat_writer: false, entry_roots: false }
+  { compat_writer: false, entry_roots: false, }
 }
 
 ///|
@@ -56,7 +56,7 @@ pub fn WgslNagaPipelineOptions::runtime() -> WgslNagaPipelineOptions {
 
 ///|
 pub fn WgslNagaPipelineOptions::compat() -> WgslNagaPipelineOptions {
-  { ..WgslNagaPipelineOptions::default(), compat_writer: true }
+  { ..WgslNagaPipelineOptions::default(), compat_writer: true, }
 }
 
 ///|
@@ -74,7 +74,7 @@ pub fn WgslNagaComposeContext::from_import_graph(
   import_arena_events : Array[WgslNagaImportArenaEvent],
   root_visible_rel_path? : String = "",
 ) -> WgslNagaComposeContext {
-  { generated_import_provenance, import_arena_events, root_visible_rel_path }
+  { generated_import_provenance, import_arena_events, root_visible_rel_path, }
 }
 
 ///|
@@ -201,7 +201,7 @@ fn roundtrip_runtime_entry_roots(
     WgslNagaComposeContext::from_import_graph(
       generated_import_provenance, import_arena_events,
     ),
-    options={ ..WgslNagaPipelineOptions::runtime(), entry_roots: true },
+    options={ ..WgslNagaPipelineOptions::runtime(), entry_roots: true, },
   )
 }
 
@@ -241,6 +241,6 @@ fn roundtrip_compat_entry_roots(
     WgslNagaComposeContext::from_import_graph(
       generated_import_provenance, import_arena_events,
     ),
-    options={ ..WgslNagaPipelineOptions::compat(), entry_roots: true },
+    options={ ..WgslNagaPipelineOptions::compat(), entry_roots: true, },
   )
 }

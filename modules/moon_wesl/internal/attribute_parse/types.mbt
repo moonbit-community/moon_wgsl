@@ -187,7 +187,7 @@ fn attribute_parse_lex(source : String) -> AttributeLexResult {
           line,
         )
         if !closed {
-          return LexFailed({ offset: index, incomplete: true })
+          return LexFailed({ offset: index, incomplete: true, })
         }
         index = end_
         line = end_line
@@ -202,7 +202,7 @@ fn attribute_parse_lex(source : String) -> AttributeLexResult {
     index += 1
     if index >= source.length() ||
       !attribute_parse_is_identifier_start(source.code_unit_at(index).to_int()) {
-      return LexFailed({ offset: index, incomplete: index >= source.length() })
+      return LexFailed({ offset: index, incomplete: index >= source.length(), })
     }
     let name_start = index
     index += 1
@@ -222,7 +222,7 @@ fn attribute_parse_lex(source : String) -> AttributeLexResult {
         line,
       )
       if !closed {
-        return LexFailed({ offset: attr_start, incomplete: true })
+        return LexFailed({ offset: attr_start, incomplete: true, })
       }
       arguments = Some(args)
       index = end_
@@ -254,13 +254,37 @@ pub fn parse_attributes_source(source : String) -> AttributeParseResult {
     LexFailed(diagnostic) => return Failed(diagnostic)
   }
   if tokens.is_empty() {
-    return Parsed({ attributes: [], consumed_offset })
+    return Parsed({ attributes: [], consumed_offset, })
   }
   let attributes = parse_attributes(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed({ offset: start, incomplete: false })
+      return Failed({ offset: start, incomplete: false, })
     UnexpectedEndOfInput(start, _) =>
-      return Failed({ offset: start, incomplete: true })
+      return Failed({ offset: start, incomplete: true, })
   }
-  Parsed({ attributes, consumed_offset })
+  Parsed({ attributes, consumed_offset, })
 }
+
+///|
+pub extend AttributeParseDiagnostic with Debug::{to_repr}
+
+///|
+pub extend AttributeParseDiagnostic with Eq::{not_equal, equal}
+
+///|
+pub extend AttributeParseNode with Debug::{to_repr}
+
+///|
+pub extend AttributeParseNode with Eq::{not_equal, equal}
+
+///|
+pub extend AttributeParseResult with Debug::{to_repr}
+
+///|
+pub extend AttributeParseResult with Eq::{not_equal, equal}
+
+///|
+pub extend AttributeParseSuccess with Debug::{to_repr}
+
+///|
+pub extend AttributeParseSuccess with Eq::{not_equal, equal}

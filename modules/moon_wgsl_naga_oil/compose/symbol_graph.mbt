@@ -129,7 +129,7 @@ pub fn WgslComposeFinalNameTable::canonical_set(
     return
   }
   self.canonical.set(key, final_name)
-  self.canonical_entries.push({ identity, final_name })
+  self.canonical_entries.push({ identity, final_name, })
 }
 
 ///|
@@ -172,7 +172,7 @@ pub fn WgslComposeFinalNameTable::alias_set(
     return
   }
   self.alias_scoped.set(key, final_name)
-  self.alias_entries.push({ identity, final_name })
+  self.alias_entries.push({ identity, final_name, })
 }
 
 ///|
@@ -515,3 +515,51 @@ pub fn WgslComposeLinkGraph::contains_reachable_symbol(
 ) -> Bool {
   self.reachable_symbol_keys.contains(identity.key())
 }
+
+///|
+pub extend WgslComposeAliasFinalNameEntry with Debug::{to_repr}
+
+///|
+pub extend WgslComposeAliasFinalNameEntry with Eq::{not_equal, equal}
+
+///|
+pub extend WgslComposeCanonicalFinalNameEntry with Debug::{to_repr}
+
+///|
+pub extend WgslComposeCanonicalFinalNameEntry with Eq::{not_equal, equal}
+
+///|
+pub extend WgslComposeDeclarationKind with Debug::{to_repr}
+
+///|
+pub extend WgslComposeDeclarationKind with Eq::{not_equal, equal}
+
+///|
+pub extend WgslComposeImportArenaEvent with Debug::{to_repr}
+
+///|
+pub extend WgslComposeImportArenaEvent with Eq::{not_equal, equal}
+
+///|
+pub extend WgslComposeImportArenaSymbol with Debug::{to_repr}
+
+///|
+pub extend WgslComposeImportArenaSymbol with Eq::{not_equal, equal}
+
+///|
+pub extend WgslComposeImportEdge with Debug::{to_repr}
+
+///|
+pub extend WgslComposeImportEdge with Eq::{not_equal, equal}
+
+///|
+pub extend WgslComposeImportEdgeKind with Debug::{to_repr}
+
+///|
+pub extend WgslComposeImportEdgeKind with Eq::{not_equal, equal}
+
+///|
+pub extend WgslComposeSymbolNode with Debug::{to_repr}
+
+///|
+pub extend WgslComposeSymbolNode with Eq::{not_equal, equal}

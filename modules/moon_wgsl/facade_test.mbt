@@ -45,7 +45,7 @@ test "facade exposes preprocessing and composition runtime API" {
   let exported = composer.export_wgsl(
     "root.wgsl",
     WgslComposeOptions::default(),
-    { root_items: [] },
+    { root_items: [], },
   ) catch {
     err => abort("expected facade export success: \{err.message()}")
   }

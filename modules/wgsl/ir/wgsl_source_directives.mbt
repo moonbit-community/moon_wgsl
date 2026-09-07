@@ -225,12 +225,13 @@ fn wgsl_ir_collect_required_extensions_from_type(
   required : WgslIrRequiredEnableExtensions,
 ) -> Unit {
   match ty.inner {
-    Scalar({ kind: Float, width: 2 }) => required.f16 = true
-    Vector(_, { kind: Float, width: 2 }) => required.f16 = true
-    Matrix(_, _, { kind: Float, width: 2 }) => required.f16 = true
-    CooperativeMatrix(_, _, { kind: Float, width: 2 }, _) => required.f16 = true
-    Atomic({ kind: Float, width: 2 }) => required.f16 = true
-    ValuePointer(_, { kind: Float, width: 2 }, _) => required.f16 = true
+    Scalar({ kind: Float, width: 2, }) => required.f16 = true
+    Vector(_, { kind: Float, width: 2, }) => required.f16 = true
+    Matrix(_, _, { kind: Float, width: 2, }) => required.f16 = true
+    CooperativeMatrix(_, _, { kind: Float, width: 2, }, _) =>
+      required.f16 = true
+    Atomic({ kind: Float, width: 2, }) => required.f16 = true
+    ValuePointer(_, { kind: Float, width: 2, }, _) => required.f16 = true
     Struct(struct_members, _) | PredeclaredStruct(struct_members, _) =>
       for struct_member in struct_members {
         wgsl_ir_collect_required_extensions_from_binding(

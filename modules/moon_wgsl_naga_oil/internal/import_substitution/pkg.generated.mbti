@@ -25,4 +25,3 @@ pub fn WgslImportSubstitutionState::rewrite_source(Self, String, Int, Array[@con
 // Type aliases
 
 // Traits
-

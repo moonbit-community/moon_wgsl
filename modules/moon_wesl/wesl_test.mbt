@@ -659,7 +659,7 @@ test "wesl: compile result exec passes user-defined scalar location inputs" {
   )
   let inputs = Inputs::{
     ..Inputs::new_zero_initialized(),
-    user_defined: [{ location: 0, value: U32(41) }],
+    user_defined: [{ location: 0, value: U32(41), }],
   }
   let exec = compiled.exec("main", inputs, [], [])
   match exec.return_value() {
@@ -683,7 +683,7 @@ test "wesl: compile result exec passes user-defined vector location inputs" {
   )
   let inputs = Inputs::{
     ..Inputs::new_zero_initialized(),
-    user_defined: [{ location: 1, value: F32Vector([1.0, 2.0]) }],
+    user_defined: [{ location: 1, value: F32Vector([1.0, 2.0]), }],
   }
   let exec = compiled.exec("main", inputs, [], [])
   match exec.return_value() {
@@ -718,7 +718,7 @@ test "wesl: compile result exec builds struct entrypoint inputs" {
   let inputs = Inputs::{
     ..Inputs::new_zero_initialized(),
     vertex_index: Some(7),
-    user_defined: [{ location: 0, value: U32(35) }],
+    user_defined: [{ location: 0, value: U32(35), }],
   }
   let exec = compiled.exec("main", inputs, [], [])
   match exec.return_value() {
@@ -756,7 +756,7 @@ test "wesl: compile result exec reads struct entrypoint fields" {
   let inputs = Inputs::{
     ..Inputs::new_zero_initialized(),
     vertex_index: Some(7),
-    user_defined: [{ location: 0, value: U32(35) }],
+    user_defined: [{ location: 0, value: U32(35), }],
   }
   let exec = compiled.exec("main", inputs, [], [])
   match exec.return_value() {
@@ -780,7 +780,7 @@ test "wesl: compile result exec evaluates vector swizzles" {
   )
   let inputs = Inputs::{
     ..Inputs::new_zero_initialized(),
-    user_defined: [{ location: 0, value: F32Vector([1.0, 2.0, 3.0]) }],
+    user_defined: [{ location: 0, value: F32Vector([1.0, 2.0, 3.0]), }],
   }
   let exec = compiled.exec("main", inputs, [], [])
   match exec.return_value() {
@@ -815,7 +815,7 @@ test "wesl: compile result exec evaluates vector dynamic indexing" {
   let inputs = Inputs::{
     ..Inputs::new_zero_initialized(),
     local_invocation_index: Some(2),
-    user_defined: [{ location: 0, value: F32Vector([1.0, 2.0, 3.0]) }],
+    user_defined: [{ location: 0, value: F32Vector([1.0, 2.0, 3.0]), }],
   }
   let exec = compiled.exec("main", inputs, [], [])
   match exec.to_buffer() {
@@ -845,7 +845,7 @@ test "wesl: compile result exec evaluates if else control flow" {
   )
   let first = compiled.exec(
     "main",
-    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(0) },
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(0), },
     [],
     [],
   )
@@ -855,7 +855,7 @@ test "wesl: compile result exec evaluates if else control flow" {
   }
   let second = compiled.exec(
     "main",
-    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(41) },
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(41), },
     [],
     [],
   )
@@ -880,7 +880,7 @@ test "wesl: compile result exec evaluates while break continue control flow" {
   )
   let exec = compiled.exec(
     "main",
-    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(10) },
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(10), },
     [],
     [],
   )
@@ -915,7 +915,7 @@ test "wesl: compile result exec evaluates for loop control flow" {
   )
   let exec = compiled.exec(
     "main",
-    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(10) },
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(10), },
     [],
     [],
   )
@@ -1010,7 +1010,7 @@ test "wesl: compile result exec evaluates switch cases and default" {
   )
   let first = compiled.exec(
     "main",
-    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(2) },
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(2), },
     [],
     [],
   )
@@ -1020,7 +1020,7 @@ test "wesl: compile result exec evaluates switch cases and default" {
   }
   let second = compiled.exec(
     "main",
-    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(7) },
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(7), },
     [],
     [],
   )
@@ -1090,7 +1090,7 @@ test "wesl: compile result exec applies override values" {
   }
 
   let overridden = compiled.exec("main", Inputs::new_zero_initialized(), [], [
-    { name: "SCALE", value: "41u" },
+    { name: "SCALE", value: "41u", },
   ])
   match overridden.return_value() {
     Some(value) => inspect(value, content="42u")
@@ -1391,7 +1391,7 @@ test "wesl: compile result exec reads vector resource buffers" {
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [{ group: 0, binding: 0, kind: "uniform", data: input }],
+    [{ group: 0, binding: 0, kind: "uniform", data: input, }],
     [],
   )
   match exec.return_value() {
@@ -1449,7 +1449,7 @@ test "wesl: compile result exec reads struct resource buffers" {
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [{ group: 0, binding: 0, kind: "uniform", data: input }],
+    [{ group: 0, binding: 0, kind: "uniform", data: input, }],
     [],
   )
   match exec.return_value() {
@@ -1526,7 +1526,7 @@ test "wesl: struct resource layout honors member align and size attributes" {
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [{ group: 0, binding: 0, kind: "uniform", data: input }],
+    [{ group: 0, binding: 0, kind: "uniform", data: input, }],
     [],
   )
   match exec.to_buffer() {
@@ -1600,7 +1600,7 @@ test "wesl: compile result exec reads array resource buffers with stride padding
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [{ group: 0, binding: 0, kind: "uniform", data: input }],
+    [{ group: 0, binding: 0, kind: "uniform", data: input, }],
     [],
   )
   match exec.return_value() {
@@ -1671,8 +1671,8 @@ test "wesl: compile result exec indexes storage array resources" {
   ])
   let exec = compiled.exec(
     "main",
-    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(2) },
-    [{ group: 0, binding: 0, kind: "storage", data: input }],
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(2), },
+    [{ group: 0, binding: 0, kind: "storage", data: input, }],
     [],
   )
   match exec.return_value() {
@@ -1700,8 +1700,8 @@ test "wesl: compile result exec writes storage array elements" {
   ])
   let exec = compiled.exec(
     "main",
-    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(2) },
-    [{ group: 0, binding: 0, kind: "storage", data: input }],
+    { ..Inputs::new_zero_initialized(), local_invocation_index: Some(2), },
+    [{ group: 0, binding: 0, kind: "storage", data: input, }],
     [],
   )
   match exec.return_value() {
@@ -1757,7 +1757,7 @@ test "wesl: compile result exec increments indexed storage in for update" {
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [{ group: 0, binding: 0, kind: "storage", data: input }],
+    [{ group: 0, binding: 0, kind: "storage", data: input, }],
     [],
   )
   match exec.resource(0, 0) {
@@ -1809,7 +1809,7 @@ test "wesl: compile result exec evaluates runtime array length" {
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [{ group: 0, binding: 0, kind: "storage", data: input }],
+    [{ group: 0, binding: 0, kind: "storage", data: input, }],
     [],
   )
   match exec.return_value() {
@@ -1848,7 +1848,7 @@ test "wesl: compile result exec evaluates struct runtime array length" {
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [{ group: 0, binding: 0, kind: "storage", data: input }],
+    [{ group: 0, binding: 0, kind: "storage", data: input, }],
     [],
   )
   match exec.return_value() {
@@ -1881,7 +1881,7 @@ test "wesl: compile result exec reads matrix resource buffers as padded columns"
   let exec = compiled.exec(
     "main",
     Inputs::new_zero_initialized(),
-    [{ group: 0, binding: 0, kind: "uniform", data: input }],
+    [{ group: 0, binding: 0, kind: "uniform", data: input, }],
     [],
   )
   match exec.return_value() {
@@ -1994,7 +1994,7 @@ test "wesl: compile result returns WGSL text" {
   resolver.add_module(root, "fn artifact() {}\n")
   let result = Wesl::new_barebones()
     .set_custom_resolver(resolver)
-    .set_options({ ..CompileOptions::default(), strip: false })
+    .set_options({ ..CompileOptions::default(), strip: false, })
     .compile(root)
   inspect(result.to_string().contains("fn artifact() {}"), content="true")
 }
@@ -2082,7 +2082,7 @@ test "wesl: compile resolves imports and conditional translation" {
   )
   let features = Features::default()
   features.set_feature("PARTY_MODE", Enable)
-  let options = { ..CompileOptions::default(), lower: true, features }
+  let options = { ..CompileOptions::default(), lower: true, features, }
   let compiled = compile(root_path, resolver, EscapeMangler::default(), options)
   let compiled_text = compiled.to_string()
 
@@ -2507,7 +2507,7 @@ test "wesl: missing conditional feature can be configured as an error" {
     root_path, "@if(EXPERIMENTAL_SHADER)\nfn enabled() -> f32 {\n  return 1.0;\n}\n@else\nfn disabled() -> f32 {\n  return 0.0;\n}\n",
   )
 
-  let features = { ..Features::default(), default: Error }
+  let features = { ..Features::default(), default: Error, }
   let result = try
     compile(root_path, resolver, EscapeMangler::default(), {
       ..CompileOptions::default(),
@@ -2536,7 +2536,7 @@ test "wesl: keep conditional feature preserves unresolved attributes" {
     root_path, "@if(EXPERIMENTAL_SHADER)\nfn enabled() -> f32 {\n  return 1.0;\n}\n@else\nfn disabled() -> f32 {\n  return 0.0;\n}\n",
   )
 
-  let features = { ..Features::default(), default: Keep }
+  let features = { ..Features::default(), default: Keep, }
   let compiled = compile(root_path, resolver, EscapeMangler::default(), {
     ..CompileOptions::default(),
     strip: false,
@@ -2637,7 +2637,7 @@ test "wesl: validate option controls semantic validation pass" {
     root_path,
     passing_resolver,
     EscapeMangler::default(),
-    { ..CompileOptions::default(), strip: false, validate: false },
+    { ..CompileOptions::default(), strip: false, validate: false, },
   )
 
   debug_inspect(compiled.to_string().contains("mat2x2<i32>"), content="true")
@@ -2899,7 +2899,7 @@ test "wesl: compile options expose lazy resolution control" {
 
   debug_inspect(options.lazy_resolution, content="true")
   debug_inspect(
-    ({ ..options, lazy_resolution: false } : CompileOptions).lazy_resolution,
+    ({ ..options, lazy_resolution: false, } : CompileOptions).lazy_resolution,
     content="false",
   )
 }
@@ -2914,7 +2914,7 @@ test "wesl: facade compile uses custom resolver and sourcemap option" {
 
   let compiled = Wesl::new_barebones()
     .set_custom_resolver(resolver)
-    .set_options({ ..CompileOptions::default(), strip: false, validate: false })
+    .set_options({ ..CompileOptions::default(), strip: false, validate: false, })
     .use_sourcemap(true)
     .compile(root_path)
 
@@ -2983,7 +2983,7 @@ test "wesl: diagnostic renders source origin and snippets" {
     .diagnostic()
     .with_module_path(root_path, Some("root.wesl"))
     .with_source(source)
-    .with_syntax_span({ start_line: 2, end_line: 2 })
+    .with_syntax_span({ start_line: 2, end_line: 2, })
     .with_declaration("bad")
   let rendered = diagnostic.to_string()
 
@@ -3009,7 +3009,7 @@ test "wesl: diagnostic compile path attaches resolver source context" {
       root_path,
       resolver,
       EscapeMangler::default(),
-      { ..CompileOptions::default(), strip: false },
+      { ..CompileOptions::default(), strip: false, },
     )
   catch {
     err => Err(err)
@@ -3084,7 +3084,7 @@ test "wesl: facade can select hash mangler" {
 
   let compiled = Wesl::new_barebones()
     .set_custom_resolver(resolver)
-    .set_options({ ..CompileOptions::default(), lower: true })
+    .set_options({ ..CompileOptions::default(), lower: true, })
     .set_mangler(Hash)
     .compile(root_path)
   let compiled_text = compiled.to_string()
@@ -3117,7 +3117,7 @@ test "wesl: facade can set features in bulk and expose resolver" {
 
   let wesl = Wesl::new_barebones()
     .set_custom_resolver(resolver)
-    .set_options({ ..CompileOptions::default(), strip: false, validate: false })
+    .set_options({ ..CompileOptions::default(), strip: false, validate: false, })
     .set_features([("A", Enable), ("B", Enable)])
   let compiled = wesl.compile(root_path)
   let returned_resolver = wesl.resolver()
@@ -3273,11 +3273,11 @@ impl ModulePreprocessor for AppendDeclPreprocessor with fn preprocess_module(
         template_args: [],
       }),
       return_attributes: [],
-      body: { statements: [] },
+      body: { statements: [], },
     }),
-    attributes: Array::new(),
+    attributes: Array(),
     source: "fn injected() -> f32 {\n  return 1.0;\n}",
-    span: { start_line: 1, end_line: 3 },
+    span: { start_line: 1, end_line: 3, },
   })
   unit
 }
@@ -3304,7 +3304,7 @@ impl ModulePreprocessor for ConditionalAppendPreprocessor with fn preprocess_mod
         template_args: [],
       }),
       return_attributes: [],
-      body: { statements: [] },
+      body: { statements: [], },
     }),
     attributes: [
       {
@@ -3312,11 +3312,11 @@ impl ModulePreprocessor for ConditionalAppendPreprocessor with fn preprocess_mod
         arguments: Some("EXTRA"),
         argument_exprs: [],
         condition_expr: Some(Feature("EXTRA")),
-        span: { start_line: 1, end_line: 1 },
+        span: { start_line: 1, end_line: 1, },
       },
     ],
     source: "@if(EXTRA)\nfn injected() -> f32 {\n  return 4.0;\n}",
-    span: { start_line: 1, end_line: 4 },
+    span: { start_line: 1, end_line: 4, },
   })
   unit
 }
@@ -3331,9 +3331,9 @@ test "wesl: preprocessor can transform resolved translation units" {
 
   let compiled = compile(
     root_path,
-    Preprocessor::new(resolver, AppendDeclPreprocessor::{  }),
+    Preprocessor::new(resolver, AppendDeclPreprocessor::{ }),
     EscapeMangler::default(),
-    { ..CompileOptions::default(), condcomp: false, strip: false },
+    { ..CompileOptions::default(), condcomp: false, strip: false, },
   )
   let compiled_text = compiled.to_string()
 
@@ -3353,9 +3353,9 @@ test "wesl: conditional translation runs after custom module preprocessing" {
   features.set_feature("EXTRA", Enable)
   let compiled = compile(
     root_path,
-    Preprocessor::new(resolver, ConditionalAppendPreprocessor::{  }),
+    Preprocessor::new(resolver, ConditionalAppendPreprocessor::{ }),
     EscapeMangler::default(),
-    { ..CompileOptions::default(), strip: false, features },
+    { ..CompileOptions::default(), strip: false, features, },
   )
   let compiled_text = compiled.to_string()
 

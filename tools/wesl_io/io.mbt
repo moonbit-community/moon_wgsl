@@ -37,7 +37,7 @@ pub struct FileResolver {
 
 ///|
 pub fn FileResolver::new(base : String) -> FileResolver {
-  { base, extension: "wesl" }
+  { base, extension: "wesl", }
 }
 
 ///|
@@ -287,4 +287,11 @@ pub fn write_artifact(
       }
   }
   write_compile_result(result, join_path(dirname, "\{artifact_name}.wgsl"))
+}
+
+///|
+pub extend FileResolver with @Milky2018/moon_wesl.Resolver::{
+  display_name,
+  resolve_module,
+  resolve_source,
 }

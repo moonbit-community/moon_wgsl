@@ -48,7 +48,7 @@ pub fn ModulePath::new(
   origin : PathOrigin,
   components : Array[String],
 ) -> ModulePath {
-  { origin, components }
+  { origin, components, }
 }
 
 ///|
@@ -184,7 +184,7 @@ pub fn ModulePath::join(
   for item in suffix {
     components.push(item)
   }
-  { origin: self.origin, components }
+  { origin: self.origin, components, }
 }
 
 ///|
@@ -197,7 +197,7 @@ pub fn ModulePath::join_path(
       match self.origin {
         Absolute => suffix
         Relative(_) => suffix
-        Package(_) => { origin: self.origin, components: suffix.components }
+        Package(_) => { origin: self.origin, components: suffix.components, }
       }
     Relative(levels) => {
       let to_keep = if self.components.length() > levels {
@@ -221,7 +221,7 @@ pub fn ModulePath::join_path(
           Relative(self_levels + extra_levels)
         }
       }
-      { origin, components }
+      { origin, components, }
     }
     Package(suffix_pkg) =>
       match self.origin {
@@ -338,3 +338,21 @@ pub fn parse_module_path(
   }
   ModulePath::new(origin, path.components)
 }
+
+///|
+pub extend ModulePath with Debug::{to_repr}
+
+///|
+pub extend ModulePath with Eq::{not_equal, equal}
+
+///|
+pub extend ModulePath with Hash::{hash, hash_combine}
+
+///|
+pub extend PathOrigin with Debug::{to_repr}
+
+///|
+pub extend PathOrigin with Eq::{not_equal, equal}
+
+///|
+pub extend PathOrigin with Hash::{hash, hash_combine}

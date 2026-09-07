@@ -123,7 +123,7 @@ fn init {
 
 ///|
 fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -138,12 +138,12 @@ fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionTypeParseNode(_dollar1)
-  guard _args[2].0 is YYObj_Array_ExpressionParseNode_(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionTypeParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_Array_ExpressionParseNode_(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
-      FunctionCall({ callee: _dollar1, arguments: _dollar3 })
+      FunctionCall({ callee: _dollar1, arguments: _dollar3, })
     },
   )
 }
@@ -154,9 +154,9 @@ fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionTypeParseNode(_dollar1)
-  guard _args[1].0 is YYObj_String(_dollar2)
-  guard _args[3].0 is YYObj_Array_ExpressionParseNode_(_dollar4)
+  guard! _args[0].0 is YYObj_ExpressionTypeParseNode(_dollar1)
+  guard! _args[1].0 is YYObj_String(_dollar2)
+  guard! _args[3].0 is YYObj_Array_ExpressionParseNode_(_dollar4)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -173,8 +173,8 @@ fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_3(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[1].0 is YYObj_ExpressionPostfixSuffix(_dollar2)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[1].0 is YYObj_ExpressionPostfixSuffix(_dollar2)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -189,8 +189,8 @@ fn yy_action_3(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_4(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -204,7 +204,7 @@ fn yy_action_4(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_5(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -219,8 +219,8 @@ fn yy_action_5(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -234,7 +234,7 @@ fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_7(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -248,8 +248,8 @@ fn yy_action_7(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -263,7 +263,7 @@ fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_9(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -277,8 +277,8 @@ fn yy_action_9(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_10(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -292,7 +292,7 @@ fn yy_action_10(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_11(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -306,8 +306,8 @@ fn yy_action_11(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_12(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -321,7 +321,7 @@ fn yy_action_12(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_13(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -335,8 +335,8 @@ fn yy_action_13(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_14(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -350,8 +350,8 @@ fn yy_action_14(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_15(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -365,7 +365,7 @@ fn yy_action_15(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_16(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -379,8 +379,8 @@ fn yy_action_16(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_17(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -394,8 +394,8 @@ fn yy_action_17(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_18(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -409,8 +409,8 @@ fn yy_action_18(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_19(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -424,8 +424,8 @@ fn yy_action_19(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_20(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -439,7 +439,7 @@ fn yy_action_20(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_21(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -453,8 +453,8 @@ fn yy_action_21(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_22(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -468,8 +468,8 @@ fn yy_action_22(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_23(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -483,7 +483,7 @@ fn yy_action_23(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_24(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -497,8 +497,8 @@ fn yy_action_24(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_25(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -512,8 +512,8 @@ fn yy_action_25(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_26(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -527,8 +527,8 @@ fn yy_action_26(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_27(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -542,7 +542,7 @@ fn yy_action_27(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_28(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -556,8 +556,8 @@ fn yy_action_28(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_29(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -571,8 +571,8 @@ fn yy_action_29(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_30(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -586,8 +586,8 @@ fn yy_action_30(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_31(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -601,7 +601,7 @@ fn yy_action_31(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_32(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -615,7 +615,7 @@ fn yy_action_32(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_33(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -629,7 +629,7 @@ fn yy_action_33(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_34(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
+  guard! _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
   YYObj_ExpressionPostfixSuffix(
     {
       ()
@@ -643,7 +643,7 @@ fn yy_action_34(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_35(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj_String(_dollar2)
+  guard! _args[1].0 is YYObj_String(_dollar2)
   YYObj_ExpressionPostfixSuffix(
     {
       ()
@@ -657,7 +657,7 @@ fn yy_action_35(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_36(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -671,7 +671,7 @@ fn yy_action_36(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_37(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
+  guard! _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -685,7 +685,7 @@ fn yy_action_37(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_38(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
+  guard! _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -699,7 +699,7 @@ fn yy_action_38(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_39(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
+  guard! _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -713,7 +713,7 @@ fn yy_action_39(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_40(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
+  guard! _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -727,7 +727,7 @@ fn yy_action_40(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_41(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
+  guard! _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -741,7 +741,7 @@ fn yy_action_41(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_42(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -755,7 +755,7 @@ fn yy_action_42(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_43(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -769,8 +769,8 @@ fn yy_action_43(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_44(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array_ExpressionParseNode_(_dollar1)
-  guard _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
+  guard! _args[0].0 is YYObj_Array_ExpressionParseNode_(_dollar1)
+  guard! _args[2].0 is YYObj_ExpressionParseNode(_dollar3)
   YYObj_Array_ExpressionParseNode_(
     {
       ()
@@ -785,7 +785,7 @@ fn yy_action_44(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_45(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array_ExpressionParseNode_(_dollar1)
+  guard! _args[0].0 is YYObj_Array_ExpressionParseNode_(_dollar1)
   YYObj_Array_ExpressionParseNode_(
     {
       ()
@@ -799,7 +799,7 @@ fn yy_action_45(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_46(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array_ExpressionParseNode_(_dollar1)
+  guard! _args[0].0 is YYObj_Array_ExpressionParseNode_(_dollar1)
   YYObj_Array_ExpressionParseNode_(
     {
       ()
@@ -813,7 +813,7 @@ fn yy_action_46(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_47(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionParseNode(_dollar1)
   YYObj_Array_ExpressionParseNode_(
     {
       ()
@@ -840,8 +840,8 @@ fn yy_action_48(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_49(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionTypeParseNode(_dollar1)
-  guard _args[2].0 is YYObj_String(_dollar3)
+  guard! _args[0].0 is YYObj_ExpressionTypeParseNode(_dollar1)
+  guard! _args[2].0 is YYObj_String(_dollar3)
   YYObj_ExpressionTypeParseNode(
     {
       ()
@@ -855,7 +855,7 @@ fn yy_action_49(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_50(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_ExpressionTypeParseNode(_dollar1)
+  guard! _args[0].0 is YYObj_ExpressionTypeParseNode(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -869,7 +869,7 @@ fn yy_action_50(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_51(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
+  guard! _args[1].0 is YYObj_ExpressionParseNode(_dollar2)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -883,7 +883,7 @@ fn yy_action_51(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_52(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_String(_dollar1)
+  guard! _args[0].0 is YYObj_String(_dollar1)
   YYObj_ExpressionTypeParseNode(
     {
       ()
@@ -897,7 +897,7 @@ fn yy_action_52(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_53(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_String(_dollar1)
+  guard! _args[0].0 is YYObj_String(_dollar1)
   YYObj_ExpressionParseNode(
     {
       ()
@@ -3806,7 +3806,7 @@ fn[T] yy_parse(
     match decision {
       Accept => return return_(data_stack.unsafe_pop().0)
       Shift(next_state) => {
-        guard lookahead is Some(la)
+        guard! lookahead is Some(la)
         data_stack.push(la.1)
         state_stack = @list.cons(next_state, state_stack)
         last_shifted_state_stack = state_stack
@@ -3869,7 +3869,7 @@ fn error(
             Reduce(count, symbol, _) | ReduceNoLookahead(count, symbol, _) => {
               fn inner_go(stack : @list.List[YYState], count, symbol) {
                 let stack = stack.drop(count)
-                guard stack is More(state, ..)
+                guard! stack is More(state, ..)
                 match state(symbol) {
                   Shift(state) => go(@list.cons(state, stack))
                   Reduce(count, symbol, _)
@@ -3940,7 +3940,7 @@ pub fn parse_expression(
     tokens,
     yy_state_0,
     it => {
-      guard it is YYObj_ExpressionParseNode(result)
+      guard! it is YYObj_ExpressionParseNode(result)
       result
     },
     initial_pos?,

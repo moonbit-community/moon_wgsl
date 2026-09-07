@@ -39,14 +39,14 @@ priv struct WgslIrLocalValueCell {
 fn wgsl_ir_local_let_value_cell(
   value : WgslIrLocalValue,
 ) -> WgslIrLocalValueCell {
-  { value, source: LocalLet }
+  { value, source: LocalLet, }
 }
 
 ///|
 fn wgsl_ir_local_const_value_cell(
   value : WgslIrLocalValue,
 ) -> WgslIrLocalValueCell {
-  { value, source: LocalConst }
+  { value, source: LocalConst, }
 }
 
 ///|
@@ -258,7 +258,7 @@ fn WgslIrFunctionScope::loop_child(
   self : WgslIrFunctionScope,
 ) -> WgslIrFunctionScope {
   let child = self.child()
-  { ..child, loop_depth: self.loop_depth + 1 }
+  { ..child, loop_depth: self.loop_depth + 1, }
 }
 
 ///|

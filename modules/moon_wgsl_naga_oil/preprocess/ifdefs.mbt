@@ -103,7 +103,7 @@ pub fn apply_wgsl_template_consts(
   if !wgsl_source_may_contain_template_const_reference(source, value_defines) {
     return source
   }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let mut copy_start = 0
   for reference in parse_wgsl_template_const_references(source, value_defines) {
     if value_defines.get(reference.name()) is Some(value) {
@@ -126,7 +126,7 @@ pub fn apply_wgsl_ifdefs_strict(
   if !wgsl_source_needs_ifdef_directive_scan(source) {
     return source
   }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let scope = Scope()
   let import_state = WgslImportSubstitutionState::default()
   for item in parse_wgsl_directive_scan_items(source) {

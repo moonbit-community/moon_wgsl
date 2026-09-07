@@ -37,7 +37,7 @@ fn WgslComposeIrSymbolKey::WgslComposeIrSymbolKey(
   final_name : String,
   declared : Bool,
 ) -> WgslComposeIrSymbolKey {
-  { text: "\{identity.key()}|\{final_name}|\{declared}" }
+  { text: "\{identity.key()}|\{final_name}|\{declared}", }
 }
 
 ///|
@@ -49,7 +49,7 @@ fn WgslComposeIrSymbolKey::text(self : WgslComposeIrSymbolKey) -> String {
 fn WgslComposeIrIdentityKey::WgslComposeIrIdentityKey(
   identity : WgslComposeSymbolIdentity,
 ) -> WgslComposeIrIdentityKey {
-  { text: identity.key() }
+  { text: identity.key(), }
 }
 
 ///|
@@ -106,7 +106,7 @@ fn WgslComposeSemanticIr::record_symbol(
     return
   }
   self.symbol_keys.add(symbol_key)
-  self.symbols.push({ identity, final_name, declared })
+  self.symbols.push({ identity, final_name, declared, })
 }
 
 ///|
@@ -164,7 +164,7 @@ fn WgslComposeSemanticIr::record_reference_binding(
 ) -> Unit {
   let target = self.resolved_binding_target_symbol(binding)
   self.record_symbol(target.identity, target.final_name, target.declared)
-  self.reference_bindings.push({ binding, target })
+  self.reference_bindings.push({ binding, target, })
 }
 
 ///|

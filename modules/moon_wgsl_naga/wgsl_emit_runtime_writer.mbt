@@ -15,7 +15,7 @@ fn emit_wgsl_module_with_runtime_writer_backend(
     root_items,
     compatibility~,
   )
-  let backend = WgslIrRuntimeWriterBackend::{ shader_module, view }
+  let backend = WgslIrRuntimeWriterBackend::{ shader_module, view, }
   backend.emit()
 }
 

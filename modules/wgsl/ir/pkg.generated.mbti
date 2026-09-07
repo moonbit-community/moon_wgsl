@@ -119,12 +119,18 @@ pub(all) enum AddressSpace {
   RayPayload
   IncomingRayPayload
 } derive(Eq, @debug.Debug)
+pub fn AddressSpace::equal(Self, Self) -> Bool
+pub fn AddressSpace::not_equal(Self, Self) -> Bool
+pub fn AddressSpace::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ArraySize {
   Constant(Int)
   Pending(Handle)
   Dynamic
 } derive(Eq, @debug.Debug)
+pub fn ArraySize::equal(Self, Self) -> Bool
+pub fn ArraySize::not_equal(Self, Self) -> Bool
+pub fn ArraySize::to_repr(Self) -> @debug.Repr
 
 pub(all) enum AtomicFunction {
   Load
@@ -139,14 +145,20 @@ pub(all) enum AtomicFunction {
   Exchange
   CompareExchangeWeak
 } derive(Eq, @debug.Debug)
+pub fn AtomicFunction::equal(Self, Self) -> Bool
+pub fn AtomicFunction::not_equal(Self, Self) -> Bool
+pub fn AtomicFunction::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Barrier {
   bits : Int
 } derive(Eq, @debug.Debug)
 pub fn Barrier::empty() -> Self
+pub fn Barrier::equal(Self, Self) -> Bool
+pub fn Barrier::not_equal(Self, Self) -> Bool
 pub fn Barrier::storage() -> Self
 pub fn Barrier::sub_group() -> Self
 pub fn Barrier::texture() -> Self
+pub fn Barrier::to_repr(Self) -> @debug.Repr
 pub fn Barrier::union(Self, Self) -> Self
 pub fn Barrier::work_group() -> Self
 
@@ -170,17 +182,26 @@ pub(all) enum BinaryOperator {
   ShiftLeft
   ShiftRight
 } derive(Eq, @debug.Debug)
+pub fn BinaryOperator::equal(Self, Self) -> Bool
+pub fn BinaryOperator::not_equal(Self, Self) -> Bool
+pub fn BinaryOperator::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Binding {
   BuiltIn(BuiltIn)
   Location(Int, Interpolation?, Sampling?, Int?, Bool)
 } derive(Eq, @debug.Debug)
+pub fn Binding::equal(Self, Self) -> Bool
+pub fn Binding::not_equal(Self, Self) -> Bool
+pub fn Binding::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Block {
   statements : Array[Statement]
 } derive(Eq, @debug.Debug)
 pub fn Block::Block() -> Self
+pub fn Block::equal(Self, Self) -> Bool
+pub fn Block::not_equal(Self, Self) -> Bool
 pub fn Block::push(Self, Statement) -> Unit
+pub fn Block::to_repr(Self) -> @debug.Repr
 
 pub(all) enum BuiltIn {
   PrimitiveIndex
@@ -233,18 +254,27 @@ pub(all) enum BuiltIn {
   WorldToObject
   HitKind
 } derive(Eq, @debug.Debug)
+pub fn BuiltIn::equal(Self, Self) -> Bool
+pub fn BuiltIn::not_equal(Self, Self) -> Bool
+pub fn BuiltIn::to_repr(Self) -> @debug.Repr
 
 pub(all) enum CollectiveOperation {
   Reduce
   InclusiveScan
   ExclusiveScan
 } derive(Eq, @debug.Debug)
+pub fn CollectiveOperation::equal(Self, Self) -> Bool
+pub fn CollectiveOperation::not_equal(Self, Self) -> Bool
+pub fn CollectiveOperation::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ConservativeDepth {
   GreaterEqual
   LessEqual
   Unchanged
 } derive(Eq, @debug.Debug)
+pub fn ConservativeDepth::equal(Self, Self) -> Bool
+pub fn ConservativeDepth::not_equal(Self, Self) -> Bool
+pub fn ConservativeDepth::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Constant {
   name : String?
@@ -252,63 +282,96 @@ pub(all) struct Constant {
   ty : Handle
   init : Handle
 } derive(Eq, @debug.Debug)
+pub fn Constant::equal(Self, Self) -> Bool
+pub fn Constant::not_equal(Self, Self) -> Bool
+pub fn Constant::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ConstantArena {
   items : Array[Constant]
 } derive(Eq, @debug.Debug)
 pub fn ConstantArena::ConstantArena() -> Self
 pub fn ConstantArena::append(Self, Constant) -> Handle
+pub fn ConstantArena::equal(Self, Self) -> Bool
+pub fn ConstantArena::not_equal(Self, Self) -> Bool
+pub fn ConstantArena::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CooperativeData {
   pointer : Handle
   stride : Handle
   row_major : Bool
 } derive(Eq, @debug.Debug)
+pub fn CooperativeData::equal(Self, Self) -> Bool
+pub fn CooperativeData::not_equal(Self, Self) -> Bool
+pub fn CooperativeData::to_repr(Self) -> @debug.Repr
 
 pub(all) enum CooperativeRole {
   A
   B
   C
 } derive(Eq, @debug.Debug)
+pub fn CooperativeRole::equal(Self, Self) -> Bool
+pub fn CooperativeRole::not_equal(Self, Self) -> Bool
+pub fn CooperativeRole::to_repr(Self) -> @debug.Repr
 
 pub(all) enum CooperativeSize {
   Eight
   Sixteen
 } derive(Eq, @debug.Debug)
+pub fn CooperativeSize::equal(Self, Self) -> Bool
+pub fn CooperativeSize::not_equal(Self, Self) -> Bool
+pub fn CooperativeSize::to_repr(Self) -> @debug.Repr
 
 pub(all) enum DerivativeAxis {
   X
   Y
   Width
 } derive(Eq, @debug.Debug)
+pub fn DerivativeAxis::equal(Self, Self) -> Bool
+pub fn DerivativeAxis::not_equal(Self, Self) -> Bool
+pub fn DerivativeAxis::to_repr(Self) -> @debug.Repr
 
 pub(all) enum DerivativeControl {
   Coarse
   Fine
   None
 } derive(Eq, @debug.Debug)
+pub fn DerivativeControl::equal(Self, Self) -> Bool
+pub fn DerivativeControl::not_equal(Self, Self) -> Bool
+pub fn DerivativeControl::to_repr(Self) -> @debug.Repr
 
 pub(all) struct DiagnosticFilter {
   new_severity : Severity
   triggering_rule : FilterableTriggeringRule
 } derive(Eq, @debug.Debug)
+pub fn DiagnosticFilter::equal(Self, Self) -> Bool
+pub fn DiagnosticFilter::not_equal(Self, Self) -> Bool
+pub fn DiagnosticFilter::to_repr(Self) -> @debug.Repr
 
 pub(all) struct DiagnosticFilterArena {
   items : Array[DiagnosticFilterNode]
 } derive(Eq, @debug.Debug)
 pub fn DiagnosticFilterArena::DiagnosticFilterArena() -> Self
 pub fn DiagnosticFilterArena::append(Self, DiagnosticFilterNode) -> Handle
+pub fn DiagnosticFilterArena::equal(Self, Self) -> Bool
+pub fn DiagnosticFilterArena::not_equal(Self, Self) -> Bool
+pub fn DiagnosticFilterArena::to_repr(Self) -> @debug.Repr
 
 pub(all) struct DiagnosticFilterNode {
   inner : DiagnosticFilter
   parent : Handle?
 } derive(Eq, @debug.Debug)
+pub fn DiagnosticFilterNode::equal(Self, Self) -> Bool
+pub fn DiagnosticFilterNode::not_equal(Self, Self) -> Bool
+pub fn DiagnosticFilterNode::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Direction {
   X
   Y
   Diagonal
 } derive(Eq, @debug.Debug)
+pub fn Direction::equal(Self, Self) -> Bool
+pub fn Direction::not_equal(Self, Self) -> Bool
+pub fn Direction::to_repr(Self) -> @debug.Repr
 
 pub(all) struct DocComments {
   types : Array[(Handle, Array[String])]
@@ -320,11 +383,17 @@ pub(all) struct DocComments {
   module_comments : Array[String]
 } derive(Eq, @debug.Debug)
 pub fn DocComments::DocComments() -> Self
+pub fn DocComments::equal(Self, Self) -> Bool
+pub fn DocComments::not_equal(Self, Self) -> Bool
+pub fn DocComments::to_repr(Self) -> @debug.Repr
 
 pub(all) enum EarlyDepthTest {
   Force
   Allow(ConservativeDepth)
 } derive(Eq, @debug.Debug)
+pub fn EarlyDepthTest::equal(Self, Self) -> Bool
+pub fn EarlyDepthTest::not_equal(Self, Self) -> Bool
+pub fn EarlyDepthTest::to_repr(Self) -> @debug.Repr
 
 pub(all) struct EntryPoint {
   name : String
@@ -338,6 +407,9 @@ pub(all) struct EntryPoint {
   task_payload : Handle?
   incoming_ray_payload : Handle?
 } derive(Eq, @debug.Debug)
+pub fn EntryPoint::equal(Self, Self) -> Bool
+pub fn EntryPoint::not_equal(Self, Self) -> Bool
+pub fn EntryPoint::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Expression {
   Literal(Literal)
@@ -387,6 +459,9 @@ pub(all) enum Expression {
   CooperativeLoad(CooperativeSize, CooperativeSize, CooperativeRole, CooperativeData)
   CooperativeMultiplyAdd(Handle, Handle, Handle)
 } derive(Eq, @debug.Debug)
+pub fn Expression::equal(Self, Self) -> Bool
+pub fn Expression::not_equal(Self, Self) -> Bool
+pub fn Expression::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ExpressionArena {
   items : Array[Expression]
@@ -394,7 +469,10 @@ pub(all) struct ExpressionArena {
 } derive(Eq, @debug.Debug)
 pub fn ExpressionArena::ExpressionArena() -> Self
 pub fn ExpressionArena::append(Self, Expression) -> Handle
+pub fn ExpressionArena::equal(Self, Self) -> Bool
+pub fn ExpressionArena::not_equal(Self, Self) -> Bool
 pub fn ExpressionArena::origin(Self, Handle) -> ExpressionOrigin?
+pub fn ExpressionArena::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ExpressionOrigin {
   SourceExpression
@@ -402,12 +480,18 @@ pub(all) enum ExpressionOrigin {
   RetainedSourceLetExpression
   SourceLocalConstInitializer
 } derive(Eq, @debug.Debug)
+pub fn ExpressionOrigin::equal(Self, Self) -> Bool
+pub fn ExpressionOrigin::not_equal(Self, Self) -> Bool
+pub fn ExpressionOrigin::to_repr(Self) -> @debug.Repr
 
 pub(all) enum FilterableTriggeringRule {
   Standard(StandardFilterableTriggeringRule)
   Unknown(String)
   User(String, String)
 } derive(Eq, @debug.Debug)
+pub fn FilterableTriggeringRule::equal(Self, Self) -> Bool
+pub fn FilterableTriggeringRule::not_equal(Self, Self) -> Bool
+pub fn FilterableTriggeringRule::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Function {
   name : String?
@@ -421,24 +505,36 @@ pub(all) struct Function {
   diagnostic_filter_leaf : Handle?
 } derive(Eq, @debug.Debug)
 pub fn Function::Function(String?) -> Self
+pub fn Function::equal(Self, Self) -> Bool
+pub fn Function::not_equal(Self, Self) -> Bool
+pub fn Function::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FunctionArena {
   items : Array[Function]
 } derive(Eq, @debug.Debug)
 pub fn FunctionArena::FunctionArena() -> Self
 pub fn FunctionArena::append(Self, Function) -> Handle
+pub fn FunctionArena::equal(Self, Self) -> Bool
+pub fn FunctionArena::not_equal(Self, Self) -> Bool
 pub fn FunctionArena::set(Self, Handle, Function) -> Unit
+pub fn FunctionArena::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FunctionArgument {
   name : String?
   ty : Handle
   binding : Binding?
 } derive(Eq, @debug.Debug)
+pub fn FunctionArgument::equal(Self, Self) -> Bool
+pub fn FunctionArgument::not_equal(Self, Self) -> Bool
+pub fn FunctionArgument::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FunctionResult {
   ty : Handle
   binding : Binding?
 } derive(Eq, @debug.Debug)
+pub fn FunctionResult::equal(Self, Self) -> Bool
+pub fn FunctionResult::not_equal(Self, Self) -> Bool
+pub fn FunctionResult::to_repr(Self) -> @debug.Repr
 
 pub(all) enum GatherMode {
   BroadcastFirst
@@ -450,6 +546,9 @@ pub(all) enum GatherMode {
   QuadBroadcast(Handle)
   QuadSwap(Direction)
 } derive(Eq, @debug.Debug)
+pub fn GatherMode::equal(Self, Self) -> Bool
+pub fn GatherMode::not_equal(Self, Self) -> Bool
+pub fn GatherMode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GlobalVariable {
   name : String?
@@ -459,25 +558,37 @@ pub(all) struct GlobalVariable {
   init : Handle?
   memory_decorations : MemoryDecorations
 } derive(Eq, @debug.Debug)
+pub fn GlobalVariable::equal(Self, Self) -> Bool
+pub fn GlobalVariable::not_equal(Self, Self) -> Bool
+pub fn GlobalVariable::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GlobalVariableArena {
   items : Array[GlobalVariable]
 } derive(Eq, @debug.Debug)
 pub fn GlobalVariableArena::GlobalVariableArena() -> Self
 pub fn GlobalVariableArena::append(Self, GlobalVariable) -> Handle
+pub fn GlobalVariableArena::equal(Self, Self) -> Bool
+pub fn GlobalVariableArena::not_equal(Self, Self) -> Bool
 pub fn GlobalVariableArena::set(Self, Handle, GlobalVariable) -> Unit
+pub fn GlobalVariableArena::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Handle {
   index : Int
 } derive(Eq, @debug.Debug)
 pub fn Handle::Handle(Int) -> Self
+pub fn Handle::equal(Self, Self) -> Bool
 pub fn Handle::index(Self) -> Int
+pub fn Handle::not_equal(Self, Self) -> Bool
+pub fn Handle::to_repr(Self) -> @debug.Repr
 
 pub(all) struct HandleRange {
   start : Handle
   end : Handle
 } derive(Eq, @debug.Debug)
 pub fn HandleRange::HandleRange(Handle, Handle) -> Self
+pub fn HandleRange::equal(Self, Self) -> Bool
+pub fn HandleRange::not_equal(Self, Self) -> Bool
+pub fn HandleRange::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ImageClass {
   Sampled(ScalarKind, Bool)
@@ -485,6 +596,9 @@ pub(all) enum ImageClass {
   External
   Storage(StorageFormat, StorageAccess)
 } derive(Eq, @debug.Debug)
+pub fn ImageClass::equal(Self, Self) -> Bool
+pub fn ImageClass::not_equal(Self, Self) -> Bool
+pub fn ImageClass::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ImageDimension {
   D1
@@ -492,6 +606,9 @@ pub(all) enum ImageDimension {
   D3
   Cube
 } derive(Eq, @debug.Debug)
+pub fn ImageDimension::equal(Self, Self) -> Bool
+pub fn ImageDimension::not_equal(Self, Self) -> Bool
+pub fn ImageDimension::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ImageQuery {
   Size(Handle?)
@@ -499,6 +616,9 @@ pub(all) enum ImageQuery {
   NumLayers
   NumSamples
 } derive(Eq, @debug.Debug)
+pub fn ImageQuery::equal(Self, Self) -> Bool
+pub fn ImageQuery::not_equal(Self, Self) -> Bool
+pub fn ImageQuery::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Interpolation {
   Perspective
@@ -506,6 +626,9 @@ pub(all) enum Interpolation {
   Flat
   PerVertex
 } derive(Eq, @debug.Debug)
+pub fn Interpolation::equal(Self, Self) -> Bool
+pub fn Interpolation::not_equal(Self, Self) -> Bool
+pub fn Interpolation::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Literal {
   F64(Double)
@@ -522,6 +645,9 @@ pub(all) enum Literal {
   AbstractInt(Int64)
   AbstractFloat(Double)
 } derive(Eq, @debug.Debug)
+pub fn Literal::equal(Self, Self) -> Bool
+pub fn Literal::not_equal(Self, Self) -> Bool
+pub fn Literal::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LocalVariable {
   name : String?
@@ -532,17 +658,26 @@ pub(all) struct LocalVariable {
   ty : Handle
   init : Handle?
 } derive(Eq, @debug.Debug)
+pub fn LocalVariable::equal(Self, Self) -> Bool
+pub fn LocalVariable::not_equal(Self, Self) -> Bool
+pub fn LocalVariable::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LocalVariableArena {
   items : Array[LocalVariable]
 } derive(Eq, @debug.Debug)
 pub fn LocalVariableArena::LocalVariableArena() -> Self
 pub fn LocalVariableArena::append(Self, LocalVariable) -> Handle
+pub fn LocalVariableArena::equal(Self, Self) -> Bool
+pub fn LocalVariableArena::not_equal(Self, Self) -> Bool
+pub fn LocalVariableArena::to_repr(Self) -> @debug.Repr
 
 pub(all) enum LocalVariableKind {
   Var
   Let
 } derive(Eq, @debug.Debug)
+pub fn LocalVariableKind::equal(Self, Self) -> Bool
+pub fn LocalVariableKind::not_equal(Self, Self) -> Bool
+pub fn LocalVariableKind::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MathFunction {
   Abs
@@ -625,12 +760,18 @@ pub(all) enum MathFunction {
   Unpack4xI8
   Unpack4xU8
 } derive(Eq, @debug.Debug)
+pub fn MathFunction::equal(Self, Self) -> Bool
+pub fn MathFunction::not_equal(Self, Self) -> Bool
+pub fn MathFunction::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MemoryDecorations {
   bits : Int
 } derive(Eq, @debug.Debug)
 pub fn MemoryDecorations::coherent() -> Self
 pub fn MemoryDecorations::empty() -> Self
+pub fn MemoryDecorations::equal(Self, Self) -> Bool
+pub fn MemoryDecorations::not_equal(Self, Self) -> Bool
+pub fn MemoryDecorations::to_repr(Self) -> @debug.Repr
 pub fn MemoryDecorations::union(Self, Self) -> Self
 pub fn MemoryDecorations::volatile_decoration() -> Self
 
@@ -639,6 +780,9 @@ pub(all) enum MeshOutputTopology {
   Lines
   Triangles
 } derive(Eq, @debug.Debug)
+pub fn MeshOutputTopology::equal(Self, Self) -> Bool
+pub fn MeshOutputTopology::not_equal(Self, Self) -> Bool
+pub fn MeshOutputTopology::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MeshStageInfo {
   topology : MeshOutputTopology
@@ -650,6 +794,9 @@ pub(all) struct MeshStageInfo {
   primitive_output_type : Handle
   output_variable : Handle
 } derive(Eq, @debug.Debug)
+pub fn MeshStageInfo::equal(Self, Self) -> Bool
+pub fn MeshStageInfo::not_equal(Self, Self) -> Bool
+pub fn MeshStageInfo::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Module {
   directives : Array[String]
@@ -676,14 +823,20 @@ pub fn Module::append_global_expression(Self, Expression) -> Handle
 pub fn Module::append_global_variable(Self, GlobalVariable) -> Handle
 pub fn Module::append_override(Self, Override) -> Handle
 pub fn Module::append_type(Self, Type) -> Handle
+pub fn Module::equal(Self, Self) -> Bool
+pub fn Module::not_equal(Self, Self) -> Bool
 pub fn Module::set_function(Self, Handle, Function) -> Unit
 pub fn Module::set_override(Self, Handle, Override) -> Unit
+pub fn Module::to_repr(Self) -> @debug.Repr
 
 pub(all) struct NamedExpression {
   handle : Handle
   name : String
   ty : Handle
 } derive(Eq, @debug.Debug)
+pub fn NamedExpression::equal(Self, Self) -> Bool
+pub fn NamedExpression::not_equal(Self, Self) -> Bool
+pub fn NamedExpression::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Override {
   name : String?
@@ -691,19 +844,28 @@ pub(all) struct Override {
   ty : Handle
   init : Handle?
 } derive(Eq, @debug.Debug)
+pub fn Override::equal(Self, Self) -> Bool
+pub fn Override::not_equal(Self, Self) -> Bool
+pub fn Override::to_repr(Self) -> @debug.Repr
 
 pub(all) struct OverrideArena {
   items : Array[Override]
 } derive(Eq, @debug.Debug)
 pub fn OverrideArena::OverrideArena() -> Self
 pub fn OverrideArena::append(Self, Override) -> Handle
+pub fn OverrideArena::equal(Self, Self) -> Bool
+pub fn OverrideArena::not_equal(Self, Self) -> Bool
 pub fn OverrideArena::set(Self, Handle, Override) -> Unit
+pub fn OverrideArena::to_repr(Self) -> @debug.Repr
 
 pub(all) enum PredeclaredType {
   AtomicCompareExchangeWeakResult(Scalar)
   ModfResult(VectorSize?, Scalar)
   FrexpResult(VectorSize?, Scalar)
 } derive(Eq, @debug.Debug)
+pub fn PredeclaredType::equal(Self, Self) -> Bool
+pub fn PredeclaredType::not_equal(Self, Self) -> Bool
+pub fn PredeclaredType::to_repr(Self) -> @debug.Repr
 
 pub(all) struct RayFlag {
   bits : Int
@@ -713,17 +875,23 @@ pub fn RayFlag::cull_front_facing() -> Self
 pub fn RayFlag::cull_no_opaque() -> Self
 pub fn RayFlag::cull_opaque() -> Self
 pub fn RayFlag::empty() -> Self
+pub fn RayFlag::equal(Self, Self) -> Bool
 pub fn RayFlag::force_no_opaque() -> Self
 pub fn RayFlag::force_opaque() -> Self
+pub fn RayFlag::not_equal(Self, Self) -> Bool
 pub fn RayFlag::skip_aabbs() -> Self
 pub fn RayFlag::skip_closest_hit_shader() -> Self
 pub fn RayFlag::skip_triangles() -> Self
 pub fn RayFlag::terminate_on_first_hit() -> Self
+pub fn RayFlag::to_repr(Self) -> @debug.Repr
 pub fn RayFlag::union(Self, Self) -> Self
 
 pub(all) enum RayPipelineFunction {
   TraceRay(Handle, Handle, Handle)
 } derive(Eq, @debug.Debug)
+pub fn RayPipelineFunction::equal(Self, Self) -> Bool
+pub fn RayPipelineFunction::not_equal(Self, Self) -> Bool
+pub fn RayPipelineFunction::to_repr(Self) -> @debug.Repr
 
 pub(all) enum RayQueryFunction {
   Initialize(Handle, Handle)
@@ -732,6 +900,9 @@ pub(all) enum RayQueryFunction {
   ConfirmIntersection
   Terminate
 } derive(Eq, @debug.Debug)
+pub fn RayQueryFunction::equal(Self, Self) -> Bool
+pub fn RayQueryFunction::not_equal(Self, Self) -> Bool
+pub fn RayQueryFunction::to_repr(Self) -> @debug.Repr
 
 pub(all) enum RayQueryIntersection {
   None
@@ -739,6 +910,9 @@ pub(all) enum RayQueryIntersection {
   Generated
   Aabb
 } derive(Eq, @debug.Debug)
+pub fn RayQueryIntersection::equal(Self, Self) -> Bool
+pub fn RayQueryIntersection::not_equal(Self, Self) -> Bool
+pub fn RayQueryIntersection::to_repr(Self) -> @debug.Repr
 
 pub(all) enum RelationalFunction {
   All
@@ -746,11 +920,17 @@ pub(all) enum RelationalFunction {
   IsNan
   IsInf
 } derive(Eq, @debug.Debug)
+pub fn RelationalFunction::equal(Self, Self) -> Bool
+pub fn RelationalFunction::not_equal(Self, Self) -> Bool
+pub fn RelationalFunction::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ResourceBinding {
   group : Int
   binding : Int
 } derive(Eq, @debug.Debug)
+pub fn ResourceBinding::equal(Self, Self) -> Bool
+pub fn ResourceBinding::not_equal(Self, Self) -> Bool
+pub fn ResourceBinding::to_repr(Self) -> @debug.Repr
 
 pub(all) enum SampleLevel {
   Auto
@@ -759,6 +939,9 @@ pub(all) enum SampleLevel {
   Bias(Handle)
   Gradient(Handle, Handle)
 } derive(Eq, @debug.Debug)
+pub fn SampleLevel::equal(Self, Self) -> Bool
+pub fn SampleLevel::not_equal(Self, Self) -> Bool
+pub fn SampleLevel::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Sampling {
   Center
@@ -767,12 +950,18 @@ pub(all) enum Sampling {
   First
   Either
 } derive(Eq, @debug.Debug)
+pub fn Sampling::equal(Self, Self) -> Bool
+pub fn Sampling::not_equal(Self, Self) -> Bool
+pub fn Sampling::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Scalar {
   kind : ScalarKind
   width : Int
 } derive(Eq, @debug.Debug)
 pub fn Scalar::Scalar(ScalarKind, Int) -> Self
+pub fn Scalar::equal(Self, Self) -> Bool
+pub fn Scalar::not_equal(Self, Self) -> Bool
+pub fn Scalar::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ScalarKind {
   Sint
@@ -782,6 +971,9 @@ pub(all) enum ScalarKind {
   AbstractInt
   AbstractFloat
 } derive(Eq, @debug.Debug)
+pub fn ScalarKind::equal(Self, Self) -> Bool
+pub fn ScalarKind::not_equal(Self, Self) -> Bool
+pub fn ScalarKind::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Severity {
   Off
@@ -789,6 +981,9 @@ pub(all) enum Severity {
   Warning
   Error
 } derive(Eq, @debug.Debug)
+pub fn Severity::equal(Self, Self) -> Bool
+pub fn Severity::not_equal(Self, Self) -> Bool
+pub fn Severity::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ShaderStage {
   Vertex
@@ -801,6 +996,9 @@ pub(all) enum ShaderStage {
   AnyHit
   ClosestHit
 } derive(Eq, @debug.Debug)
+pub fn ShaderStage::equal(Self, Self) -> Bool
+pub fn ShaderStage::not_equal(Self, Self) -> Bool
+pub fn ShaderStage::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SpecialTypes {
   ray_desc : Handle?
@@ -811,10 +1009,16 @@ pub(all) struct SpecialTypes {
   predeclared_types : Array[(PredeclaredType, Handle)]
 } derive(Eq, @debug.Debug)
 pub fn SpecialTypes::SpecialTypes() -> Self
+pub fn SpecialTypes::equal(Self, Self) -> Bool
+pub fn SpecialTypes::not_equal(Self, Self) -> Bool
+pub fn SpecialTypes::to_repr(Self) -> @debug.Repr
 
 pub(all) enum StandardFilterableTriggeringRule {
   DerivativeUniformity
 } derive(Eq, @debug.Debug)
+pub fn StandardFilterableTriggeringRule::equal(Self, Self) -> Bool
+pub fn StandardFilterableTriggeringRule::not_equal(Self, Self) -> Bool
+pub fn StandardFilterableTriggeringRule::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Statement {
   Declare(Handle)
@@ -845,6 +1049,9 @@ pub(all) enum Statement {
   SubgroupCollectiveOperation(SubgroupOperation, CollectiveOperation, Handle, Handle)
   CooperativeStore(Handle, CooperativeData)
 } derive(Eq, @debug.Debug)
+pub fn Statement::equal(Self, Self) -> Bool
+pub fn Statement::not_equal(Self, Self) -> Bool
+pub fn Statement::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StorageAccess {
   bits : Int
@@ -852,8 +1059,11 @@ pub(all) struct StorageAccess {
 pub fn StorageAccess::atomic_access() -> Self
 pub fn StorageAccess::contains(Self, Self) -> Bool
 pub fn StorageAccess::empty() -> Self
+pub fn StorageAccess::equal(Self, Self) -> Bool
 pub fn StorageAccess::load() -> Self
+pub fn StorageAccess::not_equal(Self, Self) -> Bool
 pub fn StorageAccess::store() -> Self
+pub fn StorageAccess::to_repr(Self) -> @debug.Repr
 pub fn StorageAccess::union(Self, Self) -> Self
 
 pub(all) enum StorageFormat {
@@ -899,6 +1109,9 @@ pub(all) enum StorageFormat {
   Rgba16Unorm
   Rgba16Snorm
 } derive(Eq, @debug.Debug)
+pub fn StorageFormat::equal(Self, Self) -> Bool
+pub fn StorageFormat::not_equal(Self, Self) -> Bool
+pub fn StorageFormat::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StructMember {
   name : String?
@@ -908,6 +1121,9 @@ pub(all) struct StructMember {
   size : Int?
   align : Int?
 } derive(Eq, @debug.Debug)
+pub fn StructMember::equal(Self, Self) -> Bool
+pub fn StructMember::not_equal(Self, Self) -> Bool
+pub fn StructMember::to_repr(Self) -> @debug.Repr
 
 pub(all) enum SubgroupFunction {
   Ballot
@@ -935,6 +1151,9 @@ pub(all) enum SubgroupFunction {
   QuadSwapY
   QuadSwapDiagonal
 } derive(Eq, @debug.Debug)
+pub fn SubgroupFunction::equal(Self, Self) -> Bool
+pub fn SubgroupFunction::not_equal(Self, Self) -> Bool
+pub fn SubgroupFunction::to_repr(Self) -> @debug.Repr
 
 pub(all) enum SubgroupOperation {
   All
@@ -947,6 +1166,9 @@ pub(all) enum SubgroupOperation {
   Or
   Xor
 } derive(Eq, @debug.Debug)
+pub fn SubgroupOperation::equal(Self, Self) -> Bool
+pub fn SubgroupOperation::not_equal(Self, Self) -> Bool
+pub fn SubgroupOperation::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SwitchCase {
   value : SwitchValue
@@ -954,17 +1176,26 @@ pub(all) struct SwitchCase {
   fall_through : Bool
   constant_dependencies : Array[Handle]
 } derive(Eq, @debug.Debug)
+pub fn SwitchCase::equal(Self, Self) -> Bool
+pub fn SwitchCase::not_equal(Self, Self) -> Bool
+pub fn SwitchCase::to_repr(Self) -> @debug.Repr
 
 pub(all) enum SwitchCaseLabelStyle {
   Typed
   SourceAbstractInt
 } derive(Eq, @debug.Debug)
+pub fn SwitchCaseLabelStyle::equal(Self, Self) -> Bool
+pub fn SwitchCaseLabelStyle::not_equal(Self, Self) -> Bool
+pub fn SwitchCaseLabelStyle::to_repr(Self) -> @debug.Repr
 
 pub(all) enum SwitchValue {
   I32(Int, SwitchCaseLabelStyle)
   U32(UInt, SwitchCaseLabelStyle)
   Default
 } derive(Eq, @debug.Debug)
+pub fn SwitchValue::equal(Self, Self) -> Bool
+pub fn SwitchValue::not_equal(Self, Self) -> Bool
+pub fn SwitchValue::to_repr(Self) -> @debug.Repr
 
 pub(all) enum SwizzleComponent {
   X
@@ -972,19 +1203,28 @@ pub(all) enum SwizzleComponent {
   Z
   W
 } derive(Eq, @debug.Debug)
+pub fn SwizzleComponent::equal(Self, Self) -> Bool
+pub fn SwizzleComponent::not_equal(Self, Self) -> Bool
+pub fn SwizzleComponent::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Type {
   name : String?
   inner : TypeInner
 } derive(Eq, @debug.Debug)
+pub fn Type::equal(Self, Self) -> Bool
+pub fn Type::not_equal(Self, Self) -> Bool
+pub fn Type::to_repr(Self) -> @debug.Repr
 
 pub(all) struct TypeArena {
   items : Array[Type]
 } derive(Eq, @debug.Debug)
 pub fn TypeArena::TypeArena() -> Self
 pub fn TypeArena::append(Self, Type) -> Handle
+pub fn TypeArena::equal(Self, Self) -> Bool
 pub fn TypeArena::get(Self, Handle) -> Type?
+pub fn TypeArena::not_equal(Self, Self) -> Bool
 pub fn TypeArena::set(Self, Handle, Type) -> Unit
+pub fn TypeArena::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TypeInner {
   Scalar(Scalar)
@@ -1003,18 +1243,27 @@ pub(all) enum TypeInner {
   RayQuery(Bool)
   BindingArray(Handle, ArraySize)
 } derive(Eq, @debug.Debug)
+pub fn TypeInner::equal(Self, Self) -> Bool
+pub fn TypeInner::not_equal(Self, Self) -> Bool
+pub fn TypeInner::to_repr(Self) -> @debug.Repr
 
 pub(all) enum UnaryOperator {
   Negate
   LogicalNot
   BitwiseNot
 } derive(Eq, @debug.Debug)
+pub fn UnaryOperator::equal(Self, Self) -> Bool
+pub fn UnaryOperator::not_equal(Self, Self) -> Bool
+pub fn UnaryOperator::to_repr(Self) -> @debug.Repr
 
 pub(all) enum VectorSize {
   Bi
   Tri
   Quad
 } derive(Eq, @debug.Debug)
+pub fn VectorSize::equal(Self, Self) -> Bool
+pub fn VectorSize::not_equal(Self, Self) -> Bool
+pub fn VectorSize::to_repr(Self) -> @debug.Repr
 pub fn VectorSize::width(Self) -> Int
 
 pub struct WgslIrReachability {
@@ -1060,4 +1309,3 @@ pub fn WgslIrTypeSpelling::type_name(Self, Handle) -> String raise WgslIrTypeSpe
 // Type aliases
 
 // Traits
-

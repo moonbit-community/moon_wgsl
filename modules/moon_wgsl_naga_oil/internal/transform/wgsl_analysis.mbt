@@ -148,7 +148,7 @@ pub fn new_wgsl_module_item_extractor_from_unit(
   source : String,
   unit : WgslTranslationUnit,
 ) -> WgslModuleItemExtractor {
-  { source, graph: build_wgsl_declaration_graph_from_unit(source, unit) }
+  { source, graph: build_wgsl_declaration_graph_from_unit(source, unit), }
 }
 
 ///|
@@ -262,7 +262,7 @@ fn build_wgsl_declaration_graph_from_unit(
     }
   }
 
-  { import_blocks, declaration_blocks }
+  { import_blocks, declaration_blocks, }
 }
 
 ///|
@@ -324,7 +324,7 @@ fn emit_wgsl_import_blocks_for_item_extraction(
   _source : String,
   graph : WgslDeclarationGraph,
 ) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for import_block in graph.import_blocks {
     out.write_string(emit_wgsl_graph_block_canonical(import_block))
   }
@@ -706,9 +706,9 @@ fn extract_wgsl_module_item_extraction_from_graph(
     }
   }
   if matched_requested == 0 {
-    return { source: "", origins, references: [] }
+    return { source: "", origins, references: [], }
   }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string(emit_wgsl_import_blocks_for_item_extraction(source, graph))
   let included_blocks : Array[WgslGraphBlock] = []
   for block in graph.declaration_blocks {

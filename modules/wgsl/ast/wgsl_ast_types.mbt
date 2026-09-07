@@ -20,7 +20,7 @@ pub fn WgslDirectiveTail::WgslDirectiveTail(
   end : Int,
   has_required_separator : Bool,
 ) -> WgslDirectiveTail {
-  { text, start, end, has_required_separator }
+  { text, start, end, has_required_separator, }
 }
 
 ///|
@@ -65,7 +65,7 @@ pub fn WgslDirective::WgslDirective(
   start : Int,
   end : Int,
 ) -> WgslDirective {
-  { kind, name, tail, start, end }
+  { kind, name, tail, start, end, }
 }
 
 ///|
@@ -136,7 +136,7 @@ pub struct WgslIdent {
 
 ///|
 pub fn WgslIdent::WgslIdent(name : String, start : Int, end : Int) -> WgslIdent {
-  { name, start, end }
+  { name, start, end, }
 }
 
 ///|
@@ -309,7 +309,7 @@ pub fn WgslExprToken::WgslExprToken(
   start : Int,
   end : Int,
 ) -> WgslExprToken {
-  { kind, text, start, end }
+  { kind, text, start, end, }
 }
 
 ///|
@@ -373,7 +373,7 @@ pub fn WgslExprNode::WgslExprNode(
   start : Int,
   end : Int,
 ) -> WgslExprNode {
-  { kind, start, end }
+  { kind, start, end, }
 }
 
 ///|
@@ -408,7 +408,7 @@ pub fn WgslExprRef::WgslExprRef(
   start : Int,
   end : Int,
 ) -> WgslExprRef {
-  { tokens, identifiers, root, start, end }
+  { tokens, identifiers, root, start, end, }
 }
 
 ///|
@@ -451,7 +451,7 @@ pub fn WgslAttribute::WgslAttribute(
   end : Int,
   arguments_ref : WgslExprRef?,
 ) -> WgslAttribute {
-  { name, start, end, arguments_ref }
+  { name, start, end, arguments_ref, }
 }
 
 ///|
@@ -502,7 +502,7 @@ pub fn WgslTypeAtom::WgslTypeAtom(
   start : Int,
   end : Int,
 ) -> WgslTypeAtom {
-  { kind, text, start, end }
+  { kind, text, start, end, }
 }
 
 ///|
@@ -553,7 +553,7 @@ pub fn WgslTypeRef::WgslTypeRef(
   for argument in arguments {
     template_arguments.push(Type(argument))
   }
-  { atom, arguments, template_arguments, start, end }
+  { atom, arguments, template_arguments, start, end, }
 }
 
 ///|
@@ -570,7 +570,7 @@ pub fn WgslTypeRef::new_with_template_arguments(
       Expression(_) => ()
     }
   }
-  { atom, arguments, template_arguments, start, end }
+  { atom, arguments, template_arguments, start, end, }
 }
 
 ///|
@@ -649,7 +649,7 @@ pub fn WgslFunctionArgument::WgslFunctionArgument(
   end : Int,
   ty_ref : WgslTypeRef?,
 ) -> WgslFunctionArgument {
-  { attributes, name, start, end, ty_ref }
+  { attributes, name, start, end, ty_ref, }
 }
 
 ///|
@@ -696,7 +696,7 @@ pub fn WgslFunctionResult::WgslFunctionResult(
   end : Int,
   ty_ref : WgslTypeRef?,
 ) -> WgslFunctionResult {
-  { attributes, start, end, ty_ref }
+  { attributes, start, end, ty_ref, }
 }
 
 ///|
@@ -770,7 +770,7 @@ pub fn WgslLocalDeclaration::WgslLocalDeclaration(
   ty_ref : WgslTypeRef?,
   initializer_ref : WgslExprRef?,
 ) -> WgslLocalDeclaration {
-  { kind, name, template_list, ty_ref, initializer_ref }
+  { kind, name, template_list, ty_ref, initializer_ref, }
 }
 
 ///|
@@ -836,7 +836,7 @@ pub fn WgslStatementExpression::WgslStatementExpression(
   role : WgslStatementExpressionRole,
   expression : WgslExprRef,
 ) -> WgslStatementExpression {
-  { role, expression }
+  { role, expression, }
 }
 
 ///|
@@ -995,7 +995,7 @@ pub fn WgslBlock::WgslBlock(
   end : Int,
   statements : Array[WgslStatement],
 ) -> WgslBlock {
-  { start, end, statements }
+  { start, end, statements, }
 }
 
 ///|
@@ -1139,7 +1139,7 @@ pub fn WgslStructMember::WgslStructMember(
   end : Int,
   ty_ref : WgslTypeRef?,
 ) -> WgslStructMember {
-  { attributes, name, start, end, ty_ref }
+  { attributes, name, start, end, ty_ref, }
 }
 
 ///|
@@ -1182,7 +1182,7 @@ pub fn WgslStruct::WgslStruct(
   name : WgslIdent,
   members : Array[WgslStructMember],
 ) -> WgslStruct {
-  { attributes, name, members }
+  { attributes, name, members, }
 }
 
 ///|
@@ -1217,7 +1217,7 @@ pub fn WgslGlobalVariable::WgslGlobalVariable(
   ty_ref : WgslTypeRef?,
   initializer_ref : WgslExprRef?,
 ) -> WgslGlobalVariable {
-  { attributes, name, template_list, ty_ref, initializer_ref }
+  { attributes, name, template_list, ty_ref, initializer_ref, }
 }
 
 ///|
@@ -1264,7 +1264,7 @@ pub fn WgslConst::WgslConst(
   ty_ref : WgslTypeRef?,
   initializer_ref : WgslExprRef?,
 ) -> WgslConst {
-  { name, ty_ref, initializer_ref }
+  { name, ty_ref, initializer_ref, }
 }
 
 ///|
@@ -1297,7 +1297,7 @@ pub fn WgslOverride::WgslOverride(
   ty_ref : WgslTypeRef?,
   initializer_ref : WgslExprRef?,
 ) -> WgslOverride {
-  { attributes, name, ty_ref, initializer_ref }
+  { attributes, name, ty_ref, initializer_ref, }
 }
 
 ///|
@@ -1331,7 +1331,7 @@ pub fn WgslTypeAlias::WgslTypeAlias(
   name : WgslIdent,
   ty_ref : WgslTypeRef?,
 ) -> WgslTypeAlias {
-  { name, ty_ref }
+  { name, ty_ref, }
 }
 
 ///|
@@ -1372,7 +1372,7 @@ pub fn WgslGlobalDecl::WgslGlobalDecl(
   start : Int,
   end : Int,
 ) -> WgslGlobalDecl {
-  { kind, data, start, end }
+  { kind, data, start, end, }
 }
 
 ///|
@@ -1431,3 +1431,165 @@ pub fn WgslTranslationUnit::declarations(
 ) -> Array[WgslGlobalDecl] {
   self.declarations.copy()
 }
+
+///|
+pub extend WgslAttribute with Debug::{to_repr}
+
+///|
+pub extend WgslBlock with Debug::{to_repr}
+
+///|
+pub extend WgslCaseSelector with Debug::{to_repr}
+
+///|
+pub extend WgslConst with Debug::{to_repr}
+
+///|
+pub extend WgslDirective with Debug::{to_repr}
+
+///|
+pub extend WgslDirectiveKind with Debug::{to_repr}
+
+///|
+pub extend WgslDirectiveKind with Eq::{not_equal, equal}
+
+///|
+pub extend WgslDirectiveTail with Debug::{to_repr}
+
+///|
+pub extend WgslExprNode with Debug::{to_repr}
+
+///|
+pub extend WgslExprNodeKind with Debug::{to_repr}
+
+///|
+pub extend WgslExprOperator with Debug::{to_repr}
+
+///|
+pub extend WgslExprOperator with Eq::{not_equal, equal}
+
+///|
+pub extend WgslExprRef with Debug::{to_repr}
+
+///|
+pub extend WgslExprToken with Debug::{to_repr}
+
+///|
+pub extend WgslExprTokenKind with Debug::{to_repr}
+
+///|
+pub extend WgslFunction with Debug::{to_repr}
+
+///|
+pub extend WgslFunctionArgument with Debug::{to_repr}
+
+///|
+pub extend WgslFunctionQualifier with Debug::{to_repr}
+
+///|
+pub extend WgslFunctionQualifier with Eq::{not_equal, equal}
+
+///|
+pub extend WgslFunctionResult with Debug::{to_repr}
+
+///|
+pub extend WgslGlobalDecl with Debug::{to_repr}
+
+///|
+pub extend WgslGlobalDeclData with Debug::{to_repr}
+
+///|
+pub extend WgslGlobalDeclKind with Debug::{to_repr}
+
+///|
+pub extend WgslGlobalDeclKind with Eq::{not_equal, equal}
+
+///|
+pub extend WgslGlobalVariable with Debug::{to_repr}
+
+///|
+pub extend WgslIdent with Debug::{to_repr}
+
+///|
+pub extend WgslLocalDeclaration with Debug::{to_repr}
+
+///|
+pub extend WgslLocalDeclarationKind with Debug::{to_repr}
+
+///|
+pub extend WgslLocalDeclarationKind with Eq::{not_equal, equal}
+
+///|
+pub extend WgslNumericLiteral with Debug::{to_repr}
+
+///|
+pub extend WgslNumericLiteral with Eq::{not_equal, equal}
+
+///|
+pub extend WgslNumericLiteralBase with Debug::{to_repr}
+
+///|
+pub extend WgslNumericLiteralBase with Eq::{not_equal, equal}
+
+///|
+pub extend WgslNumericLiteralCategory with Debug::{to_repr}
+
+///|
+pub extend WgslNumericLiteralCategory with Eq::{not_equal, equal}
+
+///|
+pub extend WgslNumericLiteralSuffix with Debug::{to_repr}
+
+///|
+pub extend WgslNumericLiteralSuffix with Eq::{not_equal, equal}
+
+///|
+pub extend WgslOverride with Debug::{to_repr}
+
+///|
+pub extend WgslStatement with Debug::{to_repr}
+
+///|
+pub extend WgslStatementExpression with Debug::{to_repr}
+
+///|
+pub extend WgslStatementExpressionRole with Debug::{to_repr}
+
+///|
+pub extend WgslStatementExpressionRole with Eq::{not_equal, equal}
+
+///|
+pub extend WgslStatementKind with Debug::{to_repr}
+
+///|
+pub extend WgslStatementKind with Eq::{not_equal, equal}
+
+///|
+pub extend WgslStatementPayload with Debug::{to_repr}
+
+///|
+pub extend WgslStruct with Debug::{to_repr}
+
+///|
+pub extend WgslStructMember with Debug::{to_repr}
+
+///|
+pub extend WgslTranslationUnit with Debug::{to_repr}
+
+///|
+pub extend WgslTypeAlias with Debug::{to_repr}
+
+///|
+pub extend WgslTypeArgument with Debug::{to_repr}
+
+///|
+pub extend WgslTypeAtom with Debug::{to_repr}
+
+///|
+pub extend WgslTypeAtomKind with Debug::{to_repr}
+
+///|
+pub extend WgslTypeAtomKind with Eq::{not_equal, equal}
+
+///|
+pub extend WgslTypeRef with Debug::{to_repr}

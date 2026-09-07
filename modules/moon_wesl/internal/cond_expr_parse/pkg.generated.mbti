@@ -15,12 +15,16 @@ pub suberror ParseError {
   UnexpectedToken(Token, (Int, Int), Array[TokenKind])
   UnexpectedEndOfInput(Int, Array[TokenKind])
 } derive(@debug.Debug)
+pub fn ParseError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) struct CondExprDiagnostic {
   offset : Int
   incomplete : Bool
 } derive(Eq, @debug.Debug)
+pub fn CondExprDiagnostic::equal(Self, Self) -> Bool
+pub fn CondExprDiagnostic::not_equal(Self, Self) -> Bool
+pub fn CondExprDiagnostic::to_repr(Self) -> @debug.Repr
 
 pub(all) enum CondExprNode {
   Literal(Bool)
@@ -29,11 +33,17 @@ pub(all) enum CondExprNode {
   And(CondExprNode, CondExprNode)
   Or(CondExprNode, CondExprNode)
 } derive(Eq, @debug.Debug)
+pub fn CondExprNode::equal(Self, Self) -> Bool
+pub fn CondExprNode::not_equal(Self, Self) -> Bool
+pub fn CondExprNode::to_repr(Self) -> @debug.Repr
 
 pub(all) enum CondExprParseResult {
   Parsed(CondExprNode)
   Failed(CondExprDiagnostic)
 } derive(Eq, @debug.Debug)
+pub fn CondExprParseResult::equal(Self, Self) -> Bool
+pub fn CondExprParseResult::not_equal(Self, Self) -> Bool
+pub fn CondExprParseResult::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Token {
   IDENT(String)
@@ -46,6 +56,7 @@ pub(all) enum Token {
   RIGHT_PAREN
 } derive(@debug.Debug)
 pub fn Token::kind(Self) -> TokenKind
+pub fn Token::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TokenKind {
   TK_IDENT
@@ -57,10 +68,12 @@ pub(all) enum TokenKind {
   TK_LEFT_PAREN
   TK_RIGHT_PAREN
 }
+pub fn TokenKind::output(Self, &Logger) -> Unit
+pub fn TokenKind::to_repr(Self) -> @debug.Repr
+pub fn TokenKind::to_string(Self) -> String
 pub impl Show for TokenKind
 pub impl @debug.Debug for TokenKind
 
 // Type aliases
 
 // Traits
-

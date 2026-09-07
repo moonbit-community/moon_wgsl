@@ -21,7 +21,7 @@ pub fn WgslImmediateSpecialization::WgslImmediateSpecialization(
   global_name : String,
   field_values : Map[String, ShaderDefValue],
 ) -> WgslImmediateSpecialization {
-  { rel_path, global_name, field_values }
+  { rel_path, global_name, field_values, }
 }
 
 ///|
@@ -55,7 +55,7 @@ pub fn WgslSourceMapEntry::WgslSourceMapEntry(
   rel_path : String,
   symbol_name : String?,
 ) -> WgslSourceMapEntry {
-  { rel_path, symbol_name }
+  { rel_path, symbol_name, }
 }
 
 ///|
@@ -80,7 +80,7 @@ pub fn WgslExportOutput::WgslExportOutput(
   source_map : Array[WgslSourceMapEntry],
   diagnostics : Array[WgslDiagnostic],
 ) -> WgslExportOutput {
-  { source, source_catalog, source_origins, source_map, diagnostics }
+  { source, source_catalog, source_origins, source_map, diagnostics, }
 }
 
 ///|
@@ -115,3 +115,39 @@ pub fn WgslExportOutput::diagnostics(
 ) -> Array[WgslDiagnostic] {
   self.diagnostics.copy()
 }
+
+///|
+pub extend WgslComposeOptions with Debug::{to_repr}
+
+///|
+pub extend WgslComposeOptions with Eq::{not_equal, equal}
+
+///|
+pub extend WgslExportOptions with Debug::{to_repr}
+
+///|
+pub extend WgslExportOptions with Eq::{not_equal, equal}
+
+///|
+pub extend WgslExportOutput with Debug::{to_repr}
+
+///|
+pub extend WgslExportOutput with Eq::{not_equal, equal}
+
+///|
+pub extend WgslImmediateSpecialization with Debug::{to_repr}
+
+///|
+pub extend WgslImmediateSpecialization with Eq::{not_equal, equal}
+
+///|
+pub extend WgslSourceMapEntry with Debug::{to_repr}
+
+///|
+pub extend WgslSourceMapEntry with Eq::{not_equal, equal}
+
+///|
+pub extend WgslSymbolRedirect with Debug::{to_repr}
+
+///|
+pub extend WgslSymbolRedirect with Eq::{not_equal, equal}

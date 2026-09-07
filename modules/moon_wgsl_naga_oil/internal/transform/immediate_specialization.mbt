@@ -200,7 +200,7 @@ pub fn specialize_wgsl_immediate_globals(
       )
     }
   }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let mut cursor = 0
   for replacement in replacements {
     out.write_string(source[cursor:replacement.start].to_owned())

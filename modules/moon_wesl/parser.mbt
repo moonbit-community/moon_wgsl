@@ -252,12 +252,12 @@ priv struct Parser {
 
 ///|
 fn Parser::new(source : String) -> Parser {
-  { source, tokens: parser_lex(source), position: 0 }
+  { source, tokens: parser_lex(source), position: 0, }
 }
 
 ///|
 fn Parser::from_tokens(source : String, tokens : Array[ParserToken]) -> Parser {
-  { source, tokens, position: 0 }
+  { source, tokens, position: 0, }
 }
 
 ///|
@@ -321,7 +321,7 @@ fn Parser::item_span(self : Parser) -> SyntaxSpan raise WeslCompileError {
   match self.tokens[:] {
     [first, ..] =>
       match self.tokens.last() {
-        Some(last) => { start_line: first.line(), end_line: last.line() }
+        Some(last) => { start_line: first.line(), end_line: last.line(), }
         None => self.error("empty top-level item")
       }
     [] => self.error("empty top-level item")
@@ -453,7 +453,7 @@ fn parser_import_node_from_generated(
   for child in node.children {
     children.push(parser_import_node_from_generated(child))
   }
-  { path_segments: node.path_segments, rename: node.rename, children }
+  { path_segments: node.path_segments, rename: node.rename, children, }
 }
 
 ///|
@@ -622,7 +622,12 @@ fn parser_type_expression_from_wgsl(
         )
     }
   }
-  { path, ident: parts[parts.length() - 1], template_text: None, template_args }
+  {
+    path,
+    ident: parts[parts.length() - 1],
+    template_text: None,
+    template_args,
+  }
 }
 
 ///|
@@ -722,7 +727,7 @@ fn parser_parse_const_assert_declaration(
 fn parser_diagnostic_directive_from_arguments(
   arguments : Array[String],
 ) -> DiagnosticDirectiveDeclaration {
-  { arguments, severity: arguments.get(0), rule_name: arguments.get(1) }
+  { arguments, severity: arguments.get(0), rule_name: arguments.get(1), }
 }
 
 ///|
@@ -1747,7 +1752,7 @@ fn parser_statement_while_control(
   let (body, _) = parser_parse_braced_statement_body(
     source, body_start, item_source,
   )
-  While({ condition, body })
+  While({ condition, body, })
 }
 
 ///|
@@ -1781,7 +1786,7 @@ fn parser_statement_if_control(
   } else {
     None
   }
-  If({ condition, body, else_body })
+  If({ condition, body, else_body, })
 }
 
 ///|
@@ -1822,7 +1827,7 @@ fn parser_statement_attributes(
             attr.name,
             attr.arguments,
           ),
-          span: { start_line: attr.start_line, end_line: attr.end_line },
+          span: { start_line: attr.start_line, end_line: attr.end_line, },
         })
       }
       attrs
@@ -2027,7 +2032,7 @@ fn parser_function_body_from_generated(
       attributes: parser_statement_attributes(statement.source),
     })
   }
-  { statements: mapped }
+  { statements: mapped, }
 }
 
 ///|
@@ -2242,7 +2247,7 @@ fn Parser::parse_global_declaration(
         item_source,
         struct_.members(),
       )
-      Struct({ name, members })
+      Struct({ name, members, })
     }
     Parsed(Alias(name)) => {
       parser_validate_declaration_ident(name)
@@ -2317,11 +2322,11 @@ fn Parser::parse_global_declaration(
       ConstAssert(parser_parse_const_assert_declaration(item_source))
     Parsed(EnableDirective) => {
       let directive = self.parse_directive_with_yacc(item_source)
-      EnableDirective({ names: directive.arguments })
+      EnableDirective({ names: directive.arguments, })
     }
     Parsed(RequiresDirective) => {
       let directive = self.parse_directive_with_yacc(item_source)
-      RequiresDirective({ names: directive.arguments })
+      RequiresDirective({ names: directive.arguments, })
     }
     Parsed(DiagnosticDirective) => {
       let directive = self.parse_directive_with_yacc(item_source)
@@ -2346,7 +2351,7 @@ fn Parser::parse_global_declaration(
       )
     }
   }
-  { header, attributes: attrs, source: item_source, span }
+  { header, attributes: attrs, source: item_source, span, }
 }
 
 ///|
@@ -2411,5 +2416,5 @@ pub fn parse_translation_unit(
     }
     global_declarations.push(item_parser.parse_global_declaration())
   }
-  { imports, global_declarations }
+  { imports, global_declarations, }
 }

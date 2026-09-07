@@ -31,3 +31,9 @@ pub fn ComposableModuleDescriptor::default() -> ComposableModuleDescriptor {
     shader_defs: Map([]),
   }
 }
+
+///|
+pub extend ComposableModuleDescriptor with Debug::{to_repr}
+
+///|
+pub extend ComposableModuleDescriptor with Eq::{not_equal, equal}

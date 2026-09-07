@@ -119,3 +119,9 @@ pub fn Module::append_entry_point(
 ) -> Unit {
   self.entry_points.push(entry_point)
 }
+
+///|
+pub extend Module with Debug::{to_repr}
+
+///|
+pub extend Module with Eq::{not_equal, equal}

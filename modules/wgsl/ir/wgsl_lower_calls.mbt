@@ -907,7 +907,7 @@ fn WgslIrLowerer::lower_texture_trailing_args(
   } else {
     None
   }
-  { array_index, trailing, offset }
+  { array_index, trailing, offset, }
 }
 
 ///|

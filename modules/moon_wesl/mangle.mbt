@@ -31,7 +31,7 @@ pub fn ManglerKind::default() -> ManglerKind {
 ///|
 #warnings("-unnecessary_annotation")
 pub fn EscapeMangler::default() -> EscapeMangler {
-  EscapeMangler::{  }
+  EscapeMangler::{ }
 }
 
 ///|
@@ -296,3 +296,9 @@ pub fn ManglerKind::unmangle(
     Hash | None => None
   }
 }
+
+///|
+pub extend ManglerKind with Debug::{to_repr}
+
+///|
+pub extend ManglerKind with Eq::{not_equal, equal}

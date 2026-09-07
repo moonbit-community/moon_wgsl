@@ -375,3 +375,39 @@ fn WgslNagaCompatibilityView::spelling_for_mode(
     Visible(rel_path) => self.local_spelling(source_name, rel_path)
   }
 }
+
+///|
+pub extend WgslNagaDeclarationKind with Debug::{to_repr}
+
+///|
+pub extend WgslNagaDeclarationKind with Eq::{not_equal, equal}
+
+///|
+pub extend WgslNagaGeneratedImportProvenance with Debug::{to_repr}
+
+///|
+pub extend WgslNagaGeneratedImportProvenance with Eq::{not_equal, equal}
+
+///|
+pub extend WgslNagaGeneratedImportProvenanceKind with Debug::{to_repr}
+
+///|
+pub extend WgslNagaGeneratedImportProvenanceKind with Eq::{not_equal, equal}
+
+///|
+pub extend WgslNagaImportArenaEvent with Debug::{to_repr}
+
+///|
+pub extend WgslNagaImportArenaEvent with Eq::{not_equal, equal}
+
+///|
+pub extend WgslNagaImportArenaSymbol with Debug::{to_repr}
+
+///|
+pub extend WgslNagaImportArenaSymbol with Eq::{not_equal, equal}
+
+///|
+pub extend WgslNagaImportEdgeKind with Debug::{to_repr}
+
+///|
+pub extend WgslNagaImportEdgeKind with Eq::{not_equal, equal}

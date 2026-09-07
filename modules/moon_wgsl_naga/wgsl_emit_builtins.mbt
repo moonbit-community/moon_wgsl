@@ -258,7 +258,7 @@ fn wgsl_ir_swizzle_component_name(component : SwizzleComponent) -> String {
 
 ///|
 fn wgsl_ir_indent(count : Int) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for _ in 0..<count {
     out.write_string("    ")
   }

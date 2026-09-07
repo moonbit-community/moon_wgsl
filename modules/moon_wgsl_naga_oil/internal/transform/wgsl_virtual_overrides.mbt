@@ -119,7 +119,7 @@ pub fn rewrite_wgsl_override_targets_with_binding_plan(
     return source
   }
   let graph = build_wgsl_declaration_graph(source)
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for import_block in graph.import_blocks {
     out.write_string(emit_wgsl_graph_block_canonical(import_block))
   }
@@ -396,7 +396,7 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
             Some((_, name)) => name
             None => raw_target
           }
-          return { source, invalid_override: Some(invalid_target_name) }
+          return { source, invalid_override: Some(invalid_target_name), }
         }
         let needs_base = wgsl_override_body_references_target(
           function,
@@ -434,9 +434,9 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
     }
   }
   if virtual_names.is_empty() || overrides.is_empty() {
-    return { source, invalid_override: None }
+    return { source, invalid_override: None, }
   }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for import_block in graph.import_blocks {
     out.write_string(emit_wgsl_graph_block_canonical(import_block))
   }
@@ -486,7 +486,7 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
       )
     }
   }
-  { source: out.to_string(), invalid_override: None }
+  { source: out.to_string(), invalid_override: None, }
 }
 
 ///|
@@ -520,7 +520,7 @@ pub fn strip_wgsl_virtual_functions(
   if !saw_virtual {
     return source
   }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let emitted_names : @set.Set[String] = Set([])
   for import_block in graph.import_blocks {
     out.write_string(emit_wgsl_graph_block_canonical(import_block))

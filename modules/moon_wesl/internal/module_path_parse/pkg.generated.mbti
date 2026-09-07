@@ -15,23 +15,33 @@ pub suberror ParseError {
   UnexpectedToken(Token, (Int, Int), Array[TokenKind])
   UnexpectedEndOfInput(Int, Array[TokenKind])
 } derive(@debug.Debug)
+pub fn ParseError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) struct ModulePathParseDiagnostic {
   offset : Int
   problem : ModulePathParseProblem
 } derive(Eq, @debug.Debug)
+pub fn ModulePathParseDiagnostic::equal(Self, Self) -> Bool
+pub fn ModulePathParseDiagnostic::not_equal(Self, Self) -> Bool
+pub fn ModulePathParseDiagnostic::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ModulePathParseNode {
   origin : ModulePathParseOrigin
   components : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn ModulePathParseNode::equal(Self, Self) -> Bool
+pub fn ModulePathParseNode::not_equal(Self, Self) -> Bool
+pub fn ModulePathParseNode::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ModulePathParseOrigin {
   Absolute
   Relative(Int)
   Package(String)
 } derive(Eq, @debug.Debug)
+pub fn ModulePathParseOrigin::equal(Self, Self) -> Bool
+pub fn ModulePathParseOrigin::not_equal(Self, Self) -> Bool
+pub fn ModulePathParseOrigin::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ModulePathParseProblem {
   Empty
@@ -39,11 +49,17 @@ pub(all) enum ModulePathParseProblem {
   MisplacedSelf
   MisplacedSuper
 } derive(Eq, @debug.Debug)
+pub fn ModulePathParseProblem::equal(Self, Self) -> Bool
+pub fn ModulePathParseProblem::not_equal(Self, Self) -> Bool
+pub fn ModulePathParseProblem::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ModulePathParseResult {
   Parsed(ModulePathParseNode)
   Failed(ModulePathParseDiagnostic)
 } derive(Eq, @debug.Debug)
+pub fn ModulePathParseResult::equal(Self, Self) -> Bool
+pub fn ModulePathParseResult::not_equal(Self, Self) -> Bool
+pub fn ModulePathParseResult::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Token {
   SEGMENT(String)
@@ -53,6 +69,7 @@ pub(all) enum Token {
   DOUBLE_COLON
 } derive(@debug.Debug)
 pub fn Token::kind(Self) -> TokenKind
+pub fn Token::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TokenKind {
   TK_SEGMENT
@@ -61,10 +78,12 @@ pub(all) enum TokenKind {
   TK_SUPER
   TK_DOUBLE_COLON
 }
+pub fn TokenKind::output(Self, &Logger) -> Unit
+pub fn TokenKind::to_repr(Self) -> @debug.Repr
+pub fn TokenKind::to_string(Self) -> String
 pub impl Show for TokenKind
 pub impl @debug.Debug for TokenKind
 
 // Type aliases
 
 // Traits
-

@@ -287,7 +287,7 @@ fn WgslDeclParser::parse_typed_initializer_tail_checked(
     _ => raise UnexpectedToken
   }
   match parsed {
-    (ty_ref, initializer_ref) => { ty_ref, initializer_ref }
+    (ty_ref, initializer_ref) => { ty_ref, initializer_ref, }
   }
 }
 

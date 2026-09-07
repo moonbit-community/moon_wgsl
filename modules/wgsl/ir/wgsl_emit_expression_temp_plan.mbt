@@ -400,7 +400,7 @@ fn WgslIrFinalNamePlan::expression_alias_name(
 fn wgsl_ir_writer_swizzle_components(
   components : Array[SwizzleComponent],
 ) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for component in components {
     out.write_string(wgsl_ir_swizzle_component_name(component))
   }

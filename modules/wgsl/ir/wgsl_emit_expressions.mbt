@@ -392,7 +392,7 @@ fn WgslIrEmitter::folded_float_vector_binary_expression(
   }
   guard shape is Some((size, scalar)) else { return None }
   guard values.length() == size.width() else { return None }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string("vec\{size.width()}<\{self.scalar_name(scalar)}>(")
   for index in 0..<values.length() {
     if index > 0 {
@@ -419,7 +419,7 @@ fn WgslIrEmitter::float_vector_shape_from_lane_count(
     4 => Quad
     _ => return None
   }
-  Some((size, { kind: Float, width: 4 }))
+  Some((size, { kind: Float, width: 4, }))
 }
 
 ///|
@@ -461,7 +461,7 @@ fn WgslIrEmitter::float_vector_expression_shape(
                   },
                 ),
               )
-            AbstractFloat => Some((size, { kind: Float, width: 4 }))
+            AbstractFloat => Some((size, { kind: Float, width: 4, }))
             _ => None
           }
         _ => None
@@ -620,7 +620,7 @@ fn WgslIrEmitter::function_call_argument_list(
   arguments : Array[Handle],
   function : Function?,
 ) -> String raise WgslIrEmitError {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let callee_function = self.shader_module.functions.items.get(callee.index())
   for i in 0..<arguments.length() {
     if i > 0 {
@@ -756,7 +756,7 @@ fn WgslIrEmitter::compose_component_list(
   match self.matrix_scalar_component_list(ty, components, function) {
     Some(value) => value
     None => {
-      let out = StringBuilder::new()
+      let out = StringBuilder()
       let scalar_context = if self.options.contextualize_numeric_literals() {
         self.compose_component_scalar_context(ty, components, function)
       } else {
@@ -834,7 +834,7 @@ fn WgslIrEmitter::contextual_scalar_literal(
         None =>
           self.compose_constructor_name_for_components(ty, components, function)
       }
-      let out = StringBuilder::new()
+      let out = StringBuilder()
       for i in 0..<components.length() {
         if i > 0 {
           out.write_string(", ")
@@ -996,7 +996,7 @@ fn WgslIrEmitter::matrix_scalar_component_list(
       return None
     }
   }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for column_index in 0..<columns_len {
     if column_index > 0 {
       out.write_string(", ")
@@ -1103,7 +1103,7 @@ fn WgslIrEmitter::image_sample_expression(
         Zero => "textureSampleLevel"
       }
   }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string(
     "\{callee}(\{self.required_function_expression(function, image)}, \{self.required_function_expression(function, sampler)}, \{self.required_function_expression(function, coordinate)}",
   )
@@ -1158,7 +1158,7 @@ fn WgslIrEmitter::atomic_call_expression(
   guard arguments is [pointer, .. rest] else {
     raise Unsupported("atomic call without pointer")
   }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let pointer_text = self.pointer_builtin_argument_expression(function, pointer)
   out.write_string(
     "\{self.atomic_function_name(atomic_function)}(\{pointer_text}",
@@ -1285,7 +1285,7 @@ fn WgslIrEmitter::image_gather_expression(
   } else {
     "textureGather"
   }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string("\{callee}(")
   if depth_ref == None && !self.image_expression_is_depth(function, image) {
     out.write_string("\{wgsl_ir_gather_component_index(component)}, ")
@@ -1348,7 +1348,7 @@ fn WgslIrEmitter::image_load_expression(
   sample : Handle?,
   level : Handle?,
 ) -> String raise WgslIrEmitError {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string(
     "textureLoad(\{self.required_function_expression(function, image)}, \{self.required_function_expression(function, coordinate)}",
   )
@@ -1386,7 +1386,7 @@ fn WgslIrEmitter::image_query_expression(
 ) -> String raise WgslIrEmitError {
   match query {
     Size(level) => {
-      let out = StringBuilder::new()
+      let out = StringBuilder()
       out.write_string(
         "textureDimensions(\{self.required_function_expression(function, image)}",
       )
@@ -1730,7 +1730,7 @@ fn WgslIrEmitter::swizzle_components(
   components : Array[SwizzleComponent],
 ) -> String {
   ignore(self)
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for component in components {
     out.write_string(wgsl_ir_swizzle_component_name(component))
   }
@@ -1755,7 +1755,7 @@ fn WgslIrEmitter::expression_list(
   handles : Array[Handle],
   function : Function?,
 ) -> String raise WgslIrEmitError {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for index in 0..<handles.length() {
     if index > 0 {
       out.write_string(", ")
@@ -1797,7 +1797,7 @@ fn WgslIrEmitter::math_argument_list(
   } else {
     None
   }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for index in 0..<handles.length() {
     if index > 0 {
       out.write_string(", ")

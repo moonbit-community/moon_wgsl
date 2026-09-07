@@ -1,10 +1,10 @@
 name = "Milky2018/moon_wgsl_naga_oil"
 
-version = "0.17.0"
+version = "0.17.1"
 
 import {
-  "Milky2018/wgsl@0.17.0",
-  "Milky2018/moon_wgsl_naga@0.17.0",
+  "Milky2018/wgsl@0.17.1",
+  "Milky2018/moon_wgsl_naga@0.17.1",
 }
 
 readme = "README.mbt.md"
@@ -19,5 +19,5 @@ description = "naga-oil compatible preprocessing and composition for MoonBit WGS
 
 rule(
   name: "moonyacc-array",
-  command: "moon runwasm moonbitlang/yacc@0.7.18 $input --input-mode array -o $output && moonfmt -w $output",
+  command: "moon runwasm moonbitlang/yacc@0.7.19 $input --input-mode array -o $output && moonfmt -w $output",
 )

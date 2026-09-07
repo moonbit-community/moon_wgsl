@@ -53,7 +53,7 @@ fn Composer::active_compose_defs_for_rel_path(
       )
     }
   }
-  { defines, value_defines, shader_defs, cache_text: None }
+  { defines, value_defines, shader_defs, cache_text: None, }
 }
 
 ///|

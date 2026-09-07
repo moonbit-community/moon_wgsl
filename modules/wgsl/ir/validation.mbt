@@ -65,7 +65,7 @@ pub fn WgslIrValidationError::message(self : WgslIrValidationError) -> String {
 pub fn validate_wgsl_ir_module(
   shader_module : Module,
 ) -> Unit raise WgslIrValidationError {
-  let validator = WgslIrValidator::{ shader_module, filter: None }
+  let validator = WgslIrValidator::{ shader_module, filter: None, }
   validator.validate_module()
 }
 
@@ -74,7 +74,7 @@ fn validate_wgsl_ir_module_with_filter(
   shader_module : Module,
   filter : WgslIrReachability,
 ) -> Unit raise WgslIrValidationError {
-  let validator = WgslIrValidator::{ shader_module, filter: Some(filter) }
+  let validator = WgslIrValidator::{ shader_module, filter: Some(filter), }
   validator.validate_module()
 }
 

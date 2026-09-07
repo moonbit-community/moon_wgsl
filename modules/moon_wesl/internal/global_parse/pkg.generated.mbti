@@ -15,12 +15,16 @@ pub suberror ParseError {
   UnexpectedToken(Token, (Int, Int), Array[TokenKind])
   UnexpectedEndOfInput(Int, Array[TokenKind])
 } derive(@debug.Debug)
+pub fn ParseError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) struct GlobalParseDiagnostic {
   offset : Int
   incomplete : Bool
 } derive(Eq, @debug.Debug)
+pub fn GlobalParseDiagnostic::equal(Self, Self) -> Bool
+pub fn GlobalParseDiagnostic::not_equal(Self, Self) -> Bool
+pub fn GlobalParseDiagnostic::to_repr(Self) -> @debug.Repr
 
 pub(all) enum GlobalParseHeader {
   Function(String)
@@ -36,16 +40,25 @@ pub(all) enum GlobalParseHeader {
   DiagnosticDirective
   Other
 } derive(Eq, @debug.Debug)
+pub fn GlobalParseHeader::equal(Self, Self) -> Bool
+pub fn GlobalParseHeader::not_equal(Self, Self) -> Bool
+pub fn GlobalParseHeader::to_repr(Self) -> @debug.Repr
 
 pub(all) enum GlobalParseResult {
   Parsed(GlobalParseHeader)
   Failed(GlobalParseDiagnostic)
 } derive(Eq, @debug.Debug)
+pub fn GlobalParseResult::equal(Self, Self) -> Bool
+pub fn GlobalParseResult::not_equal(Self, Self) -> Bool
+pub fn GlobalParseResult::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GlobalParseVar {
   name : String?
   template_arguments : String?
 } derive(Eq, @debug.Debug)
+pub fn GlobalParseVar::equal(Self, Self) -> Bool
+pub fn GlobalParseVar::not_equal(Self, Self) -> Bool
+pub fn GlobalParseVar::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Token {
   IDENT(String)
@@ -65,6 +78,7 @@ pub(all) enum Token {
   OTHER
 } derive(@debug.Debug)
 pub fn Token::kind(Self) -> TokenKind
+pub fn Token::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TokenKind {
   TK_IDENT
@@ -83,10 +97,12 @@ pub(all) enum TokenKind {
   TK_DIAGNOSTIC
   TK_OTHER
 }
+pub fn TokenKind::output(Self, &Logger) -> Unit
+pub fn TokenKind::to_repr(Self) -> @debug.Repr
+pub fn TokenKind::to_string(Self) -> String
 pub impl Show for TokenKind
 pub impl @debug.Debug for TokenKind
 
 // Type aliases
 
 // Traits
-

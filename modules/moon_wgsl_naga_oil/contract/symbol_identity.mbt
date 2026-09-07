@@ -17,7 +17,7 @@ pub fn WgslComposeSymbolIdentity::WgslComposeSymbolIdentity(
   rel_path : String,
   original_name : String,
 ) -> WgslComposeSymbolIdentity {
-  { rel_path, original_name, key: "\{rel_path}|\{original_name}" }
+  { rel_path, original_name, key: "\{rel_path}|\{original_name}", }
 }
 
 ///|
@@ -48,7 +48,7 @@ pub fn WgslComposeAliasSymbolIdentity::WgslComposeAliasSymbolIdentity(
   original_name : String,
 ) -> WgslComposeAliasSymbolIdentity {
   let symbol = WgslComposeSymbolIdentity(rel_path, original_name)
-  { alias_name, symbol, key: "\{alias_name}|\{symbol.key()}" }
+  { alias_name, symbol, key: "\{alias_name}|\{symbol.key()}", }
 }
 
 ///|
@@ -71,3 +71,15 @@ pub fn WgslComposeAliasSymbolIdentity::symbol(
 ) -> WgslComposeSymbolIdentity {
   self.symbol
 }
+
+///|
+pub extend WgslComposeAliasSymbolIdentity with Debug::{to_repr}
+
+///|
+pub extend WgslComposeAliasSymbolIdentity with Eq::{not_equal, equal}
+
+///|
+pub extend WgslComposeSymbolIdentity with Debug::{to_repr}
+
+///|
+pub extend WgslComposeSymbolIdentity with Eq::{not_equal, equal}

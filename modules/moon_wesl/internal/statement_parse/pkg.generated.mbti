@@ -15,16 +15,23 @@ pub suberror ParseError {
   UnexpectedToken(Token, (Int, Int), Array[TokenKind])
   UnexpectedEndOfInput(Int, Array[TokenKind])
 } derive(@debug.Debug)
+pub fn ParseError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) struct FunctionBodyParseNode {
   statements : Array[StatementParseNode]
 } derive(Eq, @debug.Debug)
+pub fn FunctionBodyParseNode::equal(Self, Self) -> Bool
+pub fn FunctionBodyParseNode::not_equal(Self, Self) -> Bool
+pub fn FunctionBodyParseNode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StatementParseDiagnostic {
   offset : Int
   incomplete : Bool
 } derive(Eq, @debug.Debug)
+pub fn StatementParseDiagnostic::equal(Self, Self) -> Bool
+pub fn StatementParseDiagnostic::not_equal(Self, Self) -> Bool
+pub fn StatementParseDiagnostic::to_repr(Self) -> @debug.Repr
 
 pub(all) enum StatementParseKind {
   Empty
@@ -51,29 +58,41 @@ pub(all) enum StatementParseKind {
   Call
   Other
 } derive(Eq, @debug.Debug)
+pub fn StatementParseKind::equal(Self, Self) -> Bool
+pub fn StatementParseKind::not_equal(Self, Self) -> Bool
+pub fn StatementParseKind::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StatementParseNode {
   kind : StatementParseKind
   source : String
 } derive(Eq, @debug.Debug)
+pub fn StatementParseNode::equal(Self, Self) -> Bool
+pub fn StatementParseNode::not_equal(Self, Self) -> Bool
+pub fn StatementParseNode::to_repr(Self) -> @debug.Repr
 
 pub(all) enum StatementParseResult {
   Parsed(FunctionBodyParseNode)
   Failed(StatementParseDiagnostic)
 } derive(Eq, @debug.Debug)
+pub fn StatementParseResult::equal(Self, Self) -> Bool
+pub fn StatementParseResult::not_equal(Self, Self) -> Bool
+pub fn StatementParseResult::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Token {
   STATEMENT(StatementParseNode)
 } derive(@debug.Debug)
 pub fn Token::kind(Self) -> TokenKind
+pub fn Token::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TokenKind {
   TK_STATEMENT
 }
+pub fn TokenKind::output(Self, &Logger) -> Unit
+pub fn TokenKind::to_repr(Self) -> @debug.Repr
+pub fn TokenKind::to_string(Self) -> String
 pub impl Show for TokenKind
 pub impl @debug.Debug for TokenKind
 
 // Type aliases
 
 // Traits
-

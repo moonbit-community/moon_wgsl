@@ -35,7 +35,7 @@ fn build_wgsl_ir_runtime_writer_module(
   let filter = wgsl_ir_reachability_from_optional_roots(
     shader_module, root_items,
   )
-  let planner = WgslIrWriterPlanner::{ shader_module, filter }
+  let planner = WgslIrWriterPlanner::{ shader_module, filter, }
   let derived = planner.derived_module_view()
   let arena = planner.runtime_writer_arena()
   let view = WgslIrWriterModule::{

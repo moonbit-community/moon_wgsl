@@ -81,7 +81,7 @@ fn validation_upstream_compute_source() -> String {
     composer,
     "compute_test.wgsl",
     validation_compose_options(validation_empty_defines()),
-    { root_items: ["run_test"] },
+    { root_items: ["run_test"], },
   ) catch {
     err => abort("expected upstream compute export success: \{err.message()}")
   }

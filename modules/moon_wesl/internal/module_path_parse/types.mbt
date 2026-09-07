@@ -87,7 +87,7 @@ fn module_path_parse_problem_for_token(token : Token) -> ModulePathParseProblem 
 fn module_path_parse_lex(source : String) -> ModulePathLexResult {
   let text = source.trim()
   if text.length() == 0 {
-    return LexFailed({ offset: 0, problem: Empty })
+    return LexFailed({ offset: 0, problem: Empty, })
   }
   let tokens : Array[(Token, Int, Int)] = []
   let mut index = 0
@@ -105,7 +105,7 @@ fn module_path_parse_lex(source : String) -> ModulePathLexResult {
         index += 1
       }
       if start == index {
-        return LexFailed({ offset: start, problem: Empty })
+        return LexFailed({ offset: start, problem: Empty, })
       }
       let segment = text[start:index].to_owned()
       tokens.push((module_path_parse_token_for_segment(segment), start, index))
@@ -120,10 +120,10 @@ fn module_path_parse_lex(source : String) -> ModulePathLexResult {
       expect_segment = true
       continue
     }
-    return LexFailed({ offset: index, problem: Empty })
+    return LexFailed({ offset: index, problem: Empty, })
   }
   if expect_segment {
-    return LexFailed({ offset: text.length(), problem: Empty })
+    return LexFailed({ offset: text.length(), problem: Empty, })
   }
   Lexed(tokens)
 }
@@ -141,13 +141,43 @@ pub fn parse_module_path_source(source : String) -> ModulePathParseResult {
         problem: module_path_parse_problem_for_token(token),
       })
     UnexpectedEndOfInput(start, _) =>
-      return Failed({ offset: start, problem: Empty })
+      return Failed({ offset: start, problem: Empty, })
   }
   for component in path.components {
     match module_path_parse_problem_for_segment(component) {
-      Some(problem) => return Failed({ offset: 0, problem })
+      Some(problem) => return Failed({ offset: 0, problem, })
       None => ()
     }
   }
   Parsed(path)
 }
+
+///|
+pub extend ModulePathParseDiagnostic with Debug::{to_repr}
+
+///|
+pub extend ModulePathParseDiagnostic with Eq::{not_equal, equal}
+
+///|
+pub extend ModulePathParseNode with Debug::{to_repr}
+
+///|
+pub extend ModulePathParseNode with Eq::{not_equal, equal}
+
+///|
+pub extend ModulePathParseOrigin with Debug::{to_repr}
+
+///|
+pub extend ModulePathParseOrigin with Eq::{not_equal, equal}
+
+///|
+pub extend ModulePathParseProblem with Debug::{to_repr}
+
+///|
+pub extend ModulePathParseProblem with Eq::{not_equal, equal}
+
+///|
+pub extend ModulePathParseResult with Debug::{to_repr}
+
+///|
+pub extend ModulePathParseResult with Eq::{not_equal, equal}

@@ -203,7 +203,7 @@ fn WgslIrLowerer::lower_for_statement(
       let condition = self.lower_for_loop_condition_ref(
         condition_ref, function, loop_scope, loop_body,
       )
-      loop_body.push(If(condition, Block(), { statements: [Break] }))
+      loop_body.push(If(condition, Block(), { statements: [Break], }))
     }
     None => ()
   }

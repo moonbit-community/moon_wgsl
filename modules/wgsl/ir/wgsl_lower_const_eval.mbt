@@ -860,13 +860,13 @@ fn WgslIrLowerer::folded_function_float_literal_for_expression_with_expected(
     return AbstractFloat(value)
   }
   match type_.inner {
-    Scalar({ kind: Float, width: 4 }) =>
+    Scalar({ kind: Float, width: 4, }) =>
       if wgsl_ir_function_expression_is_computed_float_fold(function, handle) {
         F32Exact(Float::from_double(value))
       } else {
         F32(Float::from_double(value))
       }
-    Scalar({ kind: Float, width }) =>
+    Scalar({ kind: Float, width, }) =>
       wgsl_ir_float_literal_for_scalar_width(value, width)
     _ =>
       if wgsl_ir_function_expression_is_computed_float_fold(function, handle) &&
@@ -932,7 +932,7 @@ fn WgslIrLowerer::constant_is_concrete_f32(
   match self.shader_module.constants.items.get(handle.index()) {
     Some(constant) =>
       match self.shader_module.types.get(constant.ty) {
-        Some({ inner: Scalar({ kind: Float, width: 4 }), .. }) => true
+        Some({ inner: Scalar({ kind: Float, width: 4, }), .. }) => true
         _ => false
       }
     None => false
@@ -969,7 +969,7 @@ fn WgslIrLowerer::fold_function_constant_float_vector_expression(
   let (size, scalar) = match type_.inner {
     Vector(size, scalar) => {
       let scalar = match scalar.kind {
-        AbstractFloat => Scalar::{ kind: Float, width: 4 }
+        AbstractFloat => Scalar::{ kind: Float, width: 4, }
         Float => scalar
         _ => return None
       }

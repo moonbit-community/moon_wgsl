@@ -13,7 +13,7 @@ fn WgslExprNodeParser::WgslExprNodeParser(
   source_start : Int,
   tokens : Array[WgslExprToken],
 ) -> WgslExprNodeParser {
-  { source_text, source_start, tokens, index: 0, failed: false }
+  { source_text, source_start, tokens, index: 0, failed: false, }
 }
 
 ///|

@@ -29,7 +29,7 @@ fn drop_wgsl_import_directives_from_scan_items(
   items : Array[WgslDirectiveScanItem],
   source : String,
 ) -> String {
-  let out = StringBuilder::new(size_hint=source.length())
+  let out = StringBuilder(size_hint=source.length())
   for item in items {
     match item.kind() {
       Directive(directive) if directive.kind() == Import => ()
@@ -221,7 +221,7 @@ fn WgslComposeEmitter::emit_source_with_path(
         )
     }
   }
-  let merged = StringBuilder::new(size_hint=prepared.active_source.length())
+  let merged = StringBuilder(size_hint=prepared.active_source.length())
   let bindings = WgslComposeBindingSet()
   for binding in inherited_bindings.bindings {
     bindings.push(binding)
@@ -687,7 +687,7 @@ pub fn Composer::prepare_wgsl_source(
     normalize_shader_rel_path(rel),
   )
   let source_files : Array[WgslSourceFile] = [
-    { rel_path: normalize_shader_rel_path(rel), source: ir_source },
+    { rel_path: normalize_shader_rel_path(rel), source: ir_source, },
   ]
   PreparedWgslSource(
     ir_source,
@@ -711,7 +711,7 @@ pub fn Composer::prepare_wgsl_source_runtime_valid(
     normalize_shader_rel_path(rel),
   )
   let source_files : Array[WgslSourceFile] = [
-    { rel_path: normalize_shader_rel_path(rel), source: ir_source },
+    { rel_path: normalize_shader_rel_path(rel), source: ir_source, },
   ]
   PreparedWgslSource(
     ir_source,

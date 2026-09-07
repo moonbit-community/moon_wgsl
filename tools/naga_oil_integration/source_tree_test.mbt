@@ -2,7 +2,7 @@
 test "wgsl io: scans a filtered WGSL tree" {
   let files = @wgsl_io.scan_wgsl_source_files(
     moon_wgsl_testdata_path("wgsl_scan"),
-    { recursive: true, extensions: [".wgsl"], exclude_prefixes: ["ignored"] },
+    { recursive: true, extensions: [".wgsl"], exclude_prefixes: ["ignored"], },
   ) catch {
     _ => abort("expected WGSL source scan success")
   }

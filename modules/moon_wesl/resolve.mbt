@@ -53,7 +53,7 @@ pub struct NoResolver {}
 ///|
 #warnings("-unnecessary_annotation")
 pub fn NoResolver::new() -> NoResolver {
-  NoResolver::{  }
+  NoResolver::{ }
 }
 
 ///|
@@ -75,7 +75,7 @@ pub struct VirtualResolver {
 
 ///|
 pub fn VirtualResolver::new() -> VirtualResolver {
-  { files: HashMap([]) }
+  { files: HashMap([]), }
 }
 
 ///|
@@ -144,7 +144,7 @@ pub struct IdentityPreprocessor {}
 ///|
 #warnings("-unnecessary_annotation")
 pub fn IdentityPreprocessor::new() -> IdentityPreprocessor {
-  IdentityPreprocessor::{  }
+  IdentityPreprocessor::{ }
 }
 
 ///|
@@ -167,7 +167,7 @@ pub fn[R, P] Preprocessor::new(
   resolver : R,
   preprocess : P,
 ) -> Preprocessor[R, P] {
-  { resolver, preprocess }
+  { resolver, preprocess, }
 }
 
 ///|
@@ -211,7 +211,7 @@ pub struct CodegenPkg {
 
 ///|
 pub fn CodegenModule::new(name : String, source : String) -> CodegenModule {
-  { name, source, submodules: [] }
+  { name, source, submodules: [], }
 }
 
 ///|
@@ -232,7 +232,7 @@ pub fn CodegenModule::add_submodule(
 
 ///|
 pub fn CodegenPkg::new(crate_name : String, root : CodegenModule) -> CodegenPkg {
-  { crate_name, root, dependencies: [] }
+  { crate_name, root, dependencies: [], }
 }
 
 ///|
@@ -266,7 +266,7 @@ pub(all) struct Pkg {
 
 ///|
 pub fn PkgBuilder::new(name : String) -> PkgBuilder {
-  { name: name.replace_all(old="-", new="_"), dependencies: [] }
+  { name: name.replace_all(old="-", new="_"), dependencies: [], }
 }
 
 ///|
@@ -295,7 +295,7 @@ pub fn PkgBuilder::add_packages(
 pub fn PkgBuilder::build(self : PkgBuilder, root : CodegenModule) -> Pkg {
   {
     crate_name: self.name,
-    root: { ..root, name: self.name },
+    root: { ..root, name: self.name, },
     dependencies: self.dependencies,
   }
 }
@@ -376,7 +376,7 @@ pub struct PkgResolver {
 
 ///|
 pub fn PkgResolver::new() -> PkgResolver {
-  { packages: [] }
+  { packages: [], }
 }
 
 ///|
@@ -620,7 +620,7 @@ pub struct Router {
 
 ///|
 pub fn Router::new() -> Router {
-  { mount_points: [], fallback: None }
+  { mount_points: [], fallback: None, }
 }
 
 ///|
@@ -723,4 +723,57 @@ pub impl Resolver for Router with fn display_name(self, path) {
   } catch {
     _ => None
   }
+}
+
+///|
+pub extend CodegenModule with Debug::{to_repr}
+
+///|
+pub extend CodegenModule with Eq::{not_equal, equal}
+
+///|
+pub extend CodegenPkg with Debug::{to_repr}
+
+///|
+pub extend CodegenPkg with Eq::{not_equal, equal}
+
+///|
+pub extend IdentityPreprocessor with ModulePreprocessor::{preprocess_module}
+
+///|
+pub extend NoResolver with Resolver::{
+  display_name,
+  resolve_module,
+  resolve_source,
+}
+
+///|
+pub extend PkgResolver with Resolver::{
+  display_name,
+  resolve_module,
+  resolve_source,
+}
+
+///|
+pub extend Preprocessor with Resolver::{
+  display_name,
+  resolve_module,
+  resolve_source,
+}
+
+///|
+pub extend Router with Resolver::{display_name, resolve_module, resolve_source}
+
+///|
+pub extend StandardResolver with Resolver::{
+  display_name,
+  resolve_module,
+  resolve_source,
+}
+
+///|
+pub extend VirtualResolver with Resolver::{
+  display_name,
+  resolve_module,
+  resolve_source,
 }

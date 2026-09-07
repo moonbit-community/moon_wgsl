@@ -7,9 +7,7 @@ pub fn Composer::add_composable_module(
   let metadata = get_preprocessor_metadata(desc.source, allow_defines=false) catch {
     error => raise composer_error_from_metadata_error(error)
   }
-  let module_name = composable_module_name_from_descriptor(desc, metadata.name) catch {
-    err => raise err
-  }
+  let module_name = composable_module_name_from_descriptor(desc, metadata.name)
   let registry_rel_path = composable_module_registry_rel_path(desc, module_name)
 
   let shader_defs = copy_shader_def_values(desc.shader_defs)

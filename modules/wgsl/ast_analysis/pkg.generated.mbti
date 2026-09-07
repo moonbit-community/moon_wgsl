@@ -21,4 +21,3 @@ pub fn wgsl_decl_data_name(@ast.WgslGlobalDeclData) -> String
 // Type aliases
 
 // Traits
-

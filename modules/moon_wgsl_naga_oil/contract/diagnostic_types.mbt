@@ -19,5 +19,17 @@ pub fn WgslDiagnostic::WgslDiagnostic(
   rel_path : String?,
   symbol_name : String?,
 ) -> WgslDiagnostic {
-  { severity, message, rel_path, symbol_name }
+  { severity, message, rel_path, symbol_name, }
 }
+
+///|
+pub extend WgslDiagnostic with Debug::{to_repr}
+
+///|
+pub extend WgslDiagnostic with Eq::{not_equal, equal}
+
+///|
+pub extend WgslDiagnosticSeverity with Debug::{to_repr}
+
+///|
+pub extend WgslDiagnosticSeverity with Eq::{not_equal, equal}

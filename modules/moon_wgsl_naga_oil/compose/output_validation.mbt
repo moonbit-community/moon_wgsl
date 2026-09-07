@@ -45,7 +45,7 @@ fn deduplicate_identical_wgsl_declarations(
   if duplicate_spans.length() == 0 {
     return source
   }
-  let out = StringBuilder::new(size_hint=source.length())
+  let out = StringBuilder(size_hint=source.length())
   let mut cursor = 0
   for span in duplicate_spans {
     let (start, end_) = span

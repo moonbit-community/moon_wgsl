@@ -29,8 +29,11 @@ pub struct FileResolver {
   base : String
   extension : String
 }
+pub fn FileResolver::display_name(Self, @moon_wesl.ModulePath) -> String?
 pub fn FileResolver::file_path(Self, @moon_wesl.ModulePath) -> String raise @moon_wesl.ResolveError
 pub fn FileResolver::new(String) -> Self
+pub fn FileResolver::resolve_module(Self, @moon_wesl.ModulePath) -> @moon_wesl.TranslationUnit raise @moon_wesl.ResolveError
+pub fn FileResolver::resolve_source(Self, @moon_wesl.ModulePath) -> String raise @moon_wesl.ResolveError
 pub fn FileResolver::set_extension(Self, String) -> Self
 pub impl @moon_wesl.Resolver for FileResolver
 

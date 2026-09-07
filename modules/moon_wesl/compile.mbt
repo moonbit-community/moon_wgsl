@@ -78,7 +78,7 @@ pub(all) struct Features {
 
 ///|
 pub fn Features::default() -> Features {
-  { default: Feature::default(), flags: HashMap([]) }
+  { default: Feature::default(), flags: HashMap([]), }
 }
 
 ///|
@@ -324,7 +324,7 @@ pub struct NoSourceMap {}
 ///|
 #warnings("-unnecessary_annotation")
 pub fn NoSourceMap::new() -> NoSourceMap {
-  NoSourceMap::{  }
+  NoSourceMap::{ }
 }
 
 ///|
@@ -366,7 +366,12 @@ pub fn[R] SourceMapper::new(
   resolver : R,
   mangler : ManglerKind,
 ) -> SourceMapper[R] {
-  { root, resolver, mangler, sourcemap: { ..BasicSourceMap::default(), root, } }
+  {
+    root,
+    resolver,
+    mangler,
+    sourcemap: { ..BasicSourceMap::default(), root, },
+  }
 }
 
 ///|
@@ -459,7 +464,7 @@ pub struct CompileResult {
 
 ///|
 pub fn CompileResult::default() -> CompileResult {
-  { syntax: TranslationUnit::default(), sourcemap: None, modules: [] }
+  { syntax: TranslationUnit::default(), sourcemap: None, modules: [], }
 }
 
 ///|
@@ -652,7 +657,7 @@ fn wesl_parse_loaded_translation_unit(
     )
     parsed_items[i] = { ..parsed, references, }
   }
-  { path, imports, import_by_local, items: parsed_items, named_items }
+  { path, imports, import_by_local, items: parsed_items, named_items, }
 }
 
 ///|
@@ -1074,7 +1079,7 @@ priv struct CondCompEvalState {
 
 ///|
 fn CondCompEvalState::new() -> CondCompEvalState {
-  { has_if: false, is_true: false, removed: false }
+  { has_if: false, is_true: false, removed: false, }
 }
 
 ///|
@@ -1261,7 +1266,7 @@ fn wesl_transform_condcomp_node(
             Known(false) => keep_node = false
             Unknown =>
               if state.removed {
-                replacement = Some({ ..cond_attr, name: "if" })
+                replacement = Some({ ..cond_attr, name: "if", })
                 let expr = cond_attr.arguments.unwrap_or("")
                 replacement_source = Some("@if(\{expr})")
               } else {
@@ -3632,7 +3637,7 @@ fn[R : Resolver] compile_with_mangler_kind_and_sourcemap(
   } else {
     None
   }
-  { syntax, sourcemap: output_sourcemap, modules: order }
+  { syntax, sourcemap: output_sourcemap, modules: order, }
 }
 
 ///|
@@ -3730,4 +3735,41 @@ pub fn[R : Resolver] compile_sourcemap_diagnostic(
   options : CompileOptions,
 ) -> CompileResult raise WeslDiagnosticError {
   compile_diagnostic_with_mangler_kind(root, resolver, Escape, options, true)
+}
+
+///|
+pub extend BasicSourceMap with Debug::{to_repr}
+
+///|
+pub extend CompileResult with Debug::{to_repr}
+
+///|
+pub extend CondCompPreprocessor with ModulePreprocessor::{preprocess_module}
+
+///|
+pub extend Feature with Debug::{to_repr}
+
+///|
+pub extend Feature with Eq::{not_equal, equal}
+
+///|
+pub extend ModuleItemRef with Debug::{to_repr}
+
+///|
+pub extend ModuleItemRef with Eq::{not_equal, equal}
+
+///|
+pub extend NoSourceMap with SourceMap::{
+  get_source,
+  get_display_name,
+  get_decl,
+  get_default_source,
+  unmangle_text,
+}
+
+///|
+pub extend SourceMapper with Resolver::{
+  display_name,
+  resolve_module,
+  resolve_source,
 }

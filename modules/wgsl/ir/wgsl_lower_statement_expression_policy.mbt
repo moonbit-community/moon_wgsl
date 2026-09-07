@@ -193,7 +193,7 @@ fn wgsl_ir_lazy_local_constant_expression(
 ) -> WgslIrLazyLocalConstantExpression? {
   match function.expressions.items.get(handle.index()) {
     Some(Literal(literal)) =>
-      Some({ expression: Literal(literal), origin: FoldedLocalConstant })
+      Some({ expression: Literal(literal), origin: FoldedLocalConstant, })
     _ => None
   }
 }

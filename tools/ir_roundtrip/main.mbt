@@ -12,7 +12,7 @@ priv struct IrRoundtripArgs {
 
 ///|
 fn IrRoundtripArgs::IrRoundtripArgs() -> IrRoundtripArgs {
-  { input: None, output: None, mode: "ir" }
+  { input: None, output: None, mode: "ir", }
 }
 
 ///|

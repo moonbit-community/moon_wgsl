@@ -8,7 +8,7 @@ priv struct WgslIrExprTokenDepth {
 
 ///|
 fn WgslIrExprTokenDepth::WgslIrExprTokenDepth() -> WgslIrExprTokenDepth {
-  { paren: 0, angle: 0, bracket: 0, brace: 0 }
+  { paren: 0, angle: 0, bracket: 0, brace: 0, }
 }
 
 ///|
@@ -149,7 +149,7 @@ fn wgsl_ir_expr_node_from_tokens(
   guard tokens.length() > 0 else {
     raise UnsupportedExpression("empty expression token list")
   }
-  let parser = WgslIrExprTokenParser::{ tokens, index: 0, failed: false }
+  let parser = WgslIrExprTokenParser::{ tokens, index: 0, failed: false, }
   match parser.parse_expression(0) {
     Some(node) =>
       if parser.failed || !parser.at_end() {

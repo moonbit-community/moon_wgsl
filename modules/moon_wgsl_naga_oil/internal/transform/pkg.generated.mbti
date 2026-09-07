@@ -95,4 +95,3 @@ pub fn WgslReferenceRewritePlan::has_virtual_override_bindings(Self) -> Bool
 // Type aliases
 
 // Traits
-

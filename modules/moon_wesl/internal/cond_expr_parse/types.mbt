@@ -110,7 +110,7 @@ fn cond_expr_lex(source : String) -> CondExprLexResult {
         cond_expr_push_token(tokens, RIGHT_PAREN, index, 1)
         index += 1
       }
-      _ => return LexFailed({ offset: index, incomplete: false })
+      _ => return LexFailed({ offset: index, incomplete: false, })
     }
   }
   Lexed(tokens)
@@ -123,13 +123,31 @@ pub fn parse_cond_expr_source(source : String) -> CondExprParseResult {
     LexFailed(diagnostic) => return Failed(diagnostic)
   }
   if tokens.is_empty() {
-    return Failed({ offset: 0, incomplete: true })
+    return Failed({ offset: 0, incomplete: true, })
   }
   let expr = parse_cond_expr(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed({ offset: start, incomplete: false })
+      return Failed({ offset: start, incomplete: false, })
     UnexpectedEndOfInput(start, _) =>
-      return Failed({ offset: start, incomplete: true })
+      return Failed({ offset: start, incomplete: true, })
   }
   Parsed(expr)
 }
+
+///|
+pub extend CondExprDiagnostic with Debug::{to_repr}
+
+///|
+pub extend CondExprDiagnostic with Eq::{not_equal, equal}
+
+///|
+pub extend CondExprNode with Debug::{to_repr}
+
+///|
+pub extend CondExprNode with Eq::{not_equal, equal}
+
+///|
+pub extend CondExprParseResult with Debug::{to_repr}
+
+///|
+pub extend CondExprParseResult with Eq::{not_equal, equal}

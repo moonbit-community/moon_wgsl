@@ -29,3 +29,9 @@ pub fn ShaderDefValue::value_as_string(self : ShaderDefValue) -> String {
     Raw(value) => value
   }
 }
+
+///|
+pub extend ShaderDefValue with Debug::{to_repr}
+
+///|
+pub extend ShaderDefValue with Eq::{not_equal, equal}

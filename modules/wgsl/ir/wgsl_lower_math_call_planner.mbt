@@ -392,7 +392,7 @@ fn WgslIrLowerer::prelower_math_splat_constructor_argument_with_expected_type(
         Literal(literal),
         FoldedLocalConstant,
       )
-      Some({ ty, component })
+      Some({ ty, component, })
     }
     None => {
       wgsl_ir_rewind_function_expressions_and_local_constant_values(
@@ -739,7 +739,7 @@ fn WgslIrLowerer::prelower_math_splat_constructor_argument(
         Literal(literal),
         FoldedLocalConstant,
       )
-      Some({ ty, component })
+      Some({ ty, component, })
     }
     None => {
       wgsl_ir_rewind_function_expressions_and_local_constant_values(
@@ -850,7 +850,7 @@ fn WgslIrLowerer::prelower_foldable_vector_constructor_argument(
         Literal(literal),
         FoldedLocalConstant,
       )
-      Some({ ty, component })
+      Some({ ty, component, })
     }
     None => {
       wgsl_ir_rewind_function_expressions_and_local_constant_values(

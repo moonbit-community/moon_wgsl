@@ -955,7 +955,7 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
         #|
       ),
       file_path: "shaders/demo/main.wgsl",
-      additional_imports: [{ import_path: "plugin", items: [] }],
+      additional_imports: [{ import_path: "plugin", items: [], }],
     }),
   ) catch {
     err => abort("expected main module registration success: \{err.message()}")
@@ -980,7 +980,7 @@ test "naga_oil: composer preprocess can apply AST-scoped symbol redirects" {
   let preprocessed = composer_test_composer().compose_wgsl(
     "shaders/effects/redirect.wgsl",
     composer_test_compose_options(empty_bool_defines(), [
-      { from_name: "build_shadow", to_name: "build_color" },
+      { from_name: "build_shadow", to_name: "build_color", },
     ]),
   ) catch {
     err =>

@@ -18,7 +18,7 @@ fn WgslDirectiveScanSource::WgslDirectiveScanSource(
   original_text : String,
   cleaned_text : String,
 ) -> WgslDirectiveScanSource {
-  { start, original_text, cleaned_text }
+  { start, original_text, cleaned_text, }
 }
 
 ///|
@@ -82,7 +82,7 @@ fn WgslDirectiveScanItem::WgslDirectiveScanItem(
   original_text : String,
   cleaned_text : String,
 ) -> WgslDirectiveScanItem {
-  { kind, source: WgslDirectiveScanSource(start, original_text, cleaned_text) }
+  { kind, source: WgslDirectiveScanSource(start, original_text, cleaned_text), }
 }
 
 ///|
@@ -121,7 +121,7 @@ fn wgsl_directive_scan_build_lines(
     } else {
       original
     }
-    lines.push({ original, cleaned, start: byte_offset })
+    lines.push({ original, cleaned, start: byte_offset, })
     byte_offset = byte_offset + utf8_byte_length(original)
   }
   lines
@@ -165,7 +165,7 @@ fn wgsl_directive_scan_join_lines(
   end_ : Int,
   cleaned : Bool,
 ) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for i in start..<end_ {
     out.write_string(if cleaned { lines[i].cleaned } else { lines[i].original })
   }
@@ -243,3 +243,12 @@ pub fn parse_wgsl_directive_scan_items(
   )
   items
 }
+
+///|
+pub extend WgslDirectiveScanItem with Debug::{to_repr}
+
+///|
+pub extend WgslDirectiveScanItemKind with Debug::{to_repr}
+
+///|
+pub extend WgslDirectiveScanSource with Debug::{to_repr}

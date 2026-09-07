@@ -323,7 +323,7 @@ fn WgslComposeSymbolTable::WgslComposeSymbolTable() -> WgslComposeSymbolTable {
 
 ///|
 fn WgslLiveBindingPlan::WgslLiveBindingPlan() -> WgslLiveBindingPlan {
-  { bindings: [] }
+  { bindings: [], }
 }
 
 ///|
@@ -404,7 +404,7 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
 
 ///|
 fn WgslComposeBindingSet::WgslComposeBindingSet() -> WgslComposeBindingSet {
-  { bindings: [], keys: Set([]) }
+  { bindings: [], keys: Set([]), }
 }
 
 ///|
@@ -436,7 +436,7 @@ fn WgslComposeBinding::WgslComposeBinding(
 ) -> WgslComposeBinding {
   let alias_name = alias_name.trim().to_owned()
   let key = "\{scope.label()}|\{reference_path.text()}|\{target.final_name}|\{alias_name}|\{target.identity_key}"
-  { reference_path, target, scope, alias_name, key }
+  { reference_path, target, scope, alias_name, key, }
 }
 
 ///|
@@ -591,7 +591,7 @@ fn WgslVirtualOverrideFinalNameKey::text(
 fn WgslLocalImportFinalNameKey::WgslLocalImportFinalNameKey(
   binding : WgslLocalImportFinalNameBinding,
 ) -> WgslLocalImportFinalNameKey {
-  { text: "\{binding.rel_path}|\{binding.source_name}|\{binding.final_name}" }
+  { text: "\{binding.rel_path}|\{binding.source_name}|\{binding.final_name}", }
 }
 
 ///|

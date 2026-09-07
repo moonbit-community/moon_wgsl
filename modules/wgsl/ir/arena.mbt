@@ -5,7 +5,7 @@ pub(all) struct TypeArena {
 
 ///|
 pub fn TypeArena::TypeArena() -> TypeArena {
-  { items: [] }
+  { items: [], }
 }
 
 ///|
@@ -32,7 +32,7 @@ pub(all) struct ConstantArena {
 
 ///|
 pub fn ConstantArena::ConstantArena() -> ConstantArena {
-  { items: [] }
+  { items: [], }
 }
 
 ///|
@@ -58,7 +58,7 @@ pub(all) struct OverrideArena {
 
 ///|
 pub fn OverrideArena::OverrideArena() -> OverrideArena {
-  { items: [] }
+  { items: [], }
 }
 
 ///|
@@ -84,7 +84,7 @@ pub(all) struct GlobalVariableArena {
 
 ///|
 pub fn GlobalVariableArena::GlobalVariableArena() -> GlobalVariableArena {
-  { items: [] }
+  { items: [], }
 }
 
 ///|
@@ -113,7 +113,7 @@ pub(all) struct LocalVariableArena {
 
 ///|
 pub fn LocalVariableArena::LocalVariableArena() -> LocalVariableArena {
-  { items: [] }
+  { items: [], }
 }
 
 ///|
@@ -151,7 +151,7 @@ pub(all) struct ExpressionArena {
 
 ///|
 pub fn ExpressionArena::ExpressionArena() -> ExpressionArena {
-  { items: [], origins: [] }
+  { items: [], origins: [], }
 }
 
 ///|
@@ -217,7 +217,7 @@ pub(all) struct FunctionArena {
 
 ///|
 pub fn FunctionArena::FunctionArena() -> FunctionArena {
-  { items: [] }
+  { items: [], }
 }
 
 ///|
@@ -243,7 +243,7 @@ pub(all) struct DiagnosticFilterArena {
 
 ///|
 pub fn DiagnosticFilterArena::DiagnosticFilterArena() -> DiagnosticFilterArena {
-  { items: [] }
+  { items: [], }
 }
 
 ///|
@@ -255,3 +255,57 @@ pub fn DiagnosticFilterArena::append(
   self.items.push(item)
   handle
 }
+
+///|
+pub extend ConstantArena with Debug::{to_repr}
+
+///|
+pub extend ConstantArena with Eq::{not_equal, equal}
+
+///|
+pub extend DiagnosticFilterArena with Debug::{to_repr}
+
+///|
+pub extend DiagnosticFilterArena with Eq::{not_equal, equal}
+
+///|
+pub extend ExpressionArena with Debug::{to_repr}
+
+///|
+pub extend ExpressionArena with Eq::{not_equal, equal}
+
+///|
+pub extend ExpressionOrigin with Debug::{to_repr}
+
+///|
+pub extend ExpressionOrigin with Eq::{not_equal, equal}
+
+///|
+pub extend FunctionArena with Debug::{to_repr}
+
+///|
+pub extend FunctionArena with Eq::{not_equal, equal}
+
+///|
+pub extend GlobalVariableArena with Debug::{to_repr}
+
+///|
+pub extend GlobalVariableArena with Eq::{not_equal, equal}
+
+///|
+pub extend LocalVariableArena with Debug::{to_repr}
+
+///|
+pub extend LocalVariableArena with Eq::{not_equal, equal}
+
+///|
+pub extend OverrideArena with Debug::{to_repr}
+
+///|
+pub extend OverrideArena with Eq::{not_equal, equal}
+
+///|
+pub extend TypeArena with Debug::{to_repr}
+
+///|
+pub extend TypeArena with Eq::{not_equal, equal}

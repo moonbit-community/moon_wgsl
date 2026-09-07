@@ -70,7 +70,7 @@ pub fn Composer::compile_wesl(
     raise WorkflowFailed("WESL root path is empty")
   }
   let root = @moon_wesl.ModulePath::from_path("/\{normalized}")
-  let resolver = ComposerWeslResolver::{ composer: self.inner }
+  let resolver = ComposerWeslResolver::{ composer: self.inner, }
   @moon_wesl.compile(
     root,
     resolver,

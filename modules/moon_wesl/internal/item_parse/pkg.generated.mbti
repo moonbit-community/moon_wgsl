@@ -15,16 +15,21 @@ pub suberror ParseError {
   UnexpectedToken(Token, (Int, Int), Array[TokenKind])
   UnexpectedEndOfInput(Int, Array[TokenKind])
 } derive(@debug.Debug)
+pub fn ParseError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) enum Token {
   ITEM(TopLevelItemSpan)
 } derive(@debug.Debug)
 pub fn Token::kind(Self) -> TokenKind
+pub fn Token::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TokenKind {
   TK_ITEM
 }
+pub fn TokenKind::output(Self, &Logger) -> Unit
+pub fn TokenKind::to_repr(Self) -> @debug.Repr
+pub fn TokenKind::to_string(Self) -> String
 pub impl Show for TokenKind
 pub impl @debug.Debug for TokenKind
 
@@ -32,18 +37,26 @@ pub(all) struct TopLevelItemDiagnostic {
   offset : Int
   incomplete : Bool
 } derive(Eq, @debug.Debug)
+pub fn TopLevelItemDiagnostic::equal(Self, Self) -> Bool
+pub fn TopLevelItemDiagnostic::not_equal(Self, Self) -> Bool
+pub fn TopLevelItemDiagnostic::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TopLevelItemParseResult {
   Parsed(Array[TopLevelItemSpan])
   Failed(TopLevelItemDiagnostic)
 } derive(Eq, @debug.Debug)
+pub fn TopLevelItemParseResult::equal(Self, Self) -> Bool
+pub fn TopLevelItemParseResult::not_equal(Self, Self) -> Bool
+pub fn TopLevelItemParseResult::to_repr(Self) -> @debug.Repr
 
 pub(all) struct TopLevelItemSpan {
   start_offset : Int
   end_offset : Int
 } derive(Eq, @debug.Debug)
+pub fn TopLevelItemSpan::equal(Self, Self) -> Bool
+pub fn TopLevelItemSpan::not_equal(Self, Self) -> Bool
+pub fn TopLevelItemSpan::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 
 // Traits
-

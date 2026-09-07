@@ -151,7 +151,7 @@ fn WgslIrFunctionWriterPlan::trace_sections(
   self : WgslIrFunctionWriterPlan,
   label : String,
 ) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string(
     "plan-arena\t\{label}\texpressions=\{self.arena.expression_count}\timplicit_slots=\{self.arena.implicit_expression_slot_count()}\n",
   )
@@ -212,7 +212,7 @@ fn WgslIrCallArgumentWriterPlan::from_function(
       _ => ()
     }
   }
-  { call_expression_count, call_result_expression_count }
+  { call_expression_count, call_result_expression_count, }
 }
 
 ///|

@@ -254,7 +254,7 @@ fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
 
 ///|
 fn wgsl_ir_synthetic_struct_member(name : String, ty : Handle) -> StructMember {
-  { name: Some(name), ty, binding: None, offset: 0, size: None, align: None }
+  { name: Some(name), ty, binding: None, offset: 0, size: None, align: None, }
 }
 
 ///|
@@ -267,7 +267,7 @@ fn WgslIrLowerer::intern_type(
     Some(handle) => handle
     None => {
       self.ensure_type_dependencies(inner)
-      let handle = self.shader_module.append_type({ name: Some(key), inner })
+      let handle = self.shader_module.append_type({ name: Some(key), inner, })
       self.type_cache.set(key, handle)
       handle
     }

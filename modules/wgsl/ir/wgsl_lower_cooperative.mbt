@@ -171,7 +171,7 @@ fn WgslIrLowerer::lower_cooperative_data(
       Literal(U32(wgsl_ir_non_negative_int_to_uint(default_stride))),
     )
   }
-  { pointer, stride, row_major }
+  { pointer, stride, row_major, }
 }
 
 ///|

@@ -103,4 +103,3 @@ pub using @resolver {type WgslSourceRegistry}
 pub using @contract {type WgslSymbolRedirect}
 
 // Traits
-

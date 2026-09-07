@@ -41,7 +41,7 @@ fn WgslPreprocessorIdent::WgslPreprocessorIdent(
   start : Int,
   end : Int,
 ) -> WgslPreprocessorIdent {
-  { name, start, end }
+  { name, start, end, }
 }
 
 ///|
@@ -74,7 +74,7 @@ fn WgslPreprocessorDirectiveTail::WgslPreprocessorDirectiveTail(
   end : Int,
   has_required_separator : Bool,
 ) -> WgslPreprocessorDirectiveTail {
-  { text, start, end, has_required_separator }
+  { text, start, end, has_required_separator, }
 }
 
 ///|
@@ -94,7 +94,7 @@ fn WgslPreprocessorDirective::WgslPreprocessorDirective(
   start : Int,
   end : Int,
 ) -> WgslPreprocessorDirective {
-  { kind, name, tail, start, end }
+  { kind, name, tail, start, end, }
 }
 
 ///|
@@ -259,3 +259,18 @@ pub fn parse_wgsl_directive_line_at(
 pub fn parse_wgsl_directive_line(line : String) -> WgslPreprocessorDirective? {
   parse_wgsl_directive_line_at(line, 0)
 }
+
+///|
+pub extend WgslPreprocessorDirective with Debug::{to_repr}
+
+///|
+pub extend WgslPreprocessorDirectiveKind with Debug::{to_repr}
+
+///|
+pub extend WgslPreprocessorDirectiveKind with Eq::{not_equal, equal}
+
+///|
+pub extend WgslPreprocessorDirectiveTail with Debug::{to_repr}
+
+///|
+pub extend WgslPreprocessorIdent with Debug::{to_repr}

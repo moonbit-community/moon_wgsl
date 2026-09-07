@@ -15,6 +15,7 @@ pub suberror ParseError {
   UnexpectedToken(Token, (Int, Int), Array[TokenKind])
   UnexpectedEndOfInput(Int, Array[TokenKind])
 } derive(@debug.Debug)
+pub fn ParseError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) struct FunctionParameterParseNode {
@@ -22,11 +23,17 @@ pub(all) struct FunctionParameterParseNode {
   type_text : String
   attributes : String
 } derive(Eq, @debug.Debug)
+pub fn FunctionParameterParseNode::equal(Self, Self) -> Bool
+pub fn FunctionParameterParseNode::not_equal(Self, Self) -> Bool
+pub fn FunctionParameterParseNode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FunctionParseDiagnostic {
   offset : Int
   incomplete : Bool
 } derive(Eq, @debug.Debug)
+pub fn FunctionParseDiagnostic::equal(Self, Self) -> Bool
+pub fn FunctionParseDiagnostic::not_equal(Self, Self) -> Bool
+pub fn FunctionParseDiagnostic::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FunctionParseNode {
   name : String
@@ -35,11 +42,17 @@ pub(all) struct FunctionParseNode {
   return_type : String?
   body_text : String
 } derive(Eq, @debug.Debug)
+pub fn FunctionParseNode::equal(Self, Self) -> Bool
+pub fn FunctionParseNode::not_equal(Self, Self) -> Bool
+pub fn FunctionParseNode::to_repr(Self) -> @debug.Repr
 
 pub(all) enum FunctionParseResult {
   Parsed(FunctionParseNode)
   Failed(FunctionParseDiagnostic)
 } derive(Eq, @debug.Debug)
+pub fn FunctionParseResult::equal(Self, Self) -> Bool
+pub fn FunctionParseResult::not_equal(Self, Self) -> Bool
+pub fn FunctionParseResult::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Token {
   IDENT(String)
@@ -52,6 +65,7 @@ pub(all) enum Token {
   BODY(String)
 } derive(@debug.Debug)
 pub fn Token::kind(Self) -> TokenKind
+pub fn Token::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TokenKind {
   TK_IDENT
@@ -63,10 +77,12 @@ pub(all) enum TokenKind {
   TK_RIGHT_PAREN
   TK_BODY
 }
+pub fn TokenKind::output(Self, &Logger) -> Unit
+pub fn TokenKind::to_repr(Self) -> @debug.Repr
+pub fn TokenKind::to_string(Self) -> String
 pub impl Show for TokenKind
 pub impl @debug.Debug for TokenKind
 
 // Type aliases
 
 // Traits
-

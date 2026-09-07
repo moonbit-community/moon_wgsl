@@ -73,7 +73,7 @@ fn WgslBoundReferenceRewriteEntry::is_bound(
 
 ///|
 fn WgslBoundReferenceRewritePlan::WgslBoundReferenceRewritePlan() -> WgslBoundReferenceRewritePlan {
-  { entries: [], keys: Set([]) }
+  { entries: [], keys: Set([]), }
 }
 
 ///|
@@ -118,7 +118,7 @@ fn WgslVirtualOverrideRewriteBinding::key(
 
 ///|
 pub fn WgslReferenceRewritePlan::WgslReferenceRewritePlan() -> WgslReferenceRewritePlan {
-  { bindings: [], bindings_by_reference: Map([]), virtual_overrides: [] }
+  { bindings: [], bindings_by_reference: Map([]), virtual_overrides: [], }
 }
 
 ///|

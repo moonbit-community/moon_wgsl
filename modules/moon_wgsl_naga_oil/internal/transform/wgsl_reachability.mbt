@@ -82,7 +82,7 @@ fn collect_wgsl_reachable_declaration_names(
     for decl in declarations {
       wgsl_analysis_string_list_push_unique(included_names, decl.name())
     }
-    return { included_names, missing_root_items: [] }
+    return { included_names, missing_root_items: [], }
   }
   let (declaration_names, declaration_indexes) = wgsl_analysis_declaration_name_map(
     declarations,
@@ -100,7 +100,7 @@ fn collect_wgsl_reachable_declaration_names(
     for decl in declarations {
       wgsl_analysis_string_list_push_unique(included_names, decl.name())
     }
-    return { included_names, missing_root_items }
+    return { included_names, missing_root_items, }
   }
   while worklist.length() > 0 {
     let name = worklist.pop().unwrap()
@@ -123,5 +123,5 @@ fn collect_wgsl_reachable_declaration_names(
       }
     }
   }
-  { included_names, missing_root_items }
+  { included_names, missing_root_items, }
 }

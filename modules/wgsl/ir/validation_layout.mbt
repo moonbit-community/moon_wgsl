@@ -16,7 +16,7 @@ fn WgslIrValidator::type_inner_layout(
 ) -> WgslIrValidationLayout raise WgslIrValidationError {
   match inner {
     Scalar(scalar) | Atomic(scalar) =>
-      { align: scalar.width, size: scalar.width }
+      { align: scalar.width, size: scalar.width, }
     Vector(size, scalar) => {
       let lanes = size.width()
       let raw_size = lanes * scalar.width
@@ -40,14 +40,14 @@ fn WgslIrValidator::type_inner_layout(
         row_lanes * scalar.width,
         column_align,
       )
-      { align: column_align, size: column_size * columns.width() }
+      { align: column_align, size: column_size * columns.width(), }
     }
     Array(base, size, stride) => {
       let count = match size {
         Constant(value) => value
         Dynamic | Pending(_) => 1
       }
-      { align: self.type_layout(base).align, size: count * stride }
+      { align: self.type_layout(base).align, size: count * stride, }
     }
     Struct(members, span) | PredeclaredStruct(members, span) => {
       let mut align = 1
@@ -61,14 +61,14 @@ fn WgslIrValidator::type_inner_layout(
           align = member_align
         }
       }
-      { align, size: span }
+      { align, size: span, }
     }
-    Pointer(_, _) | ValuePointer(_, _, _) => { align: 1, size: 4 }
+    Pointer(_, _) | ValuePointer(_, _, _) => { align: 1, size: 4, }
     Image(_, _, _)
     | Sampler(_)
     | AccelerationStructure(_)
     | RayQuery(_)
-    | BindingArray(_, _) => { align: 1, size: 0 }
+    | BindingArray(_, _) => { align: 1, size: 0, }
     CooperativeMatrix(columns, rows, scalar, _) =>
       {
         align: scalar.width,

@@ -63,7 +63,7 @@ fn BodyEmissionPlanner::statement_plan(
         emitted_leading_var_declaration = true
       }
     }
-    plan.push({ statement, skip, blank_before })
+    plan.push({ statement, skip, blank_before, })
   }
   plan
 }

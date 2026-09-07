@@ -214,7 +214,7 @@ fn WgslIrLowerer::prelower_select_constant_vector_splat_component(
       let component = self.lower_function_constructor_argument(
         component, function, scope, expected_ty,
       )
-      Some({ ty, component })
+      Some({ ty, component, })
     }
     _ => None
   }

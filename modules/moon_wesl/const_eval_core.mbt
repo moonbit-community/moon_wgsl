@@ -282,7 +282,7 @@ priv struct ConstEvalParser {
 
 ///|
 fn ConstEvalParser::new(tokens : Array[ConstEvalToken]) -> ConstEvalParser {
-  { rest: tokens[:] }
+  { rest: tokens[:], }
 }
 
 ///|
@@ -1062,7 +1062,7 @@ fn ConstEvalParser::parse_switch_case(
     }
     _ => self.error("expected const-eval switch case")
   }
-  { selectors, body: self.parse_switch_case_body() }
+  { selectors, body: self.parse_switch_case_body(), }
 }
 
 ///|
@@ -1154,7 +1154,7 @@ fn ConstEvalParser::parse_binding_statement_with_terminator(
   if !self.consume_token(terminator) {
     self.error("expected terminator after const-eval binding")
   }
-  Binding({ name, declared_type, expr })
+  Binding({ name, declared_type, expr, })
 }
 
 ///|
@@ -1436,7 +1436,7 @@ fn ConstEvalParser::parse_param(
     [Colon, .. rest] => self.update_view(rest)
     _ => self.error("expected `:` in const-eval parameter")
   }
-  { name, declared_type: self.parse_type() }
+  { name, declared_type: self.parse_type(), }
 }
 
 ///|
@@ -1595,7 +1595,7 @@ fn ConstEvalParser::parse_function(
   if !self.view().is_empty() {
     self.error("unexpected trailing const-eval tokens")
   }
-  { name, params, return_type, statements }
+  { name, params, return_type, statements, }
 }
 
 ///|
@@ -1622,7 +1622,7 @@ priv struct ConstEvalContext {
 
 ///|
 fn ConstEvalContext::new() -> ConstEvalContext {
-  { bindings: HashMap([]), functions: HashMap([]) }
+  { bindings: HashMap([]), functions: HashMap([]), }
 }
 
 ///|

@@ -26,6 +26,9 @@ pub(all) struct WgslSourceScanOptions {
   exclude_prefixes : Array[String]
 } derive(Eq, @debug.Debug)
 pub fn WgslSourceScanOptions::default() -> Self
+pub fn WgslSourceScanOptions::equal(Self, Self) -> Bool
+pub fn WgslSourceScanOptions::not_equal(Self, Self) -> Bool
+pub fn WgslSourceScanOptions::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

@@ -61,7 +61,7 @@ fn emit_wgsl_graph_block_canonical(block : WgslGraphBlock) -> String {
 
 ///|
 fn emit_wgsl_graph_blocks_canonical(blocks : Array[WgslGraphBlock]) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for block in blocks {
     out.write_string(emit_wgsl_graph_block_canonical(block))
   }
@@ -95,7 +95,7 @@ pub fn rewrite_wgsl_references_with_binding_plan_from_unit(
     return source
   }
   let graph = build_wgsl_declaration_graph_from_unit(source, unit)
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for import_block in graph.import_blocks {
     out.write_string(emit_wgsl_graph_block_canonical(import_block))
   }
@@ -116,7 +116,7 @@ pub fn rewrite_wgsl_declarations_with_binding_plan(
     return source
   }
   let graph = build_wgsl_declaration_graph(source)
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for import_block in graph.import_blocks {
     out.write_string(emit_wgsl_graph_block_canonical(import_block))
   }

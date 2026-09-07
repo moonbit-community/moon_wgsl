@@ -1045,7 +1045,7 @@ fn WgslIrLowerer::predeclared_type_inner(
         align: scalar.width,
         size: scalar.width,
       }
-      let bool_layout = WgslIrLayout::{ align: 1, size: 1 }
+      let bool_layout = WgslIrLayout::{ align: 1, size: 1, }
       let exchanged_offset = wgsl_ir_align_to(
         value_layout.size,
         bool_layout.align,
@@ -1159,9 +1159,9 @@ fn wgsl_ir_numeric_value_layout(
     Some(vector_size) => {
       let width = vector_size.width()
       let raw = width * scalar.width
-      { align: if width == 3 { 4 * scalar.width } else { raw }, size: raw }
+      { align: if width == 3 { 4 * scalar.width } else { raw }, size: raw, }
     }
-    None => { align: scalar.width, size: scalar.width }
+    None => { align: scalar.width, size: scalar.width, }
   }
 }
 

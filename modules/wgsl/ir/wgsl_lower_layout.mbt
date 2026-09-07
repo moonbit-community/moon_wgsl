@@ -21,11 +21,11 @@ fn WgslIrLowerer::type_layout(
     Some(ty) =>
       match ty.inner {
         Scalar(scalar) | Atomic(scalar) =>
-          { align: scalar.width, size: scalar.width }
+          { align: scalar.width, size: scalar.width, }
         Vector(size, scalar) => {
           let width = size.width()
           let raw = width * scalar.width
-          { align: if width == 3 { 4 * scalar.width } else { raw }, size: raw }
+          { align: if width == 3 { 4 * scalar.width } else { raw }, size: raw, }
         }
         Matrix(columns, rows, scalar) => {
           let column_align = if rows.width() == 3 {
@@ -37,7 +37,7 @@ fn WgslIrLowerer::type_layout(
             rows.width() * scalar.width,
             column_align,
           )
-          { align: column_align, size: column_size * columns.width() }
+          { align: column_align, size: column_size * columns.width(), }
         }
         Array(base, size, stride) => {
           let base_layout = self.type_layout(base)
@@ -54,14 +54,14 @@ fn WgslIrLowerer::type_layout(
               align = member_layout.align
             }
           }
-          { align, size: span }
+          { align, size: span, }
         }
-        Pointer(_, _) | ValuePointer(_, _, _) => { align: 1, size: 4 }
+        Pointer(_, _) | ValuePointer(_, _, _) => { align: 1, size: 4, }
         Image(_, _, _)
         | Sampler(_)
         | AccelerationStructure(_)
         | RayQuery(_)
-        | BindingArray(_, _) => { align: 1, size: 0 }
+        | BindingArray(_, _) => { align: 1, size: 0, }
         CooperativeMatrix(columns, rows, scalar, _) =>
           {
             align: scalar.width,

@@ -34,7 +34,7 @@ fn WgslIrLowerer::call_argument_planner(
   for _ in 0..<arguments.length() {
     prelowered.push(None)
   }
-  { lowerer: self, callee_function, function, scope, arguments, prelowered }
+  { lowerer: self, callee_function, function, scope, arguments, prelowered, }
 }
 
 ///|

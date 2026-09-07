@@ -43,7 +43,7 @@ pub fn WgslReferencePath::from_segments(
   if normalized.length() == 0 {
     None
   } else {
-    Some({ segments: normalized, text: normalized.join("::") })
+    Some({ segments: normalized, text: normalized.join("::"), })
   }
 }
 
@@ -97,7 +97,7 @@ pub fn WgslResolvedImportModule::WgslResolvedImportModule(
   module_path : String,
   rel_path : String,
 ) -> WgslResolvedImportModule {
-  { module_path, rel_path }
+  { module_path, rel_path, }
 }
 
 ///|
@@ -120,3 +120,33 @@ pub fn WgslResolvedImportModule::is_empty(
 ) -> Bool {
   self.module_path == "" && self.rel_path == ""
 }
+
+///|
+pub extend ImportDefWithOffset with Debug::{to_repr}
+
+///|
+pub extend ImportDefWithOffset with Eq::{not_equal, equal}
+
+///|
+pub extend ImportDefinition with Debug::{to_repr}
+
+///|
+pub extend ImportDefinition with Eq::{not_equal, equal}
+
+///|
+pub extend WgslImportTarget with Debug::{to_repr}
+
+///|
+pub extend WgslImportTarget with Eq::{not_equal, equal}
+
+///|
+pub extend WgslReferencePath with Debug::{to_repr}
+
+///|
+pub extend WgslReferencePath with Eq::{not_equal, equal}
+
+///|
+pub extend WgslResolvedImportModule with Debug::{to_repr}
+
+///|
+pub extend WgslResolvedImportModule with Eq::{not_equal, equal}

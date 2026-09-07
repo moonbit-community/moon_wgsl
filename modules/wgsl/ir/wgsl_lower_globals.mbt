@@ -208,7 +208,7 @@ fn WgslIrLowerer::lower_source_directive(
 
 ///|
 fn wgsl_ir_directive_text(directive : @ast.WgslDirective) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string(directive.name().name())
   if directive.has_tail() {
     if directive.has_required_tail_separator() {

@@ -33,7 +33,7 @@ fn replace_comments_line(
   state : CommentState,
   preserve_byte_width : Bool,
 ) -> (String, CommentState) {
-  let output = StringBuilder::new()
+  let output = StringBuilder()
   let mut section_start = 0
   let mut current_state = state
 
@@ -196,7 +196,7 @@ fn source_contains_comment_marker(source : String) -> Bool {
 
 ///|
 fn replace_comments_preserving_line_endings(source : String) -> String {
-  let output = StringBuilder::new(size_hint=utf8_byte_length(source))
+  let output = StringBuilder(size_hint=utf8_byte_length(source))
   let mut state = CommentState::None
   let mut line_start = 0
   let mut index = 0
@@ -238,7 +238,7 @@ fn replace_comments_with(source : String, preserve_byte_width : Bool) -> String 
   }
   let mut state = CommentState::None
   let lines = split_source_lines(source)
-  let output = StringBuilder::new()
+  let output = StringBuilder()
   let mut first_line = true
   for line in lines {
     let (output_line, next_state) = replace_comments_line(

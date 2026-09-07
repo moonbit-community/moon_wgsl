@@ -7,7 +7,7 @@ pub(all) struct WgslSourceScanOptions {
 
 ///|
 pub fn WgslSourceScanOptions::default() -> WgslSourceScanOptions {
-  { recursive: true, extensions: [".wgsl"], exclude_prefixes: [] }
+  { recursive: true, extensions: [".wgsl"], exclude_prefixes: [], }
 }
 
 ///|
@@ -183,3 +183,9 @@ pub fn register_source_tree_checked(
 ) -> Array[@contract.WgslDiagnostic] raise @fs.IOError {
   composer.register_source_files_checked(scan_wgsl_source_files(root, options))
 }
+
+///|
+pub extend WgslSourceScanOptions with Debug::{to_repr}
+
+///|
+pub extend WgslSourceScanOptions with Eq::{not_equal, equal}

@@ -232,7 +232,7 @@ test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map
     export_test_composer(),
     "shaders/effects/main.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
-    { root_items: ["shade"] },
+    { root_items: ["shade"], },
   ) catch {
     err => abort("expected export success: \{err.message()}")
   }
@@ -266,7 +266,7 @@ test "naga_oil: export_wgsl_ir emits through IR before tree-shaking" {
     export_test_composer(),
     "shaders/effects/main.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
-    { root_items: ["shade"] },
+    { root_items: ["shade"], },
   ) catch {
     err => abort("expected IR export success: \{err.message()}")
   }
@@ -300,7 +300,7 @@ test "naga_oil: export sanitizes struct member identifiers in IR emission" {
     export_test_composer(),
     "shaders/effects/invalid_member.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
-    { root_items: ["main"] },
+    { root_items: ["main"], },
   ) catch {
     err => abort("expected IR export success: \{err.message()}")
   }
@@ -323,7 +323,7 @@ test "naga_oil: compose item extraction and export tree-shaking share dependency
     composer,
     "shaders/effects/aligned.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
-    { root_items: ["shade"] },
+    { root_items: ["shade"], },
   ) catch {
     err => abort("expected aligned export success: \{err.message()}")
   }
@@ -363,7 +363,7 @@ test "naga_oil: export keeps same-name local initializer callee" {
     composer,
     "pbr/same_name_callee.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
-    { root_items: ["fragment"] },
+    { root_items: ["fragment"], },
   ) catch {
     err => abort("expected same-name callee export success: \{err.message()}")
   }
@@ -414,7 +414,7 @@ test "naga_oil: export_wgsl_with_options uses composer-owned session config" {
       defines: export_test_empty_defines(),
       value_defines: @profile.bevy_wgsl_value_defines(),
     },
-    { root_items: ["shade"] },
+    { root_items: ["shade"], },
   ) catch {
     err => abort("expected config-based export success: \{err.message()}")
   }
@@ -435,7 +435,7 @@ test "naga_oil: export_wgsl reports missing tree-shake roots as diagnostics" {
     export_test_composer(),
     "shaders/effects/main.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
-    { root_items: ["missing_entry"] },
+    { root_items: ["missing_entry"], },
   ) catch {
     err => abort("expected export success: \{err.message()}")
   }
@@ -465,7 +465,7 @@ test "naga_oil: export source catalog is scoped to the current dependency closur
     composer,
     "shaders/effects/ambiguous.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
-    { root_items: ["shade"] },
+    { root_items: ["shade"], },
   ) catch {
     err => abort("expected export success: \{err.message()}")
   }
@@ -495,9 +495,9 @@ test "naga_oil: export_wgsl_with_redirects rewrites dependencies before tree-sha
     export_test_composer(),
     "shaders/effects/redirect.wgsl",
     export_test_compose_options(export_test_empty_defines(), [
-      { from_name: "build_shadow", to_name: "build_color" },
+      { from_name: "build_shadow", to_name: "build_color", },
     ]),
-    { root_items: ["shade"] },
+    { root_items: ["shade"], },
   ) catch {
     err => abort("expected redirect-aware export success: \{err.message()}")
   }
@@ -521,9 +521,9 @@ test "naga_oil: export warns when a source-level redirect never matches" {
     export_test_composer(),
     "shaders/effects/redirect.wgsl",
     export_test_compose_options(export_test_empty_defines(), [
-      { from_name: "missing_shadow", to_name: "build_color" },
+      { from_name: "missing_shadow", to_name: "build_color", },
     ]),
-    { root_items: ["shade"] },
+    { root_items: ["shade"], },
   ) catch {
     err =>
       abort("expected redirect diagnostic export success: \{err.message()}")
@@ -570,9 +570,9 @@ test "redirect diagnostics require exact AST reference path matches" {
     export_test_composer(),
     "shaders/effects/qualified_suffix.wgsl",
     export_test_compose_options(export_test_empty_defines(), [
-      { from_name: "Item", to_name: "RenamedItem" },
+      { from_name: "Item", to_name: "RenamedItem", },
     ]),
-    { root_items: ["shade"] },
+    { root_items: ["shade"], },
   ) catch {
     err =>
       abort(

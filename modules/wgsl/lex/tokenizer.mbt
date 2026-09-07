@@ -36,7 +36,7 @@ fn WgslToken::new_text(
   text : String,
   pos : Int,
 ) -> WgslToken {
-  { kind, text, code: -1, pos, end: pos + text.length() }
+  { kind, text, code: -1, pos, end: pos + text.length(), }
 }
 
 ///|
@@ -65,7 +65,7 @@ fn WgslToken::new_punctuation(
   code : Int,
   pos : Int,
 ) -> WgslToken {
-  { kind: Punctuation, text, code, pos, end: pos + text.length() }
+  { kind: Punctuation, text, code, pos, end: pos + text.length(), }
 }
 
 ///|
@@ -407,3 +407,9 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
 pub fn tokenize_wgsl(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
   tokenize_with(src, emit_whitespace, true)
 }
+
+///|
+pub extend WgslToken with Debug::{to_repr}
+
+///|
+pub extend WgslToken with Eq::{not_equal, equal}

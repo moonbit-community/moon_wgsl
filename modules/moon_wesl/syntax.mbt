@@ -619,7 +619,7 @@ pub(all) struct TranslationUnit {
 
 ///|
 pub fn TranslationUnit::default() -> TranslationUnit {
-  { imports: [], global_declarations: [] }
+  { imports: [], global_declarations: [], }
 }
 
 ///|
@@ -633,3 +633,279 @@ pub fn TranslationUnit::to_string(self : TranslationUnit) -> String {
   }
   parts.join("\n\n")
 }
+
+///|
+pub extend AliasDeclaration with Debug::{to_repr}
+
+///|
+pub extend AliasDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend AssignmentOperator with Debug::{to_repr}
+
+///|
+pub extend AssignmentOperator with Eq::{not_equal, equal}
+
+///|
+pub extend AssignmentStatement with Debug::{to_repr}
+
+///|
+pub extend AssignmentStatement with Eq::{not_equal, equal}
+
+///|
+pub extend Attribute with Debug::{to_repr}
+
+///|
+pub extend Attribute with Eq::{not_equal, equal}
+
+///|
+pub extend BinaryOperator with Debug::{to_repr}
+
+///|
+pub extend BinaryOperator with Eq::{not_equal, equal}
+
+///|
+pub extend BlockStatement with Debug::{to_repr}
+
+///|
+pub extend BlockStatement with Eq::{not_equal, equal}
+
+///|
+pub extend CondExpression with Debug::{to_repr}
+
+///|
+pub extend CondExpression with Eq::{not_equal, equal}
+
+///|
+pub extend ConstAssertDeclaration with Debug::{to_repr}
+
+///|
+pub extend ConstAssertDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend ConstDeclaration with Debug::{to_repr}
+
+///|
+pub extend ConstDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend ContinuingStatement with Debug::{to_repr}
+
+///|
+pub extend ContinuingStatement with Eq::{not_equal, equal}
+
+///|
+pub extend ControlStatement with Debug::{to_repr}
+
+///|
+pub extend ControlStatement with Eq::{not_equal, equal}
+
+///|
+pub extend DiagnosticDirectiveDeclaration with Debug::{to_repr}
+
+///|
+pub extend DiagnosticDirectiveDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend EnableDirectiveDeclaration with Debug::{to_repr}
+
+///|
+pub extend EnableDirectiveDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend Expression with Debug::{to_repr}
+
+///|
+pub extend Expression with Eq::{not_equal, equal}
+
+///|
+pub extend ForInitializer with Debug::{to_repr}
+
+///|
+pub extend ForInitializer with Eq::{not_equal, equal}
+
+///|
+pub extend ForStatement with Debug::{to_repr}
+
+///|
+pub extend ForStatement with Eq::{not_equal, equal}
+
+///|
+pub extend ForUpdate with Debug::{to_repr}
+
+///|
+pub extend ForUpdate with Eq::{not_equal, equal}
+
+///|
+pub extend FunctionBody with Debug::{to_repr}
+
+///|
+pub extend FunctionBody with Eq::{not_equal, equal}
+
+///|
+pub extend FunctionCallExpression with Debug::{to_repr}
+
+///|
+pub extend FunctionCallExpression with Eq::{not_equal, equal}
+
+///|
+pub extend FunctionDeclaration with Debug::{to_repr}
+
+///|
+pub extend FunctionDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend FunctionParameter with Debug::{to_repr}
+
+///|
+pub extend FunctionParameter with Eq::{not_equal, equal}
+
+///|
+pub extend GlobalDeclaration with Debug::{to_repr}
+
+///|
+pub extend GlobalDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend GlobalDeclarationHeader with Debug::{to_repr}
+
+///|
+pub extend GlobalDeclarationHeader with Eq::{not_equal, equal}
+
+///|
+pub extend IfStatement with Debug::{to_repr}
+
+///|
+pub extend IfStatement with Eq::{not_equal, equal}
+
+///|
+pub extend ImportNode with Debug::{to_repr}
+
+///|
+pub extend ImportNode with Eq::{not_equal, equal}
+
+///|
+pub extend ImportStatement with Debug::{to_repr}
+
+///|
+pub extend ImportStatement with Eq::{not_equal, equal}
+
+///|
+pub extend ImportedName with Debug::{to_repr}
+
+///|
+pub extend ImportedName with Eq::{not_equal, equal}
+
+///|
+pub extend LetDeclaration with Debug::{to_repr}
+
+///|
+pub extend LetDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend LoopStatement with Debug::{to_repr}
+
+///|
+pub extend LoopStatement with Eq::{not_equal, equal}
+
+///|
+pub extend OverrideDeclaration with Debug::{to_repr}
+
+///|
+pub extend OverrideDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend RequiresDirectiveDeclaration with Debug::{to_repr}
+
+///|
+pub extend RequiresDirectiveDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend Statement with Debug::{to_repr}
+
+///|
+pub extend Statement with Eq::{not_equal, equal}
+
+///|
+pub extend StatementDeclaration with Debug::{to_repr}
+
+///|
+pub extend StatementDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend StatementDeclarationKind with Debug::{to_repr}
+
+///|
+pub extend StatementDeclarationKind with Eq::{not_equal, equal}
+
+///|
+pub extend StatementKind with Debug::{to_repr}
+
+///|
+pub extend StatementKind with Eq::{not_equal, equal}
+
+///|
+pub extend StructDeclaration with Debug::{to_repr}
+
+///|
+pub extend StructDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend StructMember with Debug::{to_repr}
+
+///|
+pub extend StructMember with Eq::{not_equal, equal}
+
+///|
+pub extend SwitchCase with Debug::{to_repr}
+
+///|
+pub extend SwitchCase with Eq::{not_equal, equal}
+
+///|
+pub extend SwitchStatement with Debug::{to_repr}
+
+///|
+pub extend SwitchStatement with Eq::{not_equal, equal}
+
+///|
+pub extend SyntaxSpan with Debug::{to_repr}
+
+///|
+pub extend SyntaxSpan with Eq::{not_equal, equal}
+
+///|
+pub extend TranslationUnit with Debug::{to_repr}
+
+///|
+pub extend TranslationUnit with Eq::{not_equal, equal}
+
+///|
+pub extend TypeExpression with Debug::{to_repr}
+
+///|
+pub extend TypeExpression with Eq::{not_equal, equal}
+
+///|
+pub extend TypeTemplateArgument with Debug::{to_repr}
+
+///|
+pub extend TypeTemplateArgument with Eq::{not_equal, equal}
+
+///|
+pub extend UnaryOperator with Debug::{to_repr}
+
+///|
+pub extend UnaryOperator with Eq::{not_equal, equal}
+
+///|
+pub extend VarDeclaration with Debug::{to_repr}
+
+///|
+pub extend VarDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend WhileStatement with Debug::{to_repr}
+
+///|
+pub extend WhileStatement with Eq::{not_equal, equal}

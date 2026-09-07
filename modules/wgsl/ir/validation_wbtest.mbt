@@ -156,7 +156,7 @@ test "IR validator rejects invalid function-call expression handles" {
 test "IR validator rejects non-bool branch condition" {
   let module_ = Module()
   ignore(
-    module_.append_type({ name: Some("u32"), inner: Scalar(Scalar(Uint, 4)) }),
+    module_.append_type({ name: Some("u32"), inner: Scalar(Scalar(Uint, 4)), }),
   )
   let function = Function::Function(Some("main"))
   let condition = function.expressions.append(Literal(U32(1)))
@@ -178,7 +178,7 @@ test "IR validator rejects non-bool branch condition" {
 test "IR validator rejects non-pointer store target" {
   let module_ = Module()
   ignore(
-    module_.append_type({ name: Some("u32"), inner: Scalar(Scalar(Uint, 4)) }),
+    module_.append_type({ name: Some("u32"), inner: Scalar(Scalar(Uint, 4)), }),
   )
   let function = Function::Function(Some("main"))
   let target = function.expressions.append(Literal(U32(1)))
@@ -205,7 +205,7 @@ test "IR validator rejects function call argument count mismatch" {
     inner: Scalar(Scalar(Uint, 4)),
   })
   let callee = Function::Function(Some("callee"))
-  callee.arguments.push({ name: Some("x"), ty: u32_ty, binding: None })
+  callee.arguments.push({ name: Some("x"), ty: u32_ty, binding: None, })
   let callee_handle = module_.append_function(callee)
   let caller = Function::Function(Some("main"))
   caller.body.push(Call(callee_handle, [], None))
@@ -230,10 +230,10 @@ test "IR validator rejects function call argument type mismatch" {
     inner: Scalar(Scalar(Uint, 4)),
   })
   ignore(
-    module_.append_type({ name: Some("bool"), inner: Scalar(Scalar(Bool, 1)) }),
+    module_.append_type({ name: Some("bool"), inner: Scalar(Scalar(Bool, 1)), }),
   )
   let callee = Function::Function(Some("callee"))
-  callee.arguments.push({ name: Some("x"), ty: u32_ty, binding: None })
+  callee.arguments.push({ name: Some("x"), ty: u32_ty, binding: None, })
   let callee_handle = module_.append_function(callee)
   let caller = Function::Function(Some("main"))
   let argument = caller.expressions.append(Literal(Bool(true)))
@@ -322,7 +322,7 @@ test "IR validator rejects resource binding on private globals" {
     module_.append_global_variable({
       name: Some("value"),
       space: Private,
-      binding: Some({ group: 0, binding: 0 }),
+      binding: Some({ group: 0, binding: 0, }),
       ty: f32_ty,
       init: None,
       memory_decorations: MemoryDecorations::empty(),
@@ -350,7 +350,7 @@ test "IR validator rejects writes through read-only storage globals" {
   let global = module_.append_global_variable({
     name: Some("buffer"),
     space: Storage(StorageAccess::load()),
-    binding: Some({ group: 0, binding: 0 }),
+    binding: Some({ group: 0, binding: 0, }),
     ty: u32_ty,
     init: None,
     memory_decorations: MemoryDecorations::empty(),

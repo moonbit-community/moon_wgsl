@@ -97,7 +97,7 @@ pub struct Composer {
 
 ///|
 pub fn Composer::default() -> Composer {
-  { inner: @compose.Composer::default() }
+  { inner: @compose.Composer::default(), }
 }
 
 ///|

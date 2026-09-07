@@ -147,7 +147,7 @@ fn tokenize_at(
 ///|
 fn WgslDeclParser::new_at(text : String, source_start : Int) -> WgslDeclParser {
   let tokens = tokenize_at(replace_comments(text), false, source_start)
-  { source_text: text, source_start, token_view: tokens[:] }
+  { source_text: text, source_start, token_view: tokens[:], }
 }
 
 ///|
@@ -379,7 +379,7 @@ fn WgslDeclParser::collect_until_top_level_fragment_with_mode(
   } else {
     wgsl_trim_blankspace(self.slice(start_pos, end_pos))
   }
-  { text, start: start_pos, end: end_pos }
+  { text, start: start_pos, end: end_pos, }
 }
 
 ///|

@@ -498,7 +498,7 @@ test "github issue 4: nested module alias rewrites global binding member access"
     composer,
     "root.wgsl",
     compose_regression_options(compose_regression_empty_defines()),
-    { root_items: ["read_world"] },
+    { root_items: ["read_world"], },
   ) catch {
     err =>
       abort("expected issue 4 nested alias compose success: \{err.message()}")

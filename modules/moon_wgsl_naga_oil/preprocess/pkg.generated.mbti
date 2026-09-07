@@ -31,4 +31,3 @@ pub fn Preprocessor::preprocess(Self, String, Map[String, @contract.ShaderDefVal
 // Type aliases
 
 // Traits
-

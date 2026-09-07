@@ -338,17 +338,17 @@ fn binding_parse_lex(source : String) -> BindingLexResult {
   let mut index = 0
   let (start_index, ok) = binding_parse_skip_layout(source, index)
   if !ok {
-    return LexFailed({ offset: index, incomplete: true })
+    return LexFailed({ offset: index, incomplete: true, })
   }
   index = start_index
   let (after_attrs, ok) = binding_parse_skip_attributes(source, index)
   if !ok {
-    return LexFailed({ offset: index, incomplete: true })
+    return LexFailed({ offset: index, incomplete: true, })
   }
   index = after_attrs
   let (keyword, after_keyword) = match binding_parse_read_ident(source, index) {
     Some(item) => item
-    None => return LexFailed({ offset: index, incomplete: false })
+    None => return LexFailed({ offset: index, incomplete: false, })
   }
   binding_parse_push(
     tokens,
@@ -359,7 +359,7 @@ fn binding_parse_lex(source : String) -> BindingLexResult {
   index = after_keyword
   let (after_keyword_layout, ok) = binding_parse_skip_layout(source, index)
   if !ok {
-    return LexFailed({ offset: index, incomplete: true })
+    return LexFailed({ offset: index, incomplete: true, })
   }
   index = after_keyword_layout
   if tokens[0].0 is VAR &&
@@ -367,30 +367,30 @@ fn binding_parse_lex(source : String) -> BindingLexResult {
     source.code_unit_at(index).to_int() == 60 {
     let (template, end_, ok) = binding_parse_read_template(source, index)
     if !ok {
-      return LexFailed({ offset: index, incomplete: true })
+      return LexFailed({ offset: index, incomplete: true, })
     }
     binding_parse_push(tokens, VAR_TEMPLATE(template), index, end_)
     index = end_
     let (after_template, ok) = binding_parse_skip_layout(source, index)
     if !ok {
-      return LexFailed({ offset: index, incomplete: true })
+      return LexFailed({ offset: index, incomplete: true, })
     }
     index = after_template
   }
   let (name, after_name) = match binding_parse_read_ident(source, index) {
     Some(item) => item
-    None => return LexFailed({ offset: index, incomplete: false })
+    None => return LexFailed({ offset: index, incomplete: false, })
   }
   binding_parse_push(tokens, IDENT(name), index, after_name)
   index = after_name
   let (after_name_layout, ok) = binding_parse_skip_layout(source, index)
   if !ok {
-    return LexFailed({ offset: index, incomplete: true })
+    return LexFailed({ offset: index, incomplete: true, })
   }
   index = after_name_layout
   if tokens[0].0 is ALIAS {
     if index >= source.length() || source.code_unit_at(index).to_int() != 61 {
-      return LexFailed({ offset: index, incomplete: index >= source.length() })
+      return LexFailed({ offset: index, incomplete: index >= source.length(), })
     }
     binding_parse_push(tokens, EQ, index, index + 1)
     let (target, target_end, ok) = binding_parse_segment_end(
@@ -401,7 +401,7 @@ fn binding_parse_lex(source : String) -> BindingLexResult {
       true,
     )
     if !ok || target == "" {
-      return LexFailed({ offset: index + 1, incomplete: !ok })
+      return LexFailed({ offset: index + 1, incomplete: !ok, })
     }
     binding_parse_push(tokens, TYPE_TEXT(target), index + 1, target_end)
     index = target_end
@@ -416,13 +416,13 @@ fn binding_parse_lex(source : String) -> BindingLexResult {
         true,
       )
       if !ok || type_text == "" {
-        return LexFailed({ offset: index + 1, incomplete: !ok })
+        return LexFailed({ offset: index + 1, incomplete: !ok, })
       }
       binding_parse_push(tokens, TYPE_TEXT(type_text), index + 1, type_end)
       index = type_end
       let (after_type, ok) = binding_parse_skip_layout(source, index)
       if !ok {
-        return LexFailed({ offset: index, incomplete: true })
+        return LexFailed({ offset: index, incomplete: true, })
       }
       index = after_type
     }
@@ -436,7 +436,7 @@ fn binding_parse_lex(source : String) -> BindingLexResult {
         false,
       )
       if !ok || initializer == "" {
-        return LexFailed({ offset: index + 1, incomplete: !ok })
+        return LexFailed({ offset: index + 1, incomplete: !ok, })
       }
       binding_parse_push(tokens, INIT_TEXT(initializer), index + 1, init_end)
       index = init_end
@@ -444,7 +444,7 @@ fn binding_parse_lex(source : String) -> BindingLexResult {
   }
   let (after_tail, ok) = binding_parse_skip_layout(source, index)
   if !ok {
-    return LexFailed({ offset: index, incomplete: true })
+    return LexFailed({ offset: index, incomplete: true, })
   }
   index = after_tail
   if index < source.length() && source.code_unit_at(index).to_int() == 59 {
@@ -461,9 +461,33 @@ pub fn parse_binding_source(source : String) -> BindingParseResult {
   }
   let parsed = parse_binding_decl(tokens) catch {
     UnexpectedToken(_, (start, _), _) =>
-      return Failed({ offset: start, incomplete: false })
+      return Failed({ offset: start, incomplete: false, })
     UnexpectedEndOfInput(start, _) =>
-      return Failed({ offset: start, incomplete: true })
+      return Failed({ offset: start, incomplete: true, })
   }
   Parsed(parsed)
 }
+
+///|
+pub extend BindingParseDiagnostic with Debug::{to_repr}
+
+///|
+pub extend BindingParseDiagnostic with Eq::{not_equal, equal}
+
+///|
+pub extend BindingParseKind with Debug::{to_repr}
+
+///|
+pub extend BindingParseKind with Eq::{not_equal, equal}
+
+///|
+pub extend BindingParseNode with Debug::{to_repr}
+
+///|
+pub extend BindingParseNode with Eq::{not_equal, equal}
+
+///|
+pub extend BindingParseResult with Debug::{to_repr}
+
+///|
+pub extend BindingParseResult with Eq::{not_equal, equal}

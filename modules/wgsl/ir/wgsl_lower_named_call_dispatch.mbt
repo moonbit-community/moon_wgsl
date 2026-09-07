@@ -466,7 +466,7 @@ fn WgslIrLowerer::lower_identifier_expression(
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
   match scope.local_constants.get(name) {
-    Some({ value: LazyConstant(local_constant), source }) => {
+    Some({ value: LazyConstant(local_constant), source, }) => {
       let handle = match local_constant.normalized {
         Some(normalized) =>
           function.expressions.append_with_origin(

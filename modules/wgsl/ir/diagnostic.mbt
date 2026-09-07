@@ -61,3 +61,45 @@ pub fn DocComments::DocComments() -> DocComments {
     module_comments: [],
   }
 }
+
+///|
+pub extend DiagnosticFilter with Debug::{to_repr}
+
+///|
+pub extend DiagnosticFilter with Eq::{not_equal, equal}
+
+///|
+pub extend DiagnosticFilterNode with Debug::{to_repr}
+
+///|
+pub extend DiagnosticFilterNode with Eq::{not_equal, equal}
+
+///|
+pub extend DocComments with Debug::{to_repr}
+
+///|
+pub extend DocComments with Eq::{not_equal, equal}
+
+///|
+pub extend FilterableTriggeringRule with Debug::{to_repr}
+
+///|
+pub extend FilterableTriggeringRule with Eq::{not_equal, equal}
+
+///|
+pub extend RayQueryIntersection with Debug::{to_repr}
+
+///|
+pub extend RayQueryIntersection with Eq::{not_equal, equal}
+
+///|
+pub extend Severity with Debug::{to_repr}
+
+///|
+pub extend Severity with Eq::{not_equal, equal}
+
+///|
+pub extend StandardFilterableTriggeringRule with Debug::{to_repr}
+
+///|
+pub extend StandardFilterableTriggeringRule with Eq::{not_equal, equal}

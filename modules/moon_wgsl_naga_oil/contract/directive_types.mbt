@@ -33,7 +33,7 @@ pub fn DiagnosticDirective::DiagnosticDirective(
   severity : String,
   rule : String,
 ) -> DiagnosticDirective {
-  { severity, rule }
+  { severity, rule, }
 }
 
 ///|
@@ -45,7 +45,7 @@ pub struct WgslDirectives {
 
 ///|
 pub fn WgslDirectives::default() -> WgslDirectives {
-  { enables: [], requires: [], diagnostics: [] }
+  { enables: [], requires: [], diagnostics: [], }
 }
 
 ///|
@@ -54,3 +54,27 @@ pub fn WgslDirectives::is_empty(self : WgslDirectives) -> Bool {
   self.requires.is_empty() &&
   self.diagnostics.is_empty()
 }
+
+///|
+pub extend DiagnosticDirective with Debug::{to_repr}
+
+///|
+pub extend DiagnosticDirective with Eq::{not_equal, equal}
+
+///|
+pub extend EnableDirective with Debug::{to_repr}
+
+///|
+pub extend EnableDirective with Eq::{not_equal, equal}
+
+///|
+pub extend RequiresDirective with Debug::{to_repr}
+
+///|
+pub extend RequiresDirective with Eq::{not_equal, equal}
+
+///|
+pub extend WgslDirectives with Debug::{to_repr}
+
+///|
+pub extend WgslDirectives with Eq::{not_equal, equal}

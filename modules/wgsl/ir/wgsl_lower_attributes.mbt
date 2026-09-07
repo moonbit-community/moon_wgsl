@@ -204,7 +204,7 @@ fn wgsl_ir_resource_binding_from_attributes(
               wgsl_ir_attribute_int_value(group_attribute),
               wgsl_ir_attribute_int_value(binding_attribute),
             ) {
-            (Some(group), Some(binding)) => Some({ group, binding })
+            (Some(group), Some(binding)) => Some({ group, binding, })
             _ => None
           }
         None => None

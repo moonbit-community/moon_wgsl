@@ -11,7 +11,7 @@ pub struct WgslImportSubstitutionState {
 
 ///|
 pub fn WgslImportSubstitutionState::default() -> WgslImportSubstitutionState {
-  { declared_imports: [] }
+  { declared_imports: [], }
 }
 
 ///|
@@ -52,7 +52,7 @@ fn declared_imports_add(
   if declared_imports_find_index(declared_imports, used_name) is Some(index) {
     declared_imports[index].full_paths.push(full_path)
   } else {
-    declared_imports.push({ used_name, full_paths: [full_path] })
+    declared_imports.push({ used_name, full_paths: [full_path], })
   }
 }
 
@@ -184,7 +184,7 @@ fn used_imports_record(
     used_imports[index].definition.items.push(item_name)
   } else {
     used_imports.push(
-      ImportDefWithOffset({ import_path: module_path, items: [item_name] }),
+      ImportDefWithOffset({ import_path: module_path, items: [item_name], }),
     )
   }
 }

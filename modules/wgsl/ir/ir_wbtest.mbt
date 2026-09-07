@@ -47,7 +47,7 @@ test "Naga-style shader IR represents function statements and entry points" {
   })
   let function = Function::Function(Some("main"))
   let condition = function.expressions.append(Literal(Bool(true)))
-  function.body.push(If(condition, { statements: [Return(None)] }, Block()))
+  function.body.push(If(condition, { statements: [Return(None)], }, Block()))
   shader_module.append_entry_point({
     name: "main",
     source_start: -1,

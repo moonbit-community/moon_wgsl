@@ -10,7 +10,7 @@ fn emit_wgsl_module_with_runtime_writer_backend(
   root_items : Array[String]?,
 ) -> String raise WgslIrEmitError {
   let view = build_wgsl_ir_runtime_writer_module(shader_module, root_items)
-  let backend = WgslIrRuntimeWriterBackend::{ shader_module, view }
+  let backend = WgslIrRuntimeWriterBackend::{ shader_module, view, }
   backend.emit()
 }
 

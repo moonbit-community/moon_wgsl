@@ -76,7 +76,7 @@ pub(all) struct Block {
 
 ///|
 pub fn Block::Block() -> Block {
-  { statements: [] }
+  { statements: [], }
 }
 
 ///|
@@ -167,7 +167,7 @@ fn wgsl_ir_function_replace_named_expression(
 ) -> Bool {
   for index in 0..<function.named_expressions.length() {
     if function.named_expressions[index].handle == handle {
-      function.named_expressions[index] = { handle, name, ty }
+      function.named_expressions[index] = { handle, name, ty, }
       return true
     }
   }
@@ -206,3 +206,87 @@ pub(all) enum MeshOutputTopology {
   Lines
   Triangles
 } derive(Eq, Debug)
+
+///|
+pub extend Block with Debug::{to_repr}
+
+///|
+pub extend Block with Eq::{not_equal, equal}
+
+///|
+pub extend EntryPoint with Debug::{to_repr}
+
+///|
+pub extend EntryPoint with Eq::{not_equal, equal}
+
+///|
+pub extend Function with Debug::{to_repr}
+
+///|
+pub extend Function with Eq::{not_equal, equal}
+
+///|
+pub extend FunctionArgument with Debug::{to_repr}
+
+///|
+pub extend FunctionArgument with Eq::{not_equal, equal}
+
+///|
+pub extend FunctionResult with Debug::{to_repr}
+
+///|
+pub extend FunctionResult with Eq::{not_equal, equal}
+
+///|
+pub extend MeshOutputTopology with Debug::{to_repr}
+
+///|
+pub extend MeshOutputTopology with Eq::{not_equal, equal}
+
+///|
+pub extend MeshStageInfo with Debug::{to_repr}
+
+///|
+pub extend MeshStageInfo with Eq::{not_equal, equal}
+
+///|
+pub extend NamedExpression with Debug::{to_repr}
+
+///|
+pub extend NamedExpression with Eq::{not_equal, equal}
+
+///|
+pub extend RayPipelineFunction with Debug::{to_repr}
+
+///|
+pub extend RayPipelineFunction with Eq::{not_equal, equal}
+
+///|
+pub extend RayQueryFunction with Debug::{to_repr}
+
+///|
+pub extend RayQueryFunction with Eq::{not_equal, equal}
+
+///|
+pub extend Statement with Debug::{to_repr}
+
+///|
+pub extend Statement with Eq::{not_equal, equal}
+
+///|
+pub extend SwitchCase with Debug::{to_repr}
+
+///|
+pub extend SwitchCase with Eq::{not_equal, equal}
+
+///|
+pub extend SwitchCaseLabelStyle with Debug::{to_repr}
+
+///|
+pub extend SwitchCaseLabelStyle with Eq::{not_equal, equal}
+
+///|
+pub extend SwitchValue with Debug::{to_repr}
+
+///|
+pub extend SwitchValue with Eq::{not_equal, equal}

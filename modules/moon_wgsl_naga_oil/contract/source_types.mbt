@@ -29,7 +29,7 @@ pub fn WgslSourceCatalogEntry::WgslSourceCatalogEntry(
   source_start : Int,
   source_end : Int,
 ) -> WgslSourceCatalogEntry {
-  { rel_path, symbol_name, source_start, source_end }
+  { rel_path, symbol_name, source_start, source_end, }
 }
 
 ///|
@@ -104,7 +104,7 @@ pub fn PreparedWgslSource::PreparedWgslSource(
   source_origins : Array[WgslSourceOriginEntry],
   diagnostics : Array[WgslDiagnostic],
 ) -> PreparedWgslSource {
-  { source, source_files, source_catalog, source_origins, diagnostics }
+  { source, source_files, source_catalog, source_origins, diagnostics, }
 }
 
 ///|
@@ -139,3 +139,27 @@ pub fn PreparedWgslSource::diagnostics(
 ) -> Array[WgslDiagnostic] {
   self.diagnostics.copy()
 }
+
+///|
+pub extend WgslSourceCatalogEntry with Debug::{to_repr}
+
+///|
+pub extend WgslSourceCatalogEntry with Eq::{not_equal, equal}
+
+///|
+pub extend WgslSourceFile with Debug::{to_repr}
+
+///|
+pub extend WgslSourceFile with Eq::{not_equal, equal}
+
+///|
+pub extend WgslSourceOriginEntry with Debug::{to_repr}
+
+///|
+pub extend WgslSourceOriginEntry with Eq::{not_equal, equal}
+
+///|
+pub extend WgslSourceOriginKind with Debug::{to_repr}
+
+///|
+pub extend WgslSourceOriginKind with Eq::{not_equal, equal}

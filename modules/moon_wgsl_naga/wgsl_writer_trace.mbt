@@ -149,7 +149,7 @@ fn wgsl_ir_trace_final_name(view : WgslIrWriterModule, key : String) -> String {
 
 ///|
 fn wgsl_ir_writer_module_plan_trace(view : WgslIrWriterModule) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string(
     "module\tdirectives=\{view.source_directives().length()}\ttypes=\{view.type_slots().length()}\tconstants=\{view.constant_slots().length()}\toverrides=\{view.override_slots().length()}\tglobals=\{view.global_variable_slots().length()}\tfunctions=\{view.function_slots().length()}\tentry_points=\{view.entry_point_slots().length()}\tconst_asserts=\{view.const_assert_slots().length()}\n",
   )
@@ -367,7 +367,7 @@ fn wgsl_ir_writer_body_plan_trace(
   function : Function,
   function_plan : WgslIrFunctionWriterPlan,
 ) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string(
     "function\t\{label}\targuments=\{function.arguments.length()}\tlocals=\{function.local_variables.items.length()}\texpressions=\{function.expressions.items.length()}\n",
   )

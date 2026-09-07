@@ -19,7 +19,7 @@ fn WgslSourceDirectiveItem::WgslSourceDirectiveItem(
   kind : WgslSourceDirectiveItemKind,
   line : String,
 ) -> WgslSourceDirectiveItem {
-  { kind, line }
+  { kind, line, }
 }
 
 ///|
@@ -192,3 +192,12 @@ pub fn parse_wgsl_source_directive_items(
   }
   items
 }
+
+///|
+pub extend WgslSourceDirectiveItem with Debug::{to_repr}
+
+///|
+pub extend WgslSourceDirectiveItemKind with Debug::{to_repr}
+
+///|
+pub extend WgslSourceDirectiveItemKind with Eq::{not_equal, equal}

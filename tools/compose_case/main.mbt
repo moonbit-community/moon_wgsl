@@ -159,7 +159,7 @@ fn compose_case_parse_positive_decimal(text : String) -> Int {
 
 ///|
 fn compose_case_repeat(text : String, count : Int) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for _ in 0..<count {
     out.write_string(text)
   }
@@ -253,7 +253,7 @@ fn compose_case_render_source_diagnostic(
 ) -> String {
   let width = compose_case_decimal_width(line_number)
   let gutter = compose_case_repeat(" ", width + 1)
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string(message)
   out.write_string("\n")
   out.write_string("\{gutter}┌─ \{file_path}:\{line_number}:\{column}\n")
@@ -410,7 +410,7 @@ fn compose_case_render_unknown_identifier_diagnostic(
   line_text : String,
   name : String,
 ) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string("error: no definition in scope for identifier: `\{name}`\n")
   out.write_string("   ┌─ \{file_path}:\{line_number}:\{column}\n")
   out.write_string("   │\n")
@@ -433,7 +433,7 @@ fn compose_case_render_return_type_validation_diagnostic(
   return_line : String,
   end_line : String,
 ) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   out.write_string(
     "error: failed to build a valid final module: Function [\{function_index}] '\{function_name}' is invalid\n",
   )
@@ -587,14 +587,14 @@ fn compose_case_additional_imports(
 ) -> Array[@contract.ImportDefinition] {
   let imports : Array[@contract.ImportDefinition] = []
   for path in paths {
-    imports.push({ import_path: path, items: [] })
+    imports.push({ import_path: path, items: [], })
   }
   imports
 }
 
 ///|
 fn compose_case_scan_options() -> @wgsl_io.WgslSourceScanOptions {
-  { recursive: true, extensions: [".wgsl", ".glsl"], exclude_prefixes: [] }
+  { recursive: true, extensions: [".wgsl", ".glsl"], exclude_prefixes: [], }
 }
 
 ///|
@@ -761,7 +761,7 @@ fn compose_case_glsl_main_assignment_expression(
 
 ///|
 fn compose_case_glsl_rewrite_expr(expr : String) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let mut i = 0
   while i < expr.length() {
     if i + 2 < expr.length() &&
@@ -834,7 +834,7 @@ fn compose_case_next_non_space_code(text : String, from : Int) -> Int? {
 
 ///|
 fn compose_case_glsl_normalize_constructor_numbers(expr : String) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let mut i = 0
   while i < expr.length() {
     let code = expr.code_unit_at(i).to_int()
@@ -885,7 +885,7 @@ fn compose_case_glsl_emit_directives(
 
 ///|
 fn compose_case_translate_glsl_module_source(source : String) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   compose_case_glsl_emit_directives(out, source)
   if source.contains("uniform CustomMaterial") {
     out.write_string("\n")
@@ -931,7 +931,7 @@ fn compose_case_translate_glsl_module_source(source : String) -> String {
 
 ///|
 fn compose_case_translate_glsl_vertex_source(source : String) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   compose_case_glsl_emit_directives(out, source)
   let expr = match
     compose_case_glsl_main_assignment_expression(source, "gl_Position") {
@@ -1003,7 +1003,7 @@ fn compose_case_translate_glsl_fragment_source(source : String) -> String {
       )
     None => "vec4<f32>(0.0)"
   }
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   compose_case_glsl_emit_directives(out, source)
   out.write_string("\n")
   out.write_string(

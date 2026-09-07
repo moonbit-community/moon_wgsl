@@ -402,3 +402,147 @@ pub(all) enum Expression {
   )
   CooperativeMultiplyAdd(Handle, Handle, Handle)
 } derive(Eq, Debug)
+
+///|
+pub extend AtomicFunction with Debug::{to_repr}
+
+///|
+pub extend AtomicFunction with Eq::{not_equal, equal}
+
+///|
+pub extend BinaryOperator with Debug::{to_repr}
+
+///|
+pub extend BinaryOperator with Eq::{not_equal, equal}
+
+///|
+pub extend CollectiveOperation with Debug::{to_repr}
+
+///|
+pub extend CollectiveOperation with Eq::{not_equal, equal}
+
+///|
+pub extend Constant with Debug::{to_repr}
+
+///|
+pub extend Constant with Eq::{not_equal, equal}
+
+///|
+pub extend CooperativeData with Debug::{to_repr}
+
+///|
+pub extend CooperativeData with Eq::{not_equal, equal}
+
+///|
+pub extend DerivativeAxis with Debug::{to_repr}
+
+///|
+pub extend DerivativeAxis with Eq::{not_equal, equal}
+
+///|
+pub extend DerivativeControl with Debug::{to_repr}
+
+///|
+pub extend DerivativeControl with Eq::{not_equal, equal}
+
+///|
+pub extend Direction with Debug::{to_repr}
+
+///|
+pub extend Direction with Eq::{not_equal, equal}
+
+///|
+pub extend Expression with Debug::{to_repr}
+
+///|
+pub extend Expression with Eq::{not_equal, equal}
+
+///|
+pub extend GatherMode with Debug::{to_repr}
+
+///|
+pub extend GatherMode with Eq::{not_equal, equal}
+
+///|
+pub extend GlobalVariable with Debug::{to_repr}
+
+///|
+pub extend GlobalVariable with Eq::{not_equal, equal}
+
+///|
+pub extend ImageQuery with Debug::{to_repr}
+
+///|
+pub extend ImageQuery with Eq::{not_equal, equal}
+
+///|
+pub extend Literal with Debug::{to_repr}
+
+///|
+pub extend Literal with Eq::{not_equal, equal}
+
+///|
+pub extend LocalVariable with Debug::{to_repr}
+
+///|
+pub extend LocalVariable with Eq::{not_equal, equal}
+
+///|
+pub extend LocalVariableKind with Debug::{to_repr}
+
+///|
+pub extend LocalVariableKind with Eq::{not_equal, equal}
+
+///|
+pub extend MathFunction with Debug::{to_repr}
+
+///|
+pub extend MathFunction with Eq::{not_equal, equal}
+
+///|
+pub extend Override with Debug::{to_repr}
+
+///|
+pub extend Override with Eq::{not_equal, equal}
+
+///|
+pub extend RelationalFunction with Debug::{to_repr}
+
+///|
+pub extend RelationalFunction with Eq::{not_equal, equal}
+
+///|
+pub extend ResourceBinding with Debug::{to_repr}
+
+///|
+pub extend ResourceBinding with Eq::{not_equal, equal}
+
+///|
+pub extend SampleLevel with Debug::{to_repr}
+
+///|
+pub extend SampleLevel with Eq::{not_equal, equal}
+
+///|
+pub extend SubgroupFunction with Debug::{to_repr}
+
+///|
+pub extend SubgroupFunction with Eq::{not_equal, equal}
+
+///|
+pub extend SubgroupOperation with Debug::{to_repr}
+
+///|
+pub extend SubgroupOperation with Eq::{not_equal, equal}
+
+///|
+pub extend SwizzleComponent with Debug::{to_repr}
+
+///|
+pub extend SwizzleComponent with Eq::{not_equal, equal}
+
+///|
+pub extend UnaryOperator with Debug::{to_repr}
+
+///|
+pub extend UnaryOperator with Eq::{not_equal, equal}

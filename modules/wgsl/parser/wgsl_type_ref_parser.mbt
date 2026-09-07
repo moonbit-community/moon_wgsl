@@ -474,7 +474,7 @@ fn WgslDeclParser::collect_template_list_fragment(
     consumed = consumed + 1
   }
   guard end_pos >= open_pos else { return None }
-  Some({ text: self.slice(open_pos, end_pos), start: open_pos, consumed })
+  Some({ text: self.slice(open_pos, end_pos), start: open_pos, consumed, })
 }
 
 ///|
