@@ -1,6 +1,6 @@
 name = "Milky2018/moon_wesl"
 
-version = "0.17.2"
+version = "0.17.3"
 
 import {
   "Milky2018/wgsl@0.17.2",
