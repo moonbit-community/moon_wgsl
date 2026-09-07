@@ -19,7 +19,7 @@ jobs:
           submodules: recursive
       - name: Install MoonBit
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- nightly
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- latest
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - name: Check wgsl core
         run: |
@@ -38,7 +38,7 @@ jobs:
           submodules: recursive
       - name: Install MoonBit
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- nightly
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- latest
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - name: Check Naga compatibility module
         run: |
@@ -57,7 +57,7 @@ jobs:
           submodules: recursive
       - name: Install MoonBit
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- nightly
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- latest
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - name: Check naga-oil compatibility module
         run: |
@@ -76,7 +76,7 @@ jobs:
           submodules: recursive
       - name: Install MoonBit
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- nightly
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- latest
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - name: Check facade module
         run: |
@@ -95,7 +95,7 @@ jobs:
           submodules: recursive
       - name: Install MoonBit
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- nightly
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- latest
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - name: Check WESL module
         run: |
@@ -121,7 +121,7 @@ jobs:
 
       - name: Install MoonBit
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- nightly
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- latest
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
 
       - name: Install Node.js

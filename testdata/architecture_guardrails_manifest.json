@@ -73,7 +73,7 @@
       "Milky2018/wgsl/parser",
       "moonbitlang/core/debug",
       "moonbitlang/core/set",
-      "moonbitlang/core/strconv"
+      "moonbitlang/core/string"
     ],
     "modules/moon_wgsl_naga_oil/compose/moon.pkg": [
       "Milky2018/moon_wgsl_naga",
@@ -178,7 +178,7 @@
       "Milky2018/wgsl/parser",
       "moonbitlang/core/debug",
       "moonbitlang/core/set",
-      "moonbitlang/core/strconv"
+      "moonbitlang/core/string"
     ],
     "modules/wgsl/lex/moon.pkg": [
       "moonbitlang/core/debug"

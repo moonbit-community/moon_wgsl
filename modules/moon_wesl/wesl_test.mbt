@@ -3275,7 +3275,7 @@ impl ModulePreprocessor for AppendDeclPreprocessor with fn preprocess_module(
       return_attributes: [],
       body: { statements: [], },
     }),
-    attributes: Array(),
+    attributes: [],
     source: "fn injected() -> f32 {\n  return 1.0;\n}",
     span: { start_line: 1, end_line: 3, },
   })
