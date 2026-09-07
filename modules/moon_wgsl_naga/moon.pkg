@@ -1,8 +1,8 @@
 import {
+  "moonbitlang/core/string",
   "Milky2018/wgsl/ir",
   "moonbitlang/core/debug",
   "moonbitlang/core/set",
-  "moonbitlang/core/strconv",
 }
 
 import {

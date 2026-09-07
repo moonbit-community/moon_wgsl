@@ -290,14 +290,14 @@ fn wgsl_ir_literal_from_token(
         U32Literal => U32(wgsl_ir_u32_literal_from_numeric_literal(literal))
         AbstractFloatLiteral => {
           let text = wgsl_ir_float_literal_text(literal.raw_text)
-          let value : Double = @strconv.from_str(text) catch {
+          let value : Double = @string.from_str(text) catch {
             _ => raise UnsupportedExpression(literal.raw_text)
           }
           AbstractFloat(value)
         }
         F32Literal => {
           let text = wgsl_ir_float_literal_text(literal.raw_text)
-          let value : Double = @strconv.from_str(text) catch {
+          let value : Double = @string.from_str(text) catch {
             _ => raise UnsupportedExpression(literal.raw_text)
           }
           F32(Float::from_double(value))
@@ -354,7 +354,7 @@ fn wgsl_ir_float64_literal_from_text(
   literal : @ast.WgslNumericLiteral,
 ) -> Double raise WgslIrLowerError {
   let text = wgsl_ir_float_literal_text(literal.raw_text)
-  @strconv.from_str(text) catch {
+  @string.from_str(text) catch {
     _ => raise UnsupportedExpression(literal.raw_text)
   }
 }

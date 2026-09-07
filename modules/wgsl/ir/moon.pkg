@@ -1,10 +1,10 @@
 import {
+  "moonbitlang/core/string",
   "Milky2018/wgsl/ast",
   "Milky2018/wgsl/ast_analysis",
   "Milky2018/wgsl/parser",
   "moonbitlang/core/debug",
   "moonbitlang/core/set",
-  "moonbitlang/core/strconv",
 }
 
 warnings = "-unused_constructor"

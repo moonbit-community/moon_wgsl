@@ -472,7 +472,7 @@ fn wgsl_ir_array_size_literal_from_type_name(name : String) -> Int? {
   } else {
     name
   }
-  Some(@strconv.from_str(text)) catch {
+  Some(@string.from_str(text)) catch {
     _ => None
   }
 }

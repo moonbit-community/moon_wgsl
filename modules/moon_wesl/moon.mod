@@ -1,9 +1,9 @@
 name = "Milky2018/moon_wesl"
 
-version = "0.17.1"
+version = "0.17.2"
 
 import {
-  "Milky2018/wgsl@0.17.1",
+  "Milky2018/wgsl@0.17.2",
 }
 
 readme = "README.mbt.md"

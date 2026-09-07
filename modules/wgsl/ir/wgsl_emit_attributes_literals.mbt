@@ -248,7 +248,7 @@ fn wgsl_ir_shortest_large_fixed_f32_literal_text(
   guard exp_index >= 0 else { return None }
   let mantissa = scientific[0:exp_index].to_owned()
   let exponent_text = scientific[exp_index + 1:scientific.length()].to_owned()
-  let exponent : Int = @strconv.from_str(exponent_text) catch {
+  let exponent : Int = @string.from_str(exponent_text) catch {
     _ => return None
   }
   let negative = mantissa.has_prefix("-")
@@ -318,7 +318,7 @@ fn wgsl_ir_scientific_decimal_text(text : String) -> String? {
   guard exp_index >= 0 else { return None }
   let mantissa = text[0:exp_index].to_owned()
   let exponent_text = text[exp_index + 1:text.length()].to_owned()
-  let exponent : Int = @strconv.from_str(exponent_text) catch {
+  let exponent : Int = @string.from_str(exponent_text) catch {
     _ => return None
   }
   let negative = mantissa.has_prefix("-")
@@ -436,7 +436,7 @@ fn wgsl_ir_increment_decimal_digit_string(text : String) -> String {
 
 ///|
 fn wgsl_ir_f32_literal_round_trips(value : Float, text : String) -> Bool {
-  let parsed : Double = @strconv.from_str(text) catch { _ => return false }
+  let parsed : Double = @string.from_str(text) catch { _ => return false }
   Float::from_double(parsed) == value
 }
 
