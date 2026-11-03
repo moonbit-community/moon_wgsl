@@ -54,43 +54,37 @@
       "moonbitlang/core/string"
     ],
     "modules/moon_wgsl/moon.pkg": [
+      "Milky2018/moon_wesl",
       "Milky2018/moon_wgsl_naga_oil/compose",
-      "Milky2018/moon_wgsl_naga_oil/preprocess",
+      "Milky2018/moon_wgsl_naga_oil/contract",
       "Milky2018/moon_wgsl_naga_oil/export",
       "Milky2018/moon_wgsl_naga_oil/metadata",
+      "Milky2018/moon_wgsl_naga_oil/preprocess",
       "Milky2018/moon_wgsl_naga_oil/profile",
       "Milky2018/moon_wgsl_naga_oil/resolver",
-      "Milky2018/moon_wesl",
-      "Milky2018/moon_wgsl_naga_oil/contract",
       "Milky2018/wgsl/parser",
-      "moonbitlang/core/encoding/utf8",
-      "moonbitlang/core/ref",
-      "moonbitlang/core/set",
-      "moonbitlang/core/string"
+      "moonbitlang/core/ref"
     ],
     "modules/moon_wgsl_naga/moon.pkg": [
       "Milky2018/wgsl/ir",
       "Milky2018/wgsl/parser",
-      "moonbitlang/core/debug",
       "moonbitlang/core/set",
       "moonbitlang/core/string"
     ],
     "modules/moon_wgsl_naga_oil/compose/moon.pkg": [
       "Milky2018/moon_wgsl_naga",
+      "Milky2018/moon_wgsl_naga_oil/contract",
       "Milky2018/moon_wgsl_naga_oil/internal/directive",
+      "Milky2018/moon_wgsl_naga_oil/internal/import_syntax",
+      "Milky2018/moon_wgsl_naga_oil/internal/transform",
       "Milky2018/moon_wgsl_naga_oil/metadata",
       "Milky2018/moon_wgsl_naga_oil/preprocess",
       "Milky2018/moon_wgsl_naga_oil/resolver",
-      "Milky2018/moon_wgsl_naga_oil/internal/transform",
       "Milky2018/wgsl/ast",
       "Milky2018/wgsl/ast_analysis",
-      "Milky2018/moon_wgsl_naga_oil/contract",
-      "Milky2018/moon_wgsl_naga_oil/internal/import_syntax",
       "Milky2018/wgsl/lex",
       "Milky2018/wgsl/parser",
-      "moonbitlang/core/ref",
-      "moonbitlang/core/set",
-      "moonbitlang/core/string"
+      "moonbitlang/core/set"
     ],
     "modules/moon_wgsl_naga_oil/internal/directive/moon.pkg": [
       "Milky2018/moon_wgsl_naga_oil/contract",
@@ -120,11 +114,10 @@
       "moonbitlang/core/encoding/utf8"
     ],
     "modules/moon_wgsl_naga_oil/metadata/moon.pkg": [
+      "Milky2018/moon_wgsl_naga_oil/contract",
       "Milky2018/moon_wgsl_naga_oil/internal/directive",
       "Milky2018/moon_wgsl_naga_oil/internal/import_substitution",
-      "Milky2018/moon_wgsl_naga_oil/contract",
       "Milky2018/wgsl/lex",
-      "moonbitlang/core/encoding/utf8",
       "moonbitlang/core/set",
       "moonbitlang/core/string"
     ],
@@ -136,25 +129,23 @@
       "moonbitlang/core/string"
     ],
     "modules/moon_wgsl_naga_oil/resolver/moon.pkg": [
-      "Milky2018/moon_wgsl_naga_oil/metadata",
       "Milky2018/moon_wgsl_naga_oil/contract",
       "Milky2018/moon_wgsl_naga_oil/internal/import_syntax",
-      "Milky2018/wgsl/lex",
-      "moonbitlang/core/ref"
+      "Milky2018/moon_wgsl_naga_oil/metadata",
+      "Milky2018/wgsl/lex"
     ],
     "modules/moon_wgsl_naga_oil/internal/source_rewrite/moon.pkg": [
       "Milky2018/wgsl/lex"
     ],
     "modules/moon_wgsl_naga_oil/internal/transform/moon.pkg": [
+      "Milky2018/moon_wgsl_naga_oil/contract",
       "Milky2018/moon_wgsl_naga_oil/internal/directive",
       "Milky2018/moon_wgsl_naga_oil/internal/source_rewrite",
       "Milky2018/wgsl/ast",
       "Milky2018/wgsl/ast_analysis",
-      "Milky2018/moon_wgsl_naga_oil/contract",
       "Milky2018/wgsl/ir",
       "Milky2018/wgsl/lex",
       "Milky2018/wgsl/parser",
-      "moonbitlang/core/encoding/utf8",
       "moonbitlang/core/set"
     ],
     "modules/wgsl/ast/moon.pkg": [],
@@ -180,9 +171,7 @@
       "moonbitlang/core/set",
       "moonbitlang/core/string"
     ],
-    "modules/wgsl/lex/moon.pkg": [
-      "moonbitlang/core/debug"
-    ],
+    "modules/wgsl/lex/moon.pkg": [],
     "modules/wgsl/parser/moon.pkg": [
       "Milky2018/wgsl/ast",
       "Milky2018/wgsl/ast_analysis",
