@@ -6,7 +6,7 @@ import {
 }
 
 // Values
-pub fn raw_import_brace_balance_next(Int, String) -> Int
+pub fn raw_import_brace_balance_next(Int32, String) -> Int32
 
 pub fn replace_comments(String) -> String
 
@@ -14,7 +14,7 @@ pub fn replace_comments_preserving_byte_width(String) -> String
 
 pub fn source_lines(String) -> Array[String]
 
-pub fn spaces(Int) -> String
+pub fn spaces(Int32) -> String
 
 pub fn split_last_identifier(String) -> (String, String)?
 
@@ -24,43 +24,43 @@ pub fn tokenize_wgsl(String, Bool) -> Array[WgslToken]
 
 pub fn trim_trailing_semicolons(String) -> String
 
-pub fn utf8_byte_length(String) -> Int
+pub fn utf8_byte_length(String) -> Int32
 
-pub fn wgsl_blankspace_code_point(Int) -> Bool
+pub fn wgsl_blankspace_code_point(Int32) -> Bool
 
-pub fn wgsl_code_point_at(String, Int) -> (Int, Int)?
+pub fn wgsl_code_point_at(String, Int32) -> (Int32, Int32)?
 
-pub fn wgsl_identifier_continue_code_point(Int) -> Bool
+pub fn wgsl_identifier_continue_code_point(Int32) -> Bool
 
-pub fn wgsl_identifier_start_code_point(Int) -> Bool
+pub fn wgsl_identifier_start_code_point(Int32) -> Bool
 
 pub fn wgsl_identifier_text(String) -> Bool
 
-pub fn wgsl_line_break_width(String, Int) -> Int
+pub fn wgsl_line_break_width(String, Int32) -> Int32
 
-pub fn wgsl_line_end(String, Int) -> Int
+pub fn wgsl_line_end(String, Int32) -> Int32
 
-pub fn wgsl_line_start(String, Int) -> Int
+pub fn wgsl_line_start(String, Int32) -> Int32
 
-pub fn wgsl_line_text_end(String, Int) -> Int
+pub fn wgsl_line_text_end(String, Int32) -> Int32
 
-pub fn wgsl_regex_skip_whitespace(String, Int) -> Int
+pub fn wgsl_regex_skip_whitespace(String, Int32) -> Int32
 
 pub fn wgsl_regex_trim_whitespace(String) -> String
 
-pub fn wgsl_regex_whitespace_code_point(Int) -> Bool
+pub fn wgsl_regex_whitespace_code_point(Int32) -> Bool
 
-pub fn wgsl_regex_whitespace_width(String, Int) -> Int
+pub fn wgsl_regex_whitespace_width(String, Int32) -> Int32
 
 pub fn wgsl_regex_word_text(String) -> Bool
 
-pub fn wgsl_regex_word_width(String, Int) -> Int
+pub fn wgsl_regex_word_width(String, Int32) -> Int32
 
 pub fn wgsl_trim_blankspace(String) -> String
 
-pub fn wgsl_xid_continue_code_point(Int) -> Bool
+pub fn wgsl_xid_continue_code_point(Int32) -> Bool
 
-pub fn wgsl_xid_start_code_point(Int) -> Bool
+pub fn wgsl_xid_start_code_point(Int32) -> Bool
 
 // Errors
 
@@ -68,19 +68,19 @@ pub fn wgsl_xid_start_code_point(Int) -> Bool
 pub struct WgslToken {
   // private fields
 } derive(Eq, @debug.Debug)
-pub fn WgslToken::end(Self) -> Int
+pub fn WgslToken::end(Self) -> Int32
 pub fn WgslToken::equal(Self, Self) -> Bool
 pub fn WgslToken::identifier_text(Self) -> String?
 pub fn WgslToken::is_identifier(Self, String) -> Bool
 pub fn WgslToken::is_operator(Self, String) -> Bool
-pub fn WgslToken::is_punctuation(Self, Int) -> Bool
+pub fn WgslToken::is_punctuation(Self, Int32) -> Bool
 pub fn WgslToken::is_whitespace(Self) -> Bool
 pub fn WgslToken::not_equal(Self, Self) -> Bool
 pub fn WgslToken::number_text(Self) -> String?
 pub fn WgslToken::operator_text(Self) -> String?
-pub fn WgslToken::pos(Self) -> Int
-pub fn WgslToken::punctuation_code(Self) -> Int?
-pub fn WgslToken::shift(Self, Int) -> Self
+pub fn WgslToken::pos(Self) -> Int32
+pub fn WgslToken::punctuation_code(Self) -> Int32?
+pub fn WgslToken::shift(Self, Int32) -> Self
 pub fn WgslToken::source_text(Self) -> String
 pub fn WgslToken::to_repr(Self) -> @debug.Repr
 

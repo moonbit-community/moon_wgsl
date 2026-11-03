@@ -7,13 +7,13 @@ import {
 }
 
 // Values
-pub fn block(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslBlock raise ParseError
+pub fn block(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> @ast.WgslBlock raise ParseError
 
-pub fn const_assert_expr(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslExprRef raise ParseError
+pub fn const_assert_expr(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> @ast.WgslExprRef raise ParseError
 
-pub fn function_args(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@ast.WgslFunctionArgument] raise ParseError
+pub fn function_args(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> Array[@ast.WgslFunctionArgument] raise ParseError
 
-pub fn function_result(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslFunctionResult? raise ParseError
+pub fn function_result(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> @ast.WgslFunctionResult? raise ParseError
 
 pub fn parse_wgsl_struct(String) -> @ast.WgslStruct?
 
@@ -21,26 +21,26 @@ pub fn parse_wgsl_translation_unit_strict(String) -> @ast.WgslTranslationUnit ra
 
 pub fn parse_wgsl_type_ref(String) -> @ast.WgslTypeRef?
 
-pub fn source_directive(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslDirective raise ParseError
+pub fn source_directive(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> @ast.WgslDirective raise ParseError
 
-pub fn struct_members(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@ast.WgslStructMember] raise ParseError
+pub fn struct_members(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> Array[@ast.WgslStructMember] raise ParseError
 
-pub fn template_list(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@ast.WgslTypeRef] raise ParseError
+pub fn template_list(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> Array[@ast.WgslTypeRef] raise ParseError
 
-pub fn type_alias_tail(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslTypeRef raise ParseError
+pub fn type_alias_tail(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> @ast.WgslTypeRef raise ParseError
 
-pub fn type_ref(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslTypeRef raise ParseError
+pub fn type_ref(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> @ast.WgslTypeRef raise ParseError
 
-pub fn typed_initializer_tail(Array[(Token, Int, Int)], initial_pos? : Int) -> (@ast.WgslTypeRef?, @ast.WgslExprRef?) raise ParseError
+pub fn typed_initializer_tail(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> (@ast.WgslTypeRef?, @ast.WgslExprRef?) raise ParseError
 
 // Errors
 pub suberror ParseError {
-  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
-  UnexpectedEndOfInput(Int, Array[TokenKind])
+  UnexpectedToken(Token, (Int32, Int32), Array[TokenKind])
+  UnexpectedEndOfInput(Int32, Array[TokenKind])
 } derive(@debug.Debug)
 
 pub suberror WgslParseError {
-  UnparsedDeclaration(String, Int)
+  UnparsedDeclaration(String, Int32)
 }
 pub fn WgslParseError::message(Self) -> String
 
@@ -48,7 +48,7 @@ pub fn WgslParseError::message(Self) -> String
 pub(all) enum Token {
   STMT(@ast.WgslStatement)
   TYPE_ATOM(@ast.WgslTypeAtom)
-  TYPE_ARGS((Array[@ast.WgslTypeArgument], Int))
+  TYPE_ARGS((Array[@ast.WgslTypeArgument], Int32))
   ARG_NAME(@ast.WgslIdent)
   ARG_TYPE(@ast.WgslTypeRef)
   MEMBER_NAME(@ast.WgslIdent)
@@ -56,23 +56,23 @@ pub(all) enum Token {
   DECL_TYPE(@ast.WgslTypeRef)
   INIT_EXPR(@ast.WgslExprRef)
   EXPR_REF(@ast.WgslExprRef)
-  AT(Int)
+  AT(Int32)
   ATTR_NAME(@ast.WgslIdent)
-  ATTR_ARGS((@ast.WgslExprRef?, Int))
+  ATTR_ARGS((@ast.WgslExprRef?, Int32))
   KW_ENABLE(@ast.WgslIdent)
   KW_REQUIRES(@ast.WgslIdent)
   KW_DIAGNOSTIC(@ast.WgslIdent)
-  DIRECTIVE_TAIL((String, Int, Int))
+  DIRECTIVE_TAIL((String, Int32, Int32))
   SOURCE_TEXT(String)
-  ARROW(Int)
+  ARROW(Int32)
   LPAREN
   RPAREN
-  LBRACE(Int)
-  RBRACE(Int)
+  LBRACE(Int32)
+  RBRACE(Int32)
   COLON
   EQUAL
-  TYPE_LT(Int)
-  TYPE_GT(Int)
+  TYPE_LT(Int32)
+  TYPE_GT(Int32)
   COMMA
   SEMI
   EOF

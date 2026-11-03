@@ -50,15 +50,15 @@ pub fn WgslImmediateSpecializationError::message(Self) -> String
 
 pub suberror WgslVirtualOverrideError {
   InvalidOverride(String)
-  UnparsedDeclaration(String, Int)
+  UnparsedDeclaration(String, Int32)
 }
 
 // Types and methods
 pub struct WgslEmittedDeclaration {
   // private fields
 }
-pub fn WgslEmittedDeclaration::generated_end(Self) -> Int
-pub fn WgslEmittedDeclaration::generated_start(Self) -> Int
+pub fn WgslEmittedDeclaration::generated_end(Self) -> Int32
+pub fn WgslEmittedDeclaration::generated_start(Self) -> Int32
 pub fn WgslEmittedDeclaration::is_type_declaration(Self) -> Bool
 pub fn WgslEmittedDeclaration::name(Self) -> String
 
@@ -81,8 +81,8 @@ pub struct WgslModuleItemOrigin {
 }
 pub fn WgslModuleItemOrigin::kind(Self) -> @contract.WgslSourceOriginKind
 pub fn WgslModuleItemOrigin::name(Self) -> String
-pub fn WgslModuleItemOrigin::source_end(Self) -> Int
-pub fn WgslModuleItemOrigin::source_start(Self) -> Int
+pub fn WgslModuleItemOrigin::source_end(Self) -> Int32
+pub fn WgslModuleItemOrigin::source_start(Self) -> Int32
 
 pub struct WgslReferenceRewritePlan {
   // private fields

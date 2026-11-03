@@ -1,12 +1,12 @@
 name = "Milky2018/moon_wgsl_tools"
 
-version = "0.17.3"
+version = "0.17.4"
 
 import {
   "Milky2018/wgsl@0.17.3",
   "Milky2018/moon_wgsl_naga_oil@0.17.3",
   "Milky2018/moon_wesl@0.17.4",
-  "moonbitlang/x@0.5.5",
+  "moonbitlang/x@0.5.7",
 }
 
 readme = "README.mbt.md"

@@ -54,12 +54,12 @@ pub(all) struct WgslNagaGeneratedImportProvenance {
   local_spelling : Bool
   root_local_spelling : Bool
   local_spelling_visible_rel_paths : Array[String]
-  import_sequence : Int
-  source_start : Int
-  source_end : Int
-  composed_source_start : Int
+  import_sequence : Int32
+  source_start : Int32
+  source_end : Int32
+  composed_source_start : Int32
 } derive(Eq, @debug.Debug)
-pub fn WgslNagaGeneratedImportProvenance::WgslNagaGeneratedImportProvenance(String, String, String, WgslNagaGeneratedImportProvenanceKind, Bool, local_spelling? : Bool, root_local_spelling? : Bool, local_spelling_visible_rel_paths? : Array[String], import_sequence? : Int, source_start? : Int, source_end? : Int, composed_source_start? : Int) -> Self
+pub fn WgslNagaGeneratedImportProvenance::WgslNagaGeneratedImportProvenance(String, String, String, WgslNagaGeneratedImportProvenanceKind, Bool, local_spelling? : Bool, root_local_spelling? : Bool, local_spelling_visible_rel_paths? : Array[String], import_sequence? : Int32, source_start? : Int32, source_end? : Int32, composed_source_start? : Int32) -> Self
 pub fn WgslNagaGeneratedImportProvenance::equal(Self, Self) -> Bool
 pub fn WgslNagaGeneratedImportProvenance::generated_symbol_name(Self) -> String
 pub fn WgslNagaGeneratedImportProvenance::not_equal(Self, Self) -> Bool
@@ -76,7 +76,7 @@ pub fn WgslNagaGeneratedImportProvenanceKind::to_repr(Self) -> @debug.Repr
 pub struct WgslNagaImportArenaEvent {
   // private fields
 } derive(Eq, @debug.Debug)
-pub fn WgslNagaImportArenaEvent::WgslNagaImportArenaEvent(Int, String, String, String, String, Array[String], WgslNagaImportEdgeKind, Array[WgslNagaImportArenaSymbol]) -> Self
+pub fn WgslNagaImportArenaEvent::WgslNagaImportArenaEvent(Int32, String, String, String, String, Array[String], WgslNagaImportEdgeKind, Array[WgslNagaImportArenaSymbol]) -> Self
 pub fn WgslNagaImportArenaEvent::alias_name(Self) -> String
 pub fn WgslNagaImportArenaEvent::equal(Self, Self) -> Bool
 pub fn WgslNagaImportArenaEvent::generated_symbols(Self) -> Array[WgslNagaImportArenaSymbol]
@@ -85,20 +85,20 @@ pub fn WgslNagaImportArenaEvent::item_names(Self) -> Array[String]
 pub fn WgslNagaImportArenaEvent::kind(Self) -> WgslNagaImportEdgeKind
 pub fn WgslNagaImportArenaEvent::module_path(Self) -> String
 pub fn WgslNagaImportArenaEvent::not_equal(Self, Self) -> Bool
-pub fn WgslNagaImportArenaEvent::sequence(Self) -> Int
+pub fn WgslNagaImportArenaEvent::sequence(Self) -> Int32
 pub fn WgslNagaImportArenaEvent::target_rel_path(Self) -> String
 pub fn WgslNagaImportArenaEvent::to_repr(Self) -> @debug.Repr
 
 pub struct WgslNagaImportArenaSymbol {
   // private fields
 } derive(Eq, @debug.Debug)
-pub fn WgslNagaImportArenaSymbol::WgslNagaImportArenaSymbol(WgslNagaDeclarationKind, String, String, source_decl_rank? : Int, source_order_rank? : Int) -> Self
+pub fn WgslNagaImportArenaSymbol::WgslNagaImportArenaSymbol(WgslNagaDeclarationKind, String, String, source_decl_rank? : Int32, source_order_rank? : Int32) -> Self
 pub fn WgslNagaImportArenaSymbol::equal(Self, Self) -> Bool
 pub fn WgslNagaImportArenaSymbol::generated_symbol_name(Self) -> String
 pub fn WgslNagaImportArenaSymbol::kind(Self) -> WgslNagaDeclarationKind
 pub fn WgslNagaImportArenaSymbol::not_equal(Self, Self) -> Bool
-pub fn WgslNagaImportArenaSymbol::source_decl_rank(Self) -> Int
-pub fn WgslNagaImportArenaSymbol::source_order_rank(Self) -> Int
+pub fn WgslNagaImportArenaSymbol::source_decl_rank(Self) -> Int32
+pub fn WgslNagaImportArenaSymbol::source_order_rank(Self) -> Int32
 pub fn WgslNagaImportArenaSymbol::source_symbol_name(Self) -> String
 pub fn WgslNagaImportArenaSymbol::to_repr(Self) -> @debug.Repr
 

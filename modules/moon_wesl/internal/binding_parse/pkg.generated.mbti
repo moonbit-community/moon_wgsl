@@ -6,19 +6,19 @@ import {
 }
 
 // Values
-pub fn parse_binding_decl(Array[(Token, Int, Int)], initial_pos? : Int) -> BindingParseNode raise ParseError
+pub fn parse_binding_decl(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> BindingParseNode raise ParseError
 
 pub fn parse_binding_source(String) -> BindingParseResult
 
 // Errors
 pub suberror ParseError {
-  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
-  UnexpectedEndOfInput(Int, Array[TokenKind])
+  UnexpectedToken(Token, (Int32, Int32), Array[TokenKind])
+  UnexpectedEndOfInput(Int32, Array[TokenKind])
 } derive(@debug.Debug)
 
 // Types and methods
 pub(all) struct BindingParseDiagnostic {
-  offset : Int
+  offset : Int32
   incomplete : Bool
 } derive(Eq, @debug.Debug)
 pub fn BindingParseDiagnostic::equal(Self, Self) -> Bool

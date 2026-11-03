@@ -12,14 +12,14 @@ pub fn apply_wgsl_template_consts(String, Map[String, @contract.ShaderDefValue])
 
 // Errors
 pub suberror PreprocessError {
-  GlslInvalidVersion(Int)
-  ElseWithoutCondition(Int)
-  TooManyEndIfs(Int)
-  NotEnoughEndIfs(Int)
-  UnknownShaderDef(String, Int)
-  UnknownShaderDefOperator(String, Int)
-  InvalidShaderDefComparisonValue(String, String, String, Int)
-  ImportParseError(String, Int)
+  GlslInvalidVersion(Int32)
+  ElseWithoutCondition(Int32)
+  TooManyEndIfs(Int32)
+  NotEnoughEndIfs(Int32)
+  UnknownShaderDef(String, Int32)
+  UnknownShaderDefOperator(String, Int32)
+  InvalidShaderDefComparisonValue(String, String, String, Int32)
+  ImportParseError(String, Int32)
 }
 
 // Types and methods

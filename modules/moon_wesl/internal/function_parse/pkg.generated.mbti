@@ -6,14 +6,14 @@ import {
 }
 
 // Values
-pub fn parse_function_decl(Array[(Token, Int, Int)], initial_pos? : Int) -> FunctionParseNode raise ParseError
+pub fn parse_function_decl(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> FunctionParseNode raise ParseError
 
 pub fn parse_function_source(String) -> FunctionParseResult
 
 // Errors
 pub suberror ParseError {
-  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
-  UnexpectedEndOfInput(Int, Array[TokenKind])
+  UnexpectedToken(Token, (Int32, Int32), Array[TokenKind])
+  UnexpectedEndOfInput(Int32, Array[TokenKind])
 } derive(@debug.Debug)
 
 // Types and methods
@@ -27,7 +27,7 @@ pub fn FunctionParameterParseNode::not_equal(Self, Self) -> Bool
 pub fn FunctionParameterParseNode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FunctionParseDiagnostic {
-  offset : Int
+  offset : Int32
   incomplete : Bool
 } derive(Eq, @debug.Debug)
 pub fn FunctionParseDiagnostic::equal(Self, Self) -> Bool

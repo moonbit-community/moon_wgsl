@@ -44,7 +44,7 @@ pub fn ResolveError::message(Self) -> String
 
 pub(all) suberror ValidateError {
   UndefinedSymbol(String)
-  ParamCount(String, Int, Int)
+  ParamCount(String, Int32, Int32)
   NotCallable(String)
   Duplicate(String)
   Cycle(String, String)
@@ -350,7 +350,7 @@ pub(all) struct ExecResult {
 } derive(Eq, @debug.Debug)
 pub fn ExecResult::equal(Self, Self) -> Bool
 pub fn ExecResult::not_equal(Self, Self) -> Bool
-pub fn ExecResult::resource(Self, Int, Int) -> ResourceBinding?
+pub fn ExecResult::resource(Self, Int32, Int32) -> ResourceBinding?
 pub fn ExecResult::return_value(Self) -> String?
 pub fn ExecResult::to_buffer(Self) -> Bytes?
 pub fn ExecResult::to_repr(Self) -> @debug.Repr
@@ -531,23 +531,23 @@ pub fn ImportedName::not_equal(Self, Self) -> Bool
 pub fn ImportedName::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Inputs {
-  vertex_index : Int?
-  instance_index : Int?
+  vertex_index : Int32?
+  instance_index : Int32?
   position : Array[Double]?
   front_facing : Bool?
-  sample_index : Int?
-  sample_mask : Int?
-  local_invocation_id : Array[Int]?
-  local_invocation_index : Int?
-  global_invocation_id : Array[Int]?
-  workgroup_id : Array[Int]?
-  num_workgroups : Array[Int]?
-  subgroup_invocation_id : Int?
-  subgroup_size : Int?
-  subgroup_id : Int?
-  num_subgroups : Int?
-  primitive_index : Int?
-  view_index : Int?
+  sample_index : Int32?
+  sample_mask : Int32?
+  local_invocation_id : Array[Int32]?
+  local_invocation_index : Int32?
+  global_invocation_id : Array[Int32]?
+  workgroup_id : Array[Int32]?
+  num_workgroups : Array[Int32]?
+  subgroup_invocation_id : Int32?
+  subgroup_size : Int32?
+  subgroup_id : Int32?
+  num_subgroups : Int32?
+  primitive_index : Int32?
+  view_index : Int32?
   user_defined : Array[UserInput]
 } derive(Eq, @debug.Debug)
 pub fn Inputs::equal(Self, Self) -> Bool
@@ -598,7 +598,7 @@ pub(all) struct ModulePath {
 pub fn ModulePath::equal(Self, Self) -> Bool
 pub fn ModulePath::first(Self) -> String?
 pub fn ModulePath::from_path(String) -> Self
-pub fn ModulePath::hash(Self) -> Int
+pub fn ModulePath::hash(Self) -> Int32
 pub fn ModulePath::hash_combine(Self, Hasher) -> Unit
 pub fn ModulePath::is_package(Self) -> Bool
 pub fn ModulePath::is_relative(Self) -> Bool
@@ -656,11 +656,11 @@ pub fn OverrideValue::to_repr(Self) -> @debug.Repr
 
 pub(all) enum PathOrigin {
   Absolute
-  Relative(Int)
+  Relative(Int32)
   Package(String)
 } derive(Eq, Hash, @debug.Debug)
 pub fn PathOrigin::equal(Self, Self) -> Bool
-pub fn PathOrigin::hash(Self) -> Int
+pub fn PathOrigin::hash(Self) -> Int32
 pub fn PathOrigin::hash_combine(Self, Hasher) -> Unit
 pub fn PathOrigin::not_equal(Self, Self) -> Bool
 pub fn PathOrigin::to_repr(Self) -> @debug.Repr
@@ -712,8 +712,8 @@ pub fn RequiresDirectiveDeclaration::not_equal(Self, Self) -> Bool
 pub fn RequiresDirectiveDeclaration::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ResourceBinding {
-  group : Int
-  binding : Int
+  group : Int32
+  binding : Int32
   kind : String
   data : Bytes
 } derive(Eq, @debug.Debug)
@@ -753,12 +753,12 @@ pub fn[R] SourceMapper::unmangle(Self[R], String) -> (ModulePath, String)?
 pub impl[R : Resolver] Resolver for SourceMapper[R]
 
 pub(all) struct SourcePosition {
-  line : Int
-  column : Int
-  offset : Int
+  line : Int32
+  column : Int32
+  offset : Int32
 } derive(Eq, @debug.Debug)
 pub fn SourcePosition::equal(Self, Self) -> Bool
-pub fn SourcePosition::new(Int, Int, Int) -> Self
+pub fn SourcePosition::new(Int32, Int32, Int32) -> Self
 pub fn SourcePosition::not_equal(Self, Self) -> Bool
 pub fn SourcePosition::to_repr(Self) -> @debug.Repr
 
@@ -767,7 +767,7 @@ pub(all) struct SourceSpan {
   end : SourcePosition
 } derive(Eq, @debug.Debug)
 pub fn SourceSpan::equal(Self, Self) -> Bool
-pub fn SourceSpan::from_line_range(String, Int, Int) -> Self
+pub fn SourceSpan::from_line_range(String, Int32, Int32) -> Self
 pub fn SourceSpan::new(SourcePosition, SourcePosition) -> Self
 pub fn SourceSpan::not_equal(Self, Self) -> Bool
 pub fn SourceSpan::to_repr(Self) -> @debug.Repr
@@ -889,8 +889,8 @@ pub fn SwitchStatement::not_equal(Self, Self) -> Bool
 pub fn SwitchStatement::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SyntaxSpan {
-  start_line : Int
-  end_line : Int
+  start_line : Int32
+  end_line : Int32
 } derive(Eq, @debug.Debug)
 pub fn SyntaxSpan::equal(Self, Self) -> Bool
 pub fn SyntaxSpan::not_equal(Self, Self) -> Bool
@@ -936,7 +936,7 @@ pub fn UnaryOperator::not_equal(Self, Self) -> Bool
 pub fn UnaryOperator::to_repr(Self) -> @debug.Repr
 
 pub(all) struct UserInput {
-  location : Int
+  location : Int32
   value : UserInputValue
 } derive(Eq, @debug.Debug)
 pub fn UserInput::equal(Self, Self) -> Bool
@@ -945,11 +945,11 @@ pub fn UserInput::to_repr(Self) -> @debug.Repr
 
 pub(all) enum UserInputValue {
   Bool(Bool)
-  I32(Int)
-  U32(Int)
+  I32(Int32)
+  U32(Int32)
   F32(Double)
-  I32Vector(Array[Int])
-  U32Vector(Array[Int])
+  I32Vector(Array[Int32])
+  U32Vector(Array[Int32])
   F32Vector(Array[Double])
 } derive(Eq, @debug.Debug)
 pub fn UserInputValue::equal(Self, Self) -> Bool

@@ -98,8 +98,8 @@ pub fn RequiresDirective::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ShaderDefValue {
   Bool(Bool)
-  Int(Int)
-  UInt(UInt)
+  Int(Int32)
+  UInt(UInt32)
   Raw(String)
 } derive(Eq, @debug.Debug)
 pub fn ShaderDefValue::equal(Self, Self) -> Bool
@@ -240,10 +240,10 @@ pub fn WgslResolvedImportModule::to_repr(Self) -> @debug.Repr
 pub struct WgslSourceCatalogEntry {
   rel_path : String
   symbol_name : String
-  source_start : Int
-  source_end : Int
+  source_start : Int32
+  source_end : Int32
 } derive(Eq, @debug.Debug)
-pub fn WgslSourceCatalogEntry::WgslSourceCatalogEntry(String, String, Int, Int) -> Self
+pub fn WgslSourceCatalogEntry::WgslSourceCatalogEntry(String, String, Int32, Int32) -> Self
 pub fn WgslSourceCatalogEntry::equal(Self, Self) -> Bool
 pub fn WgslSourceCatalogEntry::not_equal(Self, Self) -> Bool
 pub fn WgslSourceCatalogEntry::to_repr(Self) -> @debug.Repr
@@ -270,10 +270,10 @@ pub struct WgslSourceOriginEntry {
   rel_path : String
   source_symbol_name : String
   kind : WgslSourceOriginKind
-  source_start : Int
-  source_end : Int
+  source_start : Int32
+  source_end : Int32
 } derive(Eq, @debug.Debug)
-pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(String, String, String, WgslSourceOriginKind, Int, Int) -> Self
+pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(String, String, String, WgslSourceOriginKind, Int32, Int32) -> Self
 pub fn WgslSourceOriginEntry::equal(Self, Self) -> Bool
 pub fn WgslSourceOriginEntry::generated_symbol_name(Self) -> String
 pub fn WgslSourceOriginEntry::kind(Self) -> WgslSourceOriginKind

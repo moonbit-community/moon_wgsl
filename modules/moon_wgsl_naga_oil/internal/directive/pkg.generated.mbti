@@ -15,7 +15,7 @@ pub fn parse_wgsl_directive_identifier(String) -> String?
 
 pub fn parse_wgsl_directive_line(String) -> WgslPreprocessorDirective?
 
-pub fn parse_wgsl_directive_line_at(String, Int) -> WgslPreprocessorDirective?
+pub fn parse_wgsl_directive_line_at(String, Int32) -> WgslPreprocessorDirective?
 
 pub fn parse_wgsl_directive_scan_items(String, include_glsl_version? : Bool) -> Array[WgslDirectiveScanItem]
 
@@ -43,7 +43,7 @@ pub struct WgslDirectiveScanItem {
 } derive(@debug.Debug)
 pub fn WgslDirectiveScanItem::kind(Self) -> WgslDirectiveScanItemKind
 pub fn WgslDirectiveScanItem::source(Self) -> WgslDirectiveScanSource
-pub fn WgslDirectiveScanItem::start(Self) -> Int
+pub fn WgslDirectiveScanItem::start(Self) -> Int32
 pub fn WgslDirectiveScanItem::to_repr(Self) -> @debug.Repr
 
 pub enum WgslDirectiveScanItemKind {
@@ -63,15 +63,15 @@ pub fn WgslDirectiveScanSource::to_repr(Self) -> @debug.Repr
 pub struct WgslPreprocessorDirective {
   // private fields
 } derive(@debug.Debug)
-pub fn WgslPreprocessorDirective::end(Self) -> Int
+pub fn WgslPreprocessorDirective::end(Self) -> Int32
 pub fn WgslPreprocessorDirective::has_required_tail_separator(Self) -> Bool
 pub fn WgslPreprocessorDirective::has_tail(Self) -> Bool
 pub fn WgslPreprocessorDirective::kind(Self) -> WgslPreprocessorDirectiveKind
 pub fn WgslPreprocessorDirective::name(Self) -> WgslPreprocessorIdent
-pub fn WgslPreprocessorDirective::start(Self) -> Int
+pub fn WgslPreprocessorDirective::start(Self) -> Int32
 pub fn WgslPreprocessorDirective::tail(Self) -> String
-pub fn WgslPreprocessorDirective::tail_end(Self) -> Int
-pub fn WgslPreprocessorDirective::tail_start(Self) -> Int
+pub fn WgslPreprocessorDirective::tail_end(Self) -> Int32
+pub fn WgslPreprocessorDirective::tail_start(Self) -> Int32
 pub fn WgslPreprocessorDirective::to_repr(Self) -> @debug.Repr
 
 pub(all) enum WgslPreprocessorDirectiveKind {
@@ -100,9 +100,9 @@ pub fn WgslPreprocessorDirectiveTail::to_repr(Self) -> @debug.Repr
 pub struct WgslPreprocessorIdent {
   // private fields
 } derive(@debug.Debug)
-pub fn WgslPreprocessorIdent::end(Self) -> Int
+pub fn WgslPreprocessorIdent::end(Self) -> Int32
 pub fn WgslPreprocessorIdent::name(Self) -> String
-pub fn WgslPreprocessorIdent::start(Self) -> Int
+pub fn WgslPreprocessorIdent::start(Self) -> Int32
 pub fn WgslPreprocessorIdent::to_repr(Self) -> @debug.Repr
 
 pub struct WgslShaderDefComparison {
@@ -129,10 +129,10 @@ pub fn WgslShaderDefOperator::to_repr(Self) -> @debug.Repr
 pub struct WgslShaderDefReference {
   // private fields
 } derive(@debug.Debug)
-pub fn WgslShaderDefReference::end(Self) -> Int
+pub fn WgslShaderDefReference::end(Self) -> Int32
 pub fn WgslShaderDefReference::is_delimited(Self) -> Bool
 pub fn WgslShaderDefReference::name(Self) -> String
-pub fn WgslShaderDefReference::start(Self) -> Int
+pub fn WgslShaderDefReference::start(Self) -> Int32
 pub fn WgslShaderDefReference::to_repr(Self) -> @debug.Repr
 
 pub struct WgslSourceDirectiveItem {
@@ -157,9 +157,9 @@ pub fn WgslSourceDirectiveItemKind::to_repr(Self) -> @debug.Repr
 pub struct WgslTemplateConstReference {
   // private fields
 } derive(@debug.Debug)
-pub fn WgslTemplateConstReference::end(Self) -> Int
+pub fn WgslTemplateConstReference::end(Self) -> Int32
 pub fn WgslTemplateConstReference::name(Self) -> String
-pub fn WgslTemplateConstReference::start(Self) -> Int
+pub fn WgslTemplateConstReference::start(Self) -> Int32
 pub fn WgslTemplateConstReference::to_repr(Self) -> @debug.Repr
 
 // Type aliases

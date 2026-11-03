@@ -6,14 +6,14 @@ import {
 }
 
 // Values
-pub fn parse_top_level_items(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[TopLevelItemSpan] raise ParseError
+pub fn parse_top_level_items(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> Array[TopLevelItemSpan] raise ParseError
 
 pub fn parse_top_level_items_source(String) -> TopLevelItemParseResult
 
 // Errors
 pub suberror ParseError {
-  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
-  UnexpectedEndOfInput(Int, Array[TokenKind])
+  UnexpectedToken(Token, (Int32, Int32), Array[TokenKind])
+  UnexpectedEndOfInput(Int32, Array[TokenKind])
 } derive(@debug.Debug)
 
 // Types and methods
@@ -29,7 +29,7 @@ pub impl Show for TokenKind
 pub impl @debug.Debug for TokenKind
 
 pub(all) struct TopLevelItemDiagnostic {
-  offset : Int
+  offset : Int32
   incomplete : Bool
 } derive(Eq, @debug.Debug)
 pub fn TopLevelItemDiagnostic::equal(Self, Self) -> Bool
@@ -45,8 +45,8 @@ pub fn TopLevelItemParseResult::not_equal(Self, Self) -> Bool
 pub fn TopLevelItemParseResult::to_repr(Self) -> @debug.Repr
 
 pub(all) struct TopLevelItemSpan {
-  start_offset : Int
-  end_offset : Int
+  start_offset : Int32
+  end_offset : Int32
 } derive(Eq, @debug.Debug)
 pub fn TopLevelItemSpan::equal(Self, Self) -> Bool
 pub fn TopLevelItemSpan::not_equal(Self, Self) -> Bool

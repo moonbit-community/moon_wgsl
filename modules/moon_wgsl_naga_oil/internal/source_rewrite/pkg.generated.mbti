@@ -10,7 +10,7 @@ pub fn emit_wgsl_source_tokens_canonical(String, Array[WgslTokenReplacement]) ->
 
 pub fn emit_wgsl_token_stream_canonical(Array[@lex.WgslToken], Array[WgslTokenReplacement]) -> String
 
-pub fn tokenize_wgsl_absolute_fragment(String, Int, Int) -> Array[@lex.WgslToken]
+pub fn tokenize_wgsl_absolute_fragment(String, Int32, Int32) -> Array[@lex.WgslToken]
 
 pub fn tokenize_wgsl_absolute_source(String) -> Array[@lex.WgslToken]
 
@@ -20,7 +20,7 @@ pub fn tokenize_wgsl_absolute_source(String) -> Array[@lex.WgslToken]
 pub struct WgslTokenReplacement {
   // private fields
 }
-pub fn WgslTokenReplacement::WgslTokenReplacement(Int, Int, String) -> Self
+pub fn WgslTokenReplacement::WgslTokenReplacement(Int32, Int32, String) -> Self
 
 // Type aliases
 

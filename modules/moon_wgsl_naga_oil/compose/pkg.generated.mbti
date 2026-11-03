@@ -13,7 +13,7 @@ pub(all) suberror ComposerError {
   FailedToResolveImport(String)
   ImportCycle(String)
   InvalidStructMemberIdentifier(String)
-  InvalidWgslSyntax(String, Int)
+  InvalidWgslSyntax(String, Int32)
   InvalidOverride(String)
   MissingRegisteredSource(String)
   MissingPreparedSourceDefs(String)
@@ -104,14 +104,14 @@ pub fn WgslComposeFinalNameTable::alias_entries_for_scope(Self, String, String) 
 pub fn WgslComposeFinalNameTable::alias_get(Self, @contract.WgslComposeAliasSymbolIdentity) -> String?
 pub fn WgslComposeFinalNameTable::alias_set(Self, @contract.WgslComposeAliasSymbolIdentity, String) -> Unit
 pub fn WgslComposeFinalNameTable::canonical_entries_for_rel_path(Self, String) -> Array[WgslComposeCanonicalFinalNameEntry]
-pub fn WgslComposeFinalNameTable::canonical_entry_count(Self) -> Int
+pub fn WgslComposeFinalNameTable::canonical_entry_count(Self) -> Int32
 pub fn WgslComposeFinalNameTable::canonical_get(Self, @contract.WgslComposeSymbolIdentity) -> String?
 pub fn WgslComposeFinalNameTable::canonical_set(Self, @contract.WgslComposeSymbolIdentity, String) -> Unit
 
 pub struct WgslComposeImportArenaEvent {
   // private fields
 } derive(Eq, @debug.Debug)
-pub fn WgslComposeImportArenaEvent::WgslComposeImportArenaEvent(Int, String, String, String, String, Array[String], WgslComposeImportEdgeKind, Array[WgslComposeImportArenaSymbol]) -> Self
+pub fn WgslComposeImportArenaEvent::WgslComposeImportArenaEvent(Int32, String, String, String, String, Array[String], WgslComposeImportEdgeKind, Array[WgslComposeImportArenaSymbol]) -> Self
 pub fn WgslComposeImportArenaEvent::alias_name(Self) -> String
 pub fn WgslComposeImportArenaEvent::equal(Self, Self) -> Bool
 pub fn WgslComposeImportArenaEvent::generated_symbol_names(Self) -> Array[String]
@@ -121,20 +121,20 @@ pub fn WgslComposeImportArenaEvent::item_names(Self) -> Array[String]
 pub fn WgslComposeImportArenaEvent::kind(Self) -> WgslComposeImportEdgeKind
 pub fn WgslComposeImportArenaEvent::module_path(Self) -> String
 pub fn WgslComposeImportArenaEvent::not_equal(Self, Self) -> Bool
-pub fn WgslComposeImportArenaEvent::sequence(Self) -> Int
+pub fn WgslComposeImportArenaEvent::sequence(Self) -> Int32
 pub fn WgslComposeImportArenaEvent::target_rel_path(Self) -> String
 pub fn WgslComposeImportArenaEvent::to_repr(Self) -> @debug.Repr
 
 pub struct WgslComposeImportArenaSymbol {
   // private fields
 } derive(Eq, @debug.Debug)
-pub fn WgslComposeImportArenaSymbol::WgslComposeImportArenaSymbol(WgslComposeDeclarationKind, String, String, source_decl_rank? : Int, source_order_rank? : Int) -> Self
+pub fn WgslComposeImportArenaSymbol::WgslComposeImportArenaSymbol(WgslComposeDeclarationKind, String, String, source_decl_rank? : Int32, source_order_rank? : Int32) -> Self
 pub fn WgslComposeImportArenaSymbol::equal(Self, Self) -> Bool
 pub fn WgslComposeImportArenaSymbol::generated_symbol_name(Self) -> String
 pub fn WgslComposeImportArenaSymbol::kind(Self) -> WgslComposeDeclarationKind
 pub fn WgslComposeImportArenaSymbol::not_equal(Self, Self) -> Bool
-pub fn WgslComposeImportArenaSymbol::source_decl_rank(Self) -> Int
-pub fn WgslComposeImportArenaSymbol::source_order_rank(Self) -> Int
+pub fn WgslComposeImportArenaSymbol::source_decl_rank(Self) -> Int32
+pub fn WgslComposeImportArenaSymbol::source_order_rank(Self) -> Int32
 pub fn WgslComposeImportArenaSymbol::source_symbol_name(Self) -> String
 pub fn WgslComposeImportArenaSymbol::to_repr(Self) -> @debug.Repr
 
@@ -162,9 +162,9 @@ pub struct WgslComposeLinkGraph {
 }
 pub fn WgslComposeLinkGraph::WgslComposeLinkGraph() -> Self
 pub fn WgslComposeLinkGraph::contains_reachable_symbol(Self, @contract.WgslComposeSymbolIdentity) -> Bool
-pub fn WgslComposeLinkGraph::import_arena_event_count(Self) -> Int
+pub fn WgslComposeLinkGraph::import_arena_event_count(Self) -> Int32
 pub fn WgslComposeLinkGraph::import_arena_events(Self) -> Array[WgslComposeImportArenaEvent]
-pub fn WgslComposeLinkGraph::import_edge_count(Self) -> Int
+pub fn WgslComposeLinkGraph::import_edge_count(Self) -> Int32
 pub fn WgslComposeLinkGraph::mark_reachable(Self, @contract.WgslComposeSymbolIdentity) -> Unit
 pub fn WgslComposeLinkGraph::record_import(Self, String, String, String, String, String, WgslComposeImportEdgeKind) -> Unit
 pub fn WgslComposeLinkGraph::record_import_arena_event(Self, String, String, String, String, Array[String], WgslComposeImportEdgeKind, Array[WgslComposeImportArenaSymbol]) -> Unit
