@@ -1,11 +1,11 @@
 name = "Milky2018/moon_wgsl_tools"
 
-version = "0.17.5"
+version = "0.17.6"
 
 import {
-  "Milky2018/wgsl@0.17.5",
-  "Milky2018/moon_wgsl_naga_oil@0.17.5",
-  "Milky2018/moon_wesl@0.17.5",
+  "Milky2018/wgsl@0.17.6",
+  "Milky2018/moon_wgsl_naga_oil@0.17.6",
+  "Milky2018/moon_wesl@0.17.6",
   "moonbitlang/x@0.5.7",
 }
 
