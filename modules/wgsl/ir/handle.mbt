@@ -16,9 +16,10 @@
 // under MIT OR Apache-2.0 by the gfx-rs authors.
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Handle {
   index : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Handle::Handle(index : Int32) -> Handle {
@@ -31,10 +32,11 @@ pub fn Handle::index(self : Handle) -> Int32 {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct HandleRange {
   start : Handle
   end : Handle
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn HandleRange::HandleRange(start : Handle, end : Handle) -> HandleRange {
@@ -42,9 +44,10 @@ pub fn HandleRange::HandleRange(start : Handle, end : Handle) -> HandleRange {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StorageAccess {
   bits : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn StorageAccess::empty() -> StorageAccess {
@@ -83,9 +86,10 @@ pub fn StorageAccess::contains(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct MemoryDecorations {
   bits : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn MemoryDecorations::empty() -> MemoryDecorations {
@@ -111,9 +115,10 @@ pub fn MemoryDecorations::union(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Barrier {
   bits : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Barrier::empty() -> Barrier {
@@ -146,9 +151,10 @@ pub fn Barrier::union(self : Barrier, other : Barrier) -> Barrier {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct RayFlag {
   bits : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn RayFlag::empty() -> RayFlag {

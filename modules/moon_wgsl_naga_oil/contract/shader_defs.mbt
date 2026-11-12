@@ -13,12 +13,13 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ShaderDefValue {
   Bool(Bool)
   Int(Int32)
   UInt(UInt32)
   Raw(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn ShaderDefValue::value_as_string(self : ShaderDefValue) -> String {

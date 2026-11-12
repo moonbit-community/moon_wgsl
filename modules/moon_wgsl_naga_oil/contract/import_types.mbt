@@ -1,13 +1,15 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct ImportDefinition {
   import_path : String
   items : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct ImportDefWithOffset {
   definition : ImportDefinition
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn ImportDefWithOffset::ImportDefWithOffset(
@@ -17,16 +19,18 @@ pub fn ImportDefWithOffset::ImportDefWithOffset(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct WgslImportTarget {
   raw_path : String
   alias_name : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslReferencePath {
   priv segments : Array[String]
   priv text : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn WgslReferencePath::from_segments(
@@ -87,10 +91,11 @@ pub fn WgslReferencePath::matches(
 }
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslResolvedImportModule {
   priv module_path : String
   priv rel_path : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn WgslResolvedImportModule::WgslResolvedImportModule(

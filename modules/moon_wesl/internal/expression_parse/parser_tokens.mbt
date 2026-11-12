@@ -1,4 +1,5 @@
 ///|
+#derive(Debug)
 pub(all) enum Token {
   IDENT(String)
   NUMBER(String)
@@ -33,7 +34,7 @@ pub(all) enum Token {
   CARET
   EQUAL_EQUAL
   BANG_EQUAL
-} derive(Debug)
+}
 
 ///|
 #deprecated("Use Debug::to_repr instead")

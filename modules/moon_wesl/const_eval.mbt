@@ -13,10 +13,11 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct EvalResult {
   value : String
   buffer : Bytes?
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn EvalResult::to_string(self : EvalResult) -> String {
@@ -29,6 +30,7 @@ pub fn EvalResult::to_buffer(self : EvalResult) -> Bytes? {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum UserInputValue {
   Bool(Bool)
   I32(Int32)
@@ -37,15 +39,17 @@ pub(all) enum UserInputValue {
   I32Vector(Array[Int32])
   U32Vector(Array[Int32])
   F32Vector(Array[Double])
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct UserInput {
   location : Int32
   value : UserInputValue
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Inputs {
   vertex_index : Int32?
   instance_index : Int32?
@@ -65,7 +69,7 @@ pub(all) struct Inputs {
   primitive_index : Int32?
   view_index : Int32?
   user_defined : Array[UserInput]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Inputs::new_zero_initialized() -> Inputs {
@@ -92,25 +96,28 @@ pub fn Inputs::new_zero_initialized() -> Inputs {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ResourceBinding {
   group : Int32
   binding : Int32
   kind : String
   data : Bytes
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct OverrideValue {
   name : String
   value : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ExecResult {
   value : String?
   buffer : Bytes?
   resources : Array[ResourceBinding]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn ExecResult::return_value(self : ExecResult) -> String? {

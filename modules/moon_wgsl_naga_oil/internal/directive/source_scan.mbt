@@ -1,16 +1,18 @@
 ///|
+#derive(Debug)
 pub enum WgslDirectiveScanItemKind {
   Source
   GlslVersion(String)
   Directive(WgslPreprocessorDirective)
-} derive(Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct WgslDirectiveScanSource {
   priv start : Int32
   priv original_text : String
   priv cleaned_text : String
-} derive(Debug)
+}
 
 ///|
 fn WgslDirectiveScanSource::WgslDirectiveScanSource(
@@ -41,10 +43,11 @@ pub fn WgslDirectiveScanSource::cleaned_text(
 }
 
 ///|
+#derive(Debug)
 pub struct WgslDirectiveScanItem {
   priv kind : WgslDirectiveScanItemKind
   priv source : WgslDirectiveScanSource
-} derive(Debug)
+}
 
 ///|
 priv struct WgslDirectiveScanLine {

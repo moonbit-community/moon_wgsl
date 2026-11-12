@@ -1,7 +1,8 @@
 ///|
+#derive(Eq, Debug)
 pub struct EnableDirective {
   extensions : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn EnableDirective::EnableDirective(
@@ -11,9 +12,10 @@ pub fn EnableDirective::EnableDirective(
 }
 
 ///|
+#derive(Eq, Debug)
 pub struct RequiresDirective {
   extensions : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn RequiresDirective::RequiresDirective(
@@ -23,10 +25,11 @@ pub fn RequiresDirective::RequiresDirective(
 }
 
 ///|
+#derive(Eq, Debug)
 pub struct DiagnosticDirective {
   severity : String
   rule : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn DiagnosticDirective::DiagnosticDirective(
@@ -37,11 +40,12 @@ pub fn DiagnosticDirective::DiagnosticDirective(
 }
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslDirectives {
   enables : Array[EnableDirective]
   requires : Array[RequiresDirective]
   diagnostics : Array[DiagnosticDirective]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn WgslDirectives::default() -> WgslDirectives {

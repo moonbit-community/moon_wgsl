@@ -11,12 +11,14 @@ pub fn parse_expression(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> E
 pub fn parse_expression_source(String) -> ExpressionParseResult
 
 // Errors
+#derive(@debug.Debug)
 pub suberror ParseError {
   UnexpectedToken(Token, (Int32, Int32), Array[TokenKind])
   UnexpectedEndOfInput(Int32, Array[TokenKind])
-} derive(@debug.Debug)
+}
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum ExpressionBinaryOperator {
   ShortCircuitOr
   ShortCircuitAnd
@@ -36,28 +38,31 @@ pub(all) enum ExpressionBinaryOperator {
   Multiplication
   Division
   Remainder
-} derive(Eq, @debug.Debug)
+}
 pub fn ExpressionBinaryOperator::equal(Self, Self) -> Bool
 pub fn ExpressionBinaryOperator::not_equal(Self, Self) -> Bool
 pub fn ExpressionBinaryOperator::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct ExpressionFunctionCallParseNode {
   callee : ExpressionTypeParseNode
   arguments : Array[ExpressionParseNode]
-} derive(Eq, @debug.Debug)
+}
 pub fn ExpressionFunctionCallParseNode::equal(Self, Self) -> Bool
 pub fn ExpressionFunctionCallParseNode::not_equal(Self, Self) -> Bool
 pub fn ExpressionFunctionCallParseNode::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct ExpressionParseDiagnostic {
   offset : Int32
   incomplete : Bool
   message : String?
-} derive(Eq, @debug.Debug)
+}
 pub fn ExpressionParseDiagnostic::equal(Self, Self) -> Bool
 pub fn ExpressionParseDiagnostic::not_equal(Self, Self) -> Bool
 pub fn ExpressionParseDiagnostic::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ExpressionParseNode {
   Literal(String)
   Bool(Bool)
@@ -68,33 +73,36 @@ pub(all) enum ExpressionParseNode {
   Unary(ExpressionUnaryOperator, ExpressionParseNode)
   Binary(ExpressionBinaryOperator, ExpressionParseNode, ExpressionParseNode)
   FunctionCall(ExpressionFunctionCallParseNode)
-} derive(Eq, @debug.Debug)
+}
 pub fn ExpressionParseNode::apply_postfix(Self, ExpressionPostfixSuffix) -> Self
 pub fn ExpressionParseNode::equal(Self, Self) -> Bool
 pub fn ExpressionParseNode::not_equal(Self, Self) -> Bool
 pub fn ExpressionParseNode::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ExpressionParseResult {
   Parsed(ExpressionParseNode)
   Failed(ExpressionParseDiagnostic)
-} derive(Eq, @debug.Debug)
+}
 pub fn ExpressionParseResult::equal(Self, Self) -> Bool
 pub fn ExpressionParseResult::not_equal(Self, Self) -> Bool
 pub fn ExpressionParseResult::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ExpressionPostfixSuffix {
   NamedComponent(String)
   Indexing(ExpressionParseNode)
-} derive(Eq, @debug.Debug)
+}
 pub fn ExpressionPostfixSuffix::equal(Self, Self) -> Bool
 pub fn ExpressionPostfixSuffix::not_equal(Self, Self) -> Bool
 pub fn ExpressionPostfixSuffix::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct ExpressionTypeParseNode {
   path : Array[String]
   ident : String
   template_text : String?
-} derive(Eq, @debug.Debug)
+}
 pub fn ExpressionTypeParseNode::equal(Self, Self) -> Bool
 pub fn ExpressionTypeParseNode::from_path(Array[String]) -> Self
 pub fn ExpressionTypeParseNode::not_equal(Self, Self) -> Bool
@@ -102,17 +110,19 @@ pub fn ExpressionTypeParseNode::qualified_child(Self, String) -> Self
 pub fn ExpressionTypeParseNode::to_repr(Self) -> @debug.Repr
 pub fn ExpressionTypeParseNode::with_template(Self, String) -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ExpressionUnaryOperator {
   Negation
   LogicalNegation
   BitwiseComplement
   Indirection
   AddressOf
-} derive(Eq, @debug.Debug)
+}
 pub fn ExpressionUnaryOperator::equal(Self, Self) -> Bool
 pub fn ExpressionUnaryOperator::not_equal(Self, Self) -> Bool
 pub fn ExpressionUnaryOperator::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) enum Token {
   IDENT(String)
   NUMBER(String)
@@ -147,7 +157,7 @@ pub(all) enum Token {
   CARET
   EQUAL_EQUAL
   BANG_EQUAL
-} derive(@debug.Debug)
+}
 pub fn Token::kind(Self) -> TokenKind
 
 pub(all) enum TokenKind {

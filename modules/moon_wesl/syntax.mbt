@@ -13,10 +13,11 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct SyntaxSpan {
   start_line : Int32
   end_line : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 fn SyntaxSpan::context(self : SyntaxSpan, path : ModulePath) -> String {
@@ -37,22 +38,24 @@ fn SyntaxSpan::symbol_context(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum CondExpression {
   Literal(Bool)
   Feature(String)
   Not(CondExpression)
   And(CondExpression, CondExpression)
   Or(CondExpression, CondExpression)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Attribute {
   name : String
   arguments : String?
   argument_exprs : Array[Expression]
   condition_expr : CondExpression?
   span : SyntaxSpan
-} derive(Eq, Debug)
+}
 
 ///|
 fn Attribute::matches(self : Attribute, target : String) -> Bool {
@@ -82,11 +85,12 @@ fn syntax_has_attribute(attributes : Array[Attribute], target : String) -> Bool 
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ImportNode {
   path_segments : Array[String]
   rename : String?
   children : Array[ImportNode]
-} derive(Eq, Debug)
+}
 
 ///|
 fn ImportNode::is_leaf(self : ImportNode) -> Bool {
@@ -94,12 +98,13 @@ fn ImportNode::is_leaf(self : ImportNode) -> Bool {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ImportedName {
   export_module_path : ModulePath?
   export_name : String?
   namespace_path : ModulePath
   local_name : String
-} derive(Eq, Debug)
+}
 
 ///|
 fn syntax_concat_segments(
@@ -186,12 +191,13 @@ fn syntax_flatten_import_node(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ImportStatement {
   span : SyntaxSpan
   attributes : Array[Attribute]
   entries : Array[ImportNode]
   source : String
-} derive(Eq, Debug)
+}
 
 ///|
 fn ImportStatement::is_public(self : ImportStatement) -> Bool {
@@ -217,37 +223,42 @@ fn ImportStatement::flatten_items(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct FunctionParameter {
   name : String
   type_text : String
   type_expr : TypeExpression
   attributes : Array[Attribute]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum TypeTemplateArgument {
   Type(TypeExpression)
   Literal(String)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct TypeExpression {
   path : Array[String]
   ident : String
   template_text : String?
   template_args : Array[TypeTemplateArgument]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum UnaryOperator {
   Negation
   LogicalNegation
   BitwiseComplement
   Indirection
   AddressOf
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum BinaryOperator {
   ShortCircuitOr
   ShortCircuitAnd
@@ -267,15 +278,17 @@ pub(all) enum BinaryOperator {
   Multiplication
   Division
   Remainder
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct FunctionCallExpression {
   callee : TypeExpression
   arguments : Array[Expression]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Expression {
   Literal(String)
   Bool(Bool)
@@ -286,9 +299,10 @@ pub(all) enum Expression {
   Unary(UnaryOperator, Expression)
   Binary(BinaryOperator, Expression, Expression)
   FunctionCall(FunctionCallExpression)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum StatementKind {
   Empty
   Block
@@ -313,16 +327,18 @@ pub(all) enum StatementKind {
   Decrement
   Call
   Other
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum StatementDeclarationKind {
   Const
   Let
   Var
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum AssignmentOperator {
   Equal
   PlusEqual
@@ -335,81 +351,93 @@ pub(all) enum AssignmentOperator {
   XorEqual
   ShiftLeftAssign
   ShiftRightAssign
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct AssignmentStatement {
   operator : AssignmentOperator
   lhs : Expression
   rhs : Expression
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct BlockStatement {
   body : FunctionBody
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct IfStatement {
   condition : Expression
   body : FunctionBody
   else_body : FunctionBody?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct LoopStatement {
   body : FunctionBody
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct WhileStatement {
   condition : Expression
   body : FunctionBody
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ContinuingStatement {
   body : FunctionBody
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ForInitializer {
   Declaration(StatementDeclaration)
   Assignment(AssignmentStatement)
   Expression(Expression)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ForUpdate {
   Assignment(AssignmentStatement)
   Increment(Expression)
   Decrement(Expression)
   Expression(Expression)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ForStatement {
   initializer : ForInitializer?
   condition : Expression?
   update : ForUpdate?
   body : FunctionBody
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct SwitchCase {
   selectors : Array[Expression]
   is_default : Bool
   body : FunctionBody
   attributes : Array[Attribute]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct SwitchStatement {
   selector : Expression
   cases : Array[SwitchCase]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ControlStatement {
   Block(BlockStatement)
   If(IfStatement)
@@ -418,9 +446,10 @@ pub(all) enum ControlStatement {
   For(ForStatement)
   While(WhileStatement)
   Continuing(ContinuingStatement)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StatementDeclaration {
   kind : StatementDeclarationKind
   name : String?
@@ -429,9 +458,10 @@ pub(all) struct StatementDeclaration {
   type_expr : TypeExpression?
   initializer : String?
   initializer_expr : Expression?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Statement {
   kind : StatementKind
   source : String
@@ -441,14 +471,16 @@ pub(all) struct Statement {
   update_expression : Expression?
   control : ControlStatement?
   attributes : Array[Attribute]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct FunctionBody {
   statements : Array[Statement]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct FunctionDeclaration {
   name : String
   generic_parameters : String?
@@ -457,57 +489,64 @@ pub(all) struct FunctionDeclaration {
   return_type_expr : TypeExpression?
   return_attributes : Array[Attribute]
   body : FunctionBody
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StructMember {
   name : String
   type_text : String
   type_expr : TypeExpression
   attributes : Array[Attribute]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StructDeclaration {
   name : String
   members : Array[StructMember]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct AliasDeclaration {
   name : String
   target : String?
   target_type : TypeExpression?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ConstDeclaration {
   name : String
   type_text : String?
   type_expr : TypeExpression?
   initializer : String?
   initializer_expr : Expression?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct OverrideDeclaration {
   name : String
   type_text : String?
   type_expr : TypeExpression?
   initializer : String?
   initializer_expr : Expression?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct LetDeclaration {
   name : String
   type_text : String?
   type_expr : TypeExpression?
   initializer : String?
   initializer_expr : Expression?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct VarDeclaration {
   name : String?
   template_arguments : String?
@@ -515,30 +554,34 @@ pub(all) struct VarDeclaration {
   type_expr : TypeExpression?
   initializer : String?
   initializer_expr : Expression?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct EnableDirectiveDeclaration {
   names : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct RequiresDirectiveDeclaration {
   names : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct DiagnosticDirectiveDeclaration {
   arguments : Array[String]
   severity : String?
   rule_name : String?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ConstAssertDeclaration {
   assertion : String
   assertion_expr : Expression
-} derive(Eq, Debug)
+}
 
 ///|
 fn VarDeclaration::ident(self : VarDeclaration) -> String? {
@@ -551,6 +594,7 @@ fn VarDeclaration::template_args(self : VarDeclaration) -> String? {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum GlobalDeclarationHeader {
   Function(FunctionDeclaration)
   Struct(StructDeclaration)
@@ -564,15 +608,16 @@ pub(all) enum GlobalDeclarationHeader {
   RequiresDirective(RequiresDirectiveDeclaration)
   DiagnosticDirective(DiagnosticDirectiveDeclaration)
   Other
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct GlobalDeclaration {
   header : GlobalDeclarationHeader
   attributes : Array[Attribute]
   source : String
   span : SyntaxSpan
-} derive(Eq, Debug)
+}
 
 ///|
 fn GlobalDeclaration::ident(self : GlobalDeclaration) -> String? {
@@ -612,10 +657,11 @@ fn GlobalDeclaration::is_const_assert(self : GlobalDeclaration) -> Bool {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct TranslationUnit {
   imports : Array[ImportStatement]
   global_declarations : Array[GlobalDeclaration]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn TranslationUnit::default() -> TranslationUnit {

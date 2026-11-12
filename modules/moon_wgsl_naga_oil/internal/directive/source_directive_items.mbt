@@ -1,4 +1,5 @@
 ///|
+#derive(Debug, Eq)
 pub(all) enum WgslSourceDirectiveItemKind {
   Trivia
   Enable(String)
@@ -6,13 +7,14 @@ pub(all) enum WgslSourceDirectiveItemKind {
   Diagnostic(String, String)
   PrefixCandidate
   Source
-} derive(Debug, Eq)
+}
 
 ///|
+#derive(Debug)
 pub struct WgslSourceDirectiveItem {
   priv kind : WgslSourceDirectiveItemKind
   priv line : String
-} derive(Debug)
+}
 
 ///|
 fn WgslSourceDirectiveItem::WgslSourceDirectiveItem(

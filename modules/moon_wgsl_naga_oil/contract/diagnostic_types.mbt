@@ -1,16 +1,18 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslDiagnosticSeverity {
   Warn
   Error
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslDiagnostic {
   severity : WgslDiagnosticSeverity
   message : String
   rel_path : String?
   symbol_name : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn WgslDiagnostic::WgslDiagnostic(

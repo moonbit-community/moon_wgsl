@@ -11,37 +11,42 @@ pub fn parse_import_tree(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> 
 pub fn parse_import_tree_source(String) -> ImportParseResult
 
 // Errors
+#derive(@debug.Debug)
 pub suberror ParseError {
   UnexpectedToken(Token, (Int32, Int32), Array[TokenKind])
   UnexpectedEndOfInput(Int32, Array[TokenKind])
-} derive(@debug.Debug)
+}
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct ImportParseDiagnostic {
   offset : Int32
   incomplete : Bool
-} derive(Eq, @debug.Debug)
+}
 pub fn ImportParseDiagnostic::equal(Self, Self) -> Bool
 pub fn ImportParseDiagnostic::not_equal(Self, Self) -> Bool
 pub fn ImportParseDiagnostic::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct ImportParseNode {
   path_segments : Array[String]
   rename : String?
   children : Array[ImportParseNode]
-} derive(Eq, @debug.Debug)
+}
 pub fn ImportParseNode::equal(Self, Self) -> Bool
 pub fn ImportParseNode::not_equal(Self, Self) -> Bool
 pub fn ImportParseNode::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ImportParseResult {
   Parsed(Array[ImportParseNode])
   Failed(ImportParseDiagnostic)
-} derive(Eq, @debug.Debug)
+}
 pub fn ImportParseResult::equal(Self, Self) -> Bool
 pub fn ImportParseResult::not_equal(Self, Self) -> Bool
 pub fn ImportParseResult::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) enum Token {
   IDENT(String)
   AS
@@ -49,7 +54,7 @@ pub(all) enum Token {
   COMMA
   LEFT_BRACE
   RIGHT_BRACE
-} derive(@debug.Debug)
+}
 pub fn Token::kind(Self) -> TokenKind
 
 pub(all) enum TokenKind {

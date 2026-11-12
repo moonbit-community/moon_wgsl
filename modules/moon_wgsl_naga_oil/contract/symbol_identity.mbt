@@ -1,16 +1,18 @@
 ///|
+#derive(Eq, Debug)
 pub struct WgslComposeSymbolIdentity {
   priv rel_path : String
   priv original_name : String
   priv key : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslComposeAliasSymbolIdentity {
   priv alias_name : String
   priv symbol : WgslComposeSymbolIdentity
   priv key : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn WgslComposeSymbolIdentity::WgslComposeSymbolIdentity(

@@ -66,31 +66,34 @@ pub fn Composer::remove_composable_module(Self, String) -> Unit
 pub fn Composer::trace_naga_oil_writer_function_plan(Self, String, @contract.WgslComposeOptions, String) -> String raise ComposerError
 pub fn Composer::trace_naga_oil_writer_module_plan(Self, String, @contract.WgslComposeOptions) -> String raise ComposerError
 
+#derive(Eq, @debug.Debug)
 pub struct WgslComposeAliasFinalNameEntry {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslComposeAliasFinalNameEntry::equal(Self, Self) -> Bool
 pub fn WgslComposeAliasFinalNameEntry::final_name(Self) -> String
 pub fn WgslComposeAliasFinalNameEntry::identity(Self) -> @contract.WgslComposeAliasSymbolIdentity
 pub fn WgslComposeAliasFinalNameEntry::not_equal(Self, Self) -> Bool
 pub fn WgslComposeAliasFinalNameEntry::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct WgslComposeCanonicalFinalNameEntry {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslComposeCanonicalFinalNameEntry::equal(Self, Self) -> Bool
 pub fn WgslComposeCanonicalFinalNameEntry::final_name(Self) -> String
 pub fn WgslComposeCanonicalFinalNameEntry::identity(Self) -> @contract.WgslComposeSymbolIdentity
 pub fn WgslComposeCanonicalFinalNameEntry::not_equal(Self, Self) -> Bool
 pub fn WgslComposeCanonicalFinalNameEntry::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum WgslComposeDeclarationKind {
   Type
   Constant
   Override
   GlobalVariable
   Function
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslComposeDeclarationKind::equal(Self, Self) -> Bool
 pub fn WgslComposeDeclarationKind::not_equal(Self, Self) -> Bool
 pub fn WgslComposeDeclarationKind::to_repr(Self) -> @debug.Repr
@@ -108,9 +111,10 @@ pub fn WgslComposeFinalNameTable::canonical_entry_count(Self) -> Int32
 pub fn WgslComposeFinalNameTable::canonical_get(Self, @contract.WgslComposeSymbolIdentity) -> String?
 pub fn WgslComposeFinalNameTable::canonical_set(Self, @contract.WgslComposeSymbolIdentity, String) -> Unit
 
+#derive(Eq, @debug.Debug)
 pub struct WgslComposeImportArenaEvent {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslComposeImportArenaEvent::WgslComposeImportArenaEvent(Int32, String, String, String, String, Array[String], WgslComposeImportEdgeKind, Array[WgslComposeImportArenaSymbol]) -> Self
 pub fn WgslComposeImportArenaEvent::alias_name(Self) -> String
 pub fn WgslComposeImportArenaEvent::equal(Self, Self) -> Bool
@@ -125,9 +129,10 @@ pub fn WgslComposeImportArenaEvent::sequence(Self) -> Int32
 pub fn WgslComposeImportArenaEvent::target_rel_path(Self) -> String
 pub fn WgslComposeImportArenaEvent::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct WgslComposeImportArenaSymbol {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslComposeImportArenaSymbol::WgslComposeImportArenaSymbol(WgslComposeDeclarationKind, String, String, source_decl_rank? : Int32, source_order_rank? : Int32) -> Self
 pub fn WgslComposeImportArenaSymbol::equal(Self, Self) -> Bool
 pub fn WgslComposeImportArenaSymbol::generated_symbol_name(Self) -> String
@@ -138,20 +143,22 @@ pub fn WgslComposeImportArenaSymbol::source_order_rank(Self) -> Int32
 pub fn WgslComposeImportArenaSymbol::source_symbol_name(Self) -> String
 pub fn WgslComposeImportArenaSymbol::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct WgslComposeImportEdge {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslComposeImportEdge::WgslComposeImportEdge(String, String, String, String, String, WgslComposeImportEdgeKind) -> Self
 pub fn WgslComposeImportEdge::equal(Self, Self) -> Bool
 pub fn WgslComposeImportEdge::key(Self) -> String
 pub fn WgslComposeImportEdge::not_equal(Self, Self) -> Bool
 pub fn WgslComposeImportEdge::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum WgslComposeImportEdgeKind {
   FullModule
   AliasModule
   ItemBinding
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslComposeImportEdgeKind::equal(Self, Self) -> Bool
 pub fn WgslComposeImportEdgeKind::key(Self) -> String
 pub fn WgslComposeImportEdgeKind::not_equal(Self, Self) -> Bool
@@ -172,9 +179,10 @@ pub fn WgslComposeLinkGraph::record_import_edge(Self, WgslComposeImportEdge) -> 
 pub fn WgslComposeLinkGraph::record_reachable_symbol(Self, @contract.WgslComposeSymbolIdentity) -> Unit
 pub fn WgslComposeLinkGraph::record_symbol(Self, @contract.WgslComposeSymbolIdentity) -> Unit
 
+#derive(Eq, @debug.Debug)
 pub struct WgslComposeSymbolNode {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslComposeSymbolNode::equal(Self, Self) -> Bool
 pub fn WgslComposeSymbolNode::identity(Self) -> @contract.WgslComposeSymbolIdentity
 pub fn WgslComposeSymbolNode::not_equal(Self, Self) -> Bool

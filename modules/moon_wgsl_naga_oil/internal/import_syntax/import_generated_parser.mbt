@@ -1,4 +1,5 @@
 ///|
+#derive(Debug)
 pub(all) enum Token {
   IDENT(String)
   AS
@@ -7,7 +8,7 @@ pub(all) enum Token {
   COMMA
   SEMI
   EOF
-} derive(Debug)
+}
 
 ///|
 #deprecated("Use Debug::to_repr instead")
@@ -78,10 +79,11 @@ pub impl Debug for TokenKind with fn to_repr(self) {
 }
 
 ///|
+#derive(Debug)
 pub suberror ParseError {
   UnexpectedToken(Token, (Int32, Int32), Array[TokenKind])
   UnexpectedEndOfInput(Int32, Array[TokenKind])
-} derive(Debug)
+}
 
 ///|
 #deprecated("Use Debug::to_repr instead")

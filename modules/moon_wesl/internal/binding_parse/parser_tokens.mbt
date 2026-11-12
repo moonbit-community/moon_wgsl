@@ -1,4 +1,5 @@
 ///|
+#derive(Debug)
 pub(all) enum Token {
   IDENT(String)
   VAR_TEMPLATE(String)
@@ -12,7 +13,7 @@ pub(all) enum Token {
   COLON
   EQ
   SEMI
-} derive(Debug)
+}
 
 ///|
 #deprecated("Use Debug::to_repr instead")

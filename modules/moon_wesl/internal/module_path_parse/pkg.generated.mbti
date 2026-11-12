@@ -11,62 +11,69 @@ pub fn parse_module_path(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> 
 pub fn parse_module_path_source(String) -> ModulePathParseResult
 
 // Errors
+#derive(@debug.Debug)
 pub suberror ParseError {
   UnexpectedToken(Token, (Int32, Int32), Array[TokenKind])
   UnexpectedEndOfInput(Int32, Array[TokenKind])
-} derive(@debug.Debug)
+}
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct ModulePathParseDiagnostic {
   offset : Int32
   problem : ModulePathParseProblem
-} derive(Eq, @debug.Debug)
+}
 pub fn ModulePathParseDiagnostic::equal(Self, Self) -> Bool
 pub fn ModulePathParseDiagnostic::not_equal(Self, Self) -> Bool
 pub fn ModulePathParseDiagnostic::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct ModulePathParseNode {
   origin : ModulePathParseOrigin
   components : Array[String]
-} derive(Eq, @debug.Debug)
+}
 pub fn ModulePathParseNode::equal(Self, Self) -> Bool
 pub fn ModulePathParseNode::not_equal(Self, Self) -> Bool
 pub fn ModulePathParseNode::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ModulePathParseOrigin {
   Absolute
   Relative(Int32)
   Package(String)
-} derive(Eq, @debug.Debug)
+}
 pub fn ModulePathParseOrigin::equal(Self, Self) -> Bool
 pub fn ModulePathParseOrigin::not_equal(Self, Self) -> Bool
 pub fn ModulePathParseOrigin::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ModulePathParseProblem {
   Empty
   MisplacedPackage
   MisplacedSelf
   MisplacedSuper
-} derive(Eq, @debug.Debug)
+}
 pub fn ModulePathParseProblem::equal(Self, Self) -> Bool
 pub fn ModulePathParseProblem::not_equal(Self, Self) -> Bool
 pub fn ModulePathParseProblem::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ModulePathParseResult {
   Parsed(ModulePathParseNode)
   Failed(ModulePathParseDiagnostic)
-} derive(Eq, @debug.Debug)
+}
 pub fn ModulePathParseResult::equal(Self, Self) -> Bool
 pub fn ModulePathParseResult::not_equal(Self, Self) -> Bool
 pub fn ModulePathParseResult::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) enum Token {
   SEGMENT(String)
   PACKAGE
   SELF
   SUPER
   DOUBLE_COLON
-} derive(@debug.Debug)
+}
 pub fn Token::kind(Self) -> TokenKind
 
 pub(all) enum TokenKind {

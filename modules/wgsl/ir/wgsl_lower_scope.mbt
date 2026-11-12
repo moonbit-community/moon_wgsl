@@ -24,10 +24,11 @@ priv enum WgslIrLocalValue {
 }
 
 ///|
+#derive(Eq)
 priv enum WgslIrLocalValueSource {
   LocalLet
   LocalConst
-} derive(Eq)
+}
 
 ///|
 priv struct WgslIrLocalValueCell {

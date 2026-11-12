@@ -11,50 +11,56 @@ pub fn parse_attributes(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> A
 pub fn parse_attributes_source(String) -> AttributeParseResult
 
 // Errors
+#derive(@debug.Debug)
 pub suberror ParseError {
   UnexpectedToken(Token, (Int32, Int32), Array[TokenKind])
   UnexpectedEndOfInput(Int32, Array[TokenKind])
-} derive(@debug.Debug)
+}
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct AttributeParseDiagnostic {
   offset : Int32
   incomplete : Bool
-} derive(Eq, @debug.Debug)
+}
 pub fn AttributeParseDiagnostic::equal(Self, Self) -> Bool
 pub fn AttributeParseDiagnostic::not_equal(Self, Self) -> Bool
 pub fn AttributeParseDiagnostic::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct AttributeParseNode {
   name : String
   arguments : String?
   start_line : Int32
   end_line : Int32
   end_offset : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn AttributeParseNode::equal(Self, Self) -> Bool
 pub fn AttributeParseNode::not_equal(Self, Self) -> Bool
 pub fn AttributeParseNode::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum AttributeParseResult {
   Parsed(AttributeParseSuccess)
   Failed(AttributeParseDiagnostic)
-} derive(Eq, @debug.Debug)
+}
 pub fn AttributeParseResult::equal(Self, Self) -> Bool
 pub fn AttributeParseResult::not_equal(Self, Self) -> Bool
 pub fn AttributeParseResult::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct AttributeParseSuccess {
   attributes : Array[AttributeParseNode]
   consumed_offset : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn AttributeParseSuccess::equal(Self, Self) -> Bool
 pub fn AttributeParseSuccess::not_equal(Self, Self) -> Bool
 pub fn AttributeParseSuccess::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) enum Token {
   ATTRIBUTE(AttributeParseNode)
-} derive(@debug.Debug)
+}
 pub fn Token::kind(Self) -> TokenKind
 
 pub(all) enum TokenKind {

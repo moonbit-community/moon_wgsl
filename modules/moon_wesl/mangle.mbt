@@ -16,12 +16,13 @@
 pub struct EscapeMangler {}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ManglerKind {
   Escape
   Hash
   Unicode
   None
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn ManglerKind::default() -> ManglerKind {

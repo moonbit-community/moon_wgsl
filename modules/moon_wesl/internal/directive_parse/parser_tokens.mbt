@@ -1,4 +1,5 @@
 ///|
+#derive(Debug)
 pub(all) enum Token {
   ITEM(String)
   ENABLE
@@ -8,7 +9,7 @@ pub(all) enum Token {
   RIGHT_PAREN
   COMMA
   SEMI
-} derive(Debug)
+}
 
 ///|
 #deprecated("Use Debug::to_repr instead")

@@ -1,4 +1,5 @@
 ///|
+#derive(Debug)
 pub(all) enum Token {
   STMT(@ast.WgslStatement)
   TYPE_ATOM(@ast.WgslTypeAtom)
@@ -30,7 +31,7 @@ pub(all) enum Token {
   COMMA
   SEMI
   EOF
-} derive(Debug)
+}
 
 ///|
 #deprecated("Use Debug::to_repr instead")
@@ -193,10 +194,11 @@ pub impl Debug for TokenKind with fn to_repr(self) {
 }
 
 ///|
+#derive(Debug)
 pub suberror ParseError {
   UnexpectedToken(Token, (Int32, Int32), Array[TokenKind])
   UnexpectedEndOfInput(Int32, Array[TokenKind])
-} derive(Debug)
+}
 
 ///|
 #deprecated("Use Debug::to_repr instead")

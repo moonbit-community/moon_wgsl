@@ -13,23 +13,26 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ImportParseNode {
   path_segments : Array[String]
   rename : String?
   children : Array[ImportParseNode]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ImportParseDiagnostic {
   offset : Int32
   incomplete : Bool
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ImportParseResult {
   Parsed(Array[ImportParseNode])
   Failed(ImportParseDiagnostic)
-} derive(Eq, Debug)
+}
 
 ///|
 priv enum ImportLexResult {

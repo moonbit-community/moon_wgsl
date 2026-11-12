@@ -1,44 +1,51 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum Severity {
   Off
   Info
   Warning
   Error
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum StandardFilterableTriggeringRule {
   DerivativeUniformity
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum FilterableTriggeringRule {
   Standard(StandardFilterableTriggeringRule)
   Unknown(String)
   User(String, String)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct DiagnosticFilter {
   new_severity : Severity
   triggering_rule : FilterableTriggeringRule
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct DiagnosticFilterNode {
   inner : DiagnosticFilter
   parent : Handle?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum RayQueryIntersection {
   None
   Triangle
   Generated
   Aabb
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct DocComments {
   types : Array[(Handle, Array[String])]
   struct_members : Array[(Handle, Int32, Array[String])]
@@ -47,7 +54,7 @@ pub(all) struct DocComments {
   constants : Array[(Handle, Array[String])]
   global_variables : Array[(Handle, Array[String])]
   module_comments : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn DocComments::DocComments() -> DocComments {

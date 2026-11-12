@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum Literal {
   F64(Double)
   F32(Float)
@@ -13,31 +14,35 @@ pub(all) enum Literal {
   Bool(Bool)
   AbstractInt(Int64)
   AbstractFloat(Double)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Override {
   name : String?
   id : Int32?
   ty : Handle
   init : Handle?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Constant {
   name : String?
   source_start : Int32
   ty : Handle
   init : Handle
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ResourceBinding {
   group : Int32
   binding : Int32
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct GlobalVariable {
   name : String?
   space : AddressSpace
@@ -45,15 +50,17 @@ pub(all) struct GlobalVariable {
   ty : Handle
   init : Handle?
   memory_decorations : MemoryDecorations
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum LocalVariableKind {
   Var
   Let
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct LocalVariable {
   name : String?
   kind : LocalVariableKind
@@ -62,16 +69,18 @@ pub(all) struct LocalVariable {
   short_circuit_result : Bool
   ty : Handle
   init : Handle?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum UnaryOperator {
   Negate
   LogicalNot
   BitwiseNot
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum BinaryOperator {
   Add
   Subtract
@@ -91,9 +100,10 @@ pub(all) enum BinaryOperator {
   LogicalOr
   ShiftLeft
   ShiftRight
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum AtomicFunction {
   Load
   Store
@@ -106,31 +116,35 @@ pub(all) enum AtomicFunction {
   Max
   Exchange
   CompareExchangeWeak
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum DerivativeControl {
   Coarse
   Fine
   None
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum DerivativeAxis {
   X
   Y
   Width
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum RelationalFunction {
   All
   Any
   IsNan
   IsInf
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum MathFunction {
   Abs
   Min
@@ -211,7 +225,7 @@ pub(all) enum MathFunction {
   Unpack2x16float
   Unpack4xI8
   Unpack4xU8
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn wgsl_ir_math_primary_result_operand(
@@ -240,38 +254,43 @@ pub fn wgsl_ir_math_primary_result_operand(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum SampleLevel {
   Auto
   Zero
   Exact(Handle)
   Bias(Handle)
   Gradient(Handle, Handle)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ImageQuery {
   Size(Handle?)
   NumLevels
   NumLayers
   NumSamples
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum SwizzleComponent {
   X
   Y
   Z
   W
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Direction {
   X
   Y
   Diagonal
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum GatherMode {
   BroadcastFirst
   Broadcast(Handle)
@@ -281,9 +300,10 @@ pub(all) enum GatherMode {
   ShuffleXor(Handle)
   QuadBroadcast(Handle)
   QuadSwap(Direction)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum SubgroupOperation {
   All
   Any
@@ -294,9 +314,10 @@ pub(all) enum SubgroupOperation {
   And
   Or
   Xor
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum SubgroupFunction {
   Ballot
   All
@@ -322,23 +343,26 @@ pub(all) enum SubgroupFunction {
   QuadSwapX
   QuadSwapY
   QuadSwapDiagonal
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum CollectiveOperation {
   Reduce
   InclusiveScan
   ExclusiveScan
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct CooperativeData {
   pointer : Handle
   stride : Handle
   row_major : Bool
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Expression {
   Literal(Literal)
   Constant(Handle)
@@ -401,7 +425,7 @@ pub(all) enum Expression {
     CooperativeData
   )
   CooperativeMultiplyAdd(Handle, Handle, Handle)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend AtomicFunction with Debug::{to_repr}

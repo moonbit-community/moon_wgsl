@@ -326,6 +326,7 @@ fn ConstEvalParser::consume_token(
 }
 
 ///|
+#derive(Eq)
 priv enum ConstEvalType {
   AbstractInt
   AbstractFloat
@@ -340,7 +341,7 @@ priv enum ConstEvalType {
   Struct(String)
   FrexpAbstractResult
   FrexpF32Result
-} derive(Eq)
+}
 
 ///|
 priv enum ConstEvalExpr {

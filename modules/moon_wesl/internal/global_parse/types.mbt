@@ -13,12 +13,14 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct GlobalParseVar {
   name : String?
   template_arguments : String?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum GlobalParseHeader {
   Function(String)
   Struct(String)
@@ -32,19 +34,21 @@ pub(all) enum GlobalParseHeader {
   RequiresDirective
   DiagnosticDirective
   Other
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct GlobalParseDiagnostic {
   offset : Int32
   incomplete : Bool
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum GlobalParseResult {
   Parsed(GlobalParseHeader)
   Failed(GlobalParseDiagnostic)
-} derive(Eq, Debug)
+}
 
 ///|
 priv enum GlobalLexResult {

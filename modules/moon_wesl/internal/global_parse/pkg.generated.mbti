@@ -11,20 +11,23 @@ pub fn parse_global_header(Array[(Token, Int32, Int32)], initial_pos? : Int32) -
 pub fn parse_global_header_source(String) -> GlobalParseResult
 
 // Errors
+#derive(@debug.Debug)
 pub suberror ParseError {
   UnexpectedToken(Token, (Int32, Int32), Array[TokenKind])
   UnexpectedEndOfInput(Int32, Array[TokenKind])
-} derive(@debug.Debug)
+}
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct GlobalParseDiagnostic {
   offset : Int32
   incomplete : Bool
-} derive(Eq, @debug.Debug)
+}
 pub fn GlobalParseDiagnostic::equal(Self, Self) -> Bool
 pub fn GlobalParseDiagnostic::not_equal(Self, Self) -> Bool
 pub fn GlobalParseDiagnostic::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum GlobalParseHeader {
   Function(String)
   Struct(String)
@@ -38,27 +41,30 @@ pub(all) enum GlobalParseHeader {
   RequiresDirective
   DiagnosticDirective
   Other
-} derive(Eq, @debug.Debug)
+}
 pub fn GlobalParseHeader::equal(Self, Self) -> Bool
 pub fn GlobalParseHeader::not_equal(Self, Self) -> Bool
 pub fn GlobalParseHeader::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum GlobalParseResult {
   Parsed(GlobalParseHeader)
   Failed(GlobalParseDiagnostic)
-} derive(Eq, @debug.Debug)
+}
 pub fn GlobalParseResult::equal(Self, Self) -> Bool
 pub fn GlobalParseResult::not_equal(Self, Self) -> Bool
 pub fn GlobalParseResult::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct GlobalParseVar {
   name : String?
   template_arguments : String?
-} derive(Eq, @debug.Debug)
+}
 pub fn GlobalParseVar::equal(Self, Self) -> Bool
 pub fn GlobalParseVar::not_equal(Self, Self) -> Bool
 pub fn GlobalParseVar::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) enum Token {
   IDENT(String)
   VAR_TEMPLATE(String)
@@ -75,7 +81,7 @@ pub(all) enum Token {
   REQUIRES
   DIAGNOSTIC
   OTHER
-} derive(@debug.Debug)
+}
 pub fn Token::kind(Self) -> TokenKind
 
 pub(all) enum TokenKind {

@@ -1,7 +1,8 @@
 ///|
+#derive(Debug)
 pub(all) enum Token {
   STATEMENT(StatementParseNode)
-} derive(Debug)
+}
 
 ///|
 #deprecated("Use Debug::to_repr instead")

@@ -34,10 +34,11 @@ pub fn type_ref(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> @ast.Wgsl
 pub fn typed_initializer_tail(Array[(Token, Int32, Int32)], initial_pos? : Int32) -> (@ast.WgslTypeRef?, @ast.WgslExprRef?) raise ParseError
 
 // Errors
+#derive(@debug.Debug)
 pub suberror ParseError {
   UnexpectedToken(Token, (Int32, Int32), Array[TokenKind])
   UnexpectedEndOfInput(Int32, Array[TokenKind])
-} derive(@debug.Debug)
+}
 
 pub suberror WgslParseError {
   UnparsedDeclaration(String, Int32)
@@ -45,6 +46,7 @@ pub suberror WgslParseError {
 pub fn WgslParseError::message(Self) -> String
 
 // Types and methods
+#derive(@debug.Debug)
 pub(all) enum Token {
   STMT(@ast.WgslStatement)
   TYPE_ATOM(@ast.WgslTypeAtom)
@@ -76,7 +78,7 @@ pub(all) enum Token {
   COMMA
   SEMI
   EOF
-} derive(@debug.Debug)
+}
 pub fn Token::kind(Self) -> TokenKind
 
 pub(all) enum TokenKind {

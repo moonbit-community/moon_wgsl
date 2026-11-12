@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct Module {
   directives : Array[String]
   types : TypeArena
@@ -13,7 +14,7 @@ pub(all) struct Module {
   diagnostic_filters : DiagnosticFilterArena
   diagnostic_filter_leaf : Handle?
   doc_comments : DocComments?
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Module::Module() -> Module {

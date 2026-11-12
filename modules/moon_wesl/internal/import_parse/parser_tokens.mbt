@@ -1,4 +1,5 @@
 ///|
+#derive(Debug)
 pub(all) enum Token {
   IDENT(String)
   AS
@@ -6,7 +7,7 @@ pub(all) enum Token {
   COMMA
   LEFT_BRACE
   RIGHT_BRACE
-} derive(Debug)
+}
 
 ///|
 #deprecated("Use Debug::to_repr instead")

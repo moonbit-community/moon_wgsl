@@ -13,12 +13,13 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Feature {
   Enable
   Disable
   Keep
   Error
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Feature::default() -> Feature {
@@ -136,12 +137,13 @@ pub fn CompileOptions::default() -> CompileOptions {
 }
 
 ///|
+#derive(Debug)
 pub struct BasicSourceMap {
   root : ModulePath
   mappings : @hashmap.HashMap[String, (ModulePath, String)]
   sources : @hashmap.HashMap[ModulePath, (String?, String)]
   mut default_source : String?
-} derive(Debug)
+}
 
 ///|
 pub(open) trait SourceMap {
@@ -456,11 +458,12 @@ pub impl[R : Resolver] Resolver for SourceMapper[R] with fn display_name(
 }
 
 ///|
+#derive(Debug)
 pub struct CompileResult {
   syntax : TranslationUnit
   sourcemap : BasicSourceMap?
   modules : Array[ModulePath]
-} derive(Debug)
+}
 
 ///|
 pub fn CompileResult::default() -> CompileResult {
@@ -521,11 +524,12 @@ priv enum ModuleItemKind {
 }
 
 ///|
+#derive(Eq, Debug)
 enum ModuleItemRef {
   Local(String)
   Import(String, Int32)
   Qualified(String, ModulePath, String)
-} derive(Eq, Debug)
+}
 
 ///|
 priv struct ParsedModule {

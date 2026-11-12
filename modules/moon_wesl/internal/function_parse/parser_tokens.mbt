@@ -1,4 +1,5 @@
 ///|
+#derive(Debug)
 pub(all) enum Token {
   IDENT(String)
   GENERICS(String)
@@ -8,7 +9,7 @@ pub(all) enum Token {
   LEFT_PAREN
   RIGHT_PAREN
   BODY(String)
-} derive(Debug)
+}
 
 ///|
 #deprecated("Use Debug::to_repr instead")

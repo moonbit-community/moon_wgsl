@@ -13,29 +13,33 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum DirectiveParseKind {
   Enable
   Requires
   Diagnostic
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct DirectiveParseNode {
   kind : DirectiveParseKind
   arguments : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct DirectiveParseDiagnostic {
   offset : Int32
   incomplete : Bool
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum DirectiveParseResult {
   Parsed(DirectiveParseNode)
   Failed(DirectiveParseDiagnostic)
-} derive(Eq, Debug)
+}
 
 ///|
 priv enum DirectiveLexResult {

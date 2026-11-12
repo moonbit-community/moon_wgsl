@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslPreprocessorDirectiveKind {
   Ifdef
   Ifndef
@@ -26,14 +27,15 @@ pub(all) enum WgslPreprocessorDirectiveKind {
   Requires
   Diagnostic
   Other
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct WgslPreprocessorIdent {
   priv name : String
   priv start : Int32
   priv end : Int32
-} derive(Debug)
+}
 
 ///|
 fn WgslPreprocessorIdent::WgslPreprocessorIdent(
@@ -60,12 +62,13 @@ pub fn WgslPreprocessorIdent::end(self : WgslPreprocessorIdent) -> Int32 {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslPreprocessorDirectiveTail {
   priv text : String
   priv start : Int32
   priv end : Int32
   priv has_required_separator : Bool
-} derive(Debug)
+}
 
 ///|
 fn WgslPreprocessorDirectiveTail::WgslPreprocessorDirectiveTail(
@@ -78,13 +81,14 @@ fn WgslPreprocessorDirectiveTail::WgslPreprocessorDirectiveTail(
 }
 
 ///|
+#derive(Debug)
 pub struct WgslPreprocessorDirective {
   priv kind : WgslPreprocessorDirectiveKind
   priv name : WgslPreprocessorIdent
   priv tail : WgslPreprocessorDirectiveTail
   priv start : Int32
   priv end : Int32
-} derive(Debug)
+}
 
 ///|
 fn WgslPreprocessorDirective::WgslPreprocessorDirective(

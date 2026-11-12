@@ -1,9 +1,10 @@
 ///|
+#derive(Debug)
 pub struct WgslTemplateConstReference {
   priv name : String
   priv start : Int32
   priv end : Int32
-} derive(Debug)
+}
 
 ///|
 fn WgslTemplateConstReference::WgslTemplateConstReference(

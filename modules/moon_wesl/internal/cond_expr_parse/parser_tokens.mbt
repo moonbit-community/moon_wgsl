@@ -1,4 +1,5 @@
 ///|
+#derive(Debug)
 pub(all) enum Token {
   IDENT(String)
   TRUE
@@ -8,7 +9,7 @@ pub(all) enum Token {
   PIPE_PIPE
   LEFT_PAREN
   RIGHT_PAREN
-} derive(Debug)
+}
 
 ///|
 #deprecated("Use Debug::to_repr instead")

@@ -196,18 +196,20 @@ pub impl[R : Resolver, P : ModulePreprocessor] Resolver for Preprocessor[R, P] w
 }
 
 ///|
+#derive(Debug, Eq)
 pub struct CodegenModule {
   name : String
   source : String
   submodules : Array[CodegenModule]
-} derive(Debug, Eq)
+}
 
 ///|
+#derive(Debug, Eq)
 pub struct CodegenPkg {
   crate_name : String
   root : CodegenModule
   dependencies : Array[CodegenPkg]
-} derive(Debug, Eq)
+}
 
 ///|
 pub fn CodegenModule::new(name : String, source : String) -> CodegenModule {

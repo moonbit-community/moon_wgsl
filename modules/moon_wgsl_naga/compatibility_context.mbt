@@ -1,26 +1,30 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslNagaGeneratedImportProvenanceKind {
   ImportedSourceSymbol
   VirtualOverrideSymbol
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslNagaImportEdgeKind {
   FullModule
   AliasModule
   ItemBinding
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslNagaDeclarationKind {
   Type
   Constant
   Override
   GlobalVariable
   Function
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct WgslNagaGeneratedImportProvenance {
   generated_symbol_name : String
   rel_path : String
@@ -34,7 +38,7 @@ pub(all) struct WgslNagaGeneratedImportProvenance {
   source_start : Int32
   source_end : Int32
   composed_source_start : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn WgslNagaGeneratedImportProvenance::WgslNagaGeneratedImportProvenance(
@@ -75,13 +79,14 @@ pub fn WgslNagaGeneratedImportProvenance::generated_symbol_name(
 }
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslNagaImportArenaSymbol {
   priv kind : WgslNagaDeclarationKind
   priv source_symbol_name : String
   priv generated_symbol_name : String
   priv source_decl_rank : Int32
   priv source_order_rank : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn WgslNagaImportArenaSymbol::WgslNagaImportArenaSymbol(
@@ -136,6 +141,7 @@ pub fn WgslNagaImportArenaSymbol::source_order_rank(
 }
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslNagaImportArenaEvent {
   priv sequence : Int32
   priv importer_rel_path : String
@@ -145,7 +151,7 @@ pub struct WgslNagaImportArenaEvent {
   priv item_names : Array[String]
   priv kind : WgslNagaImportEdgeKind
   priv generated_symbols : Array[WgslNagaImportArenaSymbol]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn WgslNagaImportArenaEvent::WgslNagaImportArenaEvent(

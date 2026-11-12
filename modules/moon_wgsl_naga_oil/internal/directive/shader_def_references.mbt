@@ -1,10 +1,11 @@
 ///|
+#derive(Debug)
 pub struct WgslShaderDefReference {
   priv name : String
   priv start : Int32
   priv end : Int32
   priv delimited : Bool
-} derive(Debug)
+}
 
 ///|
 fn WgslShaderDefReference::WgslShaderDefReference(

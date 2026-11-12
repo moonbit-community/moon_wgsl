@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslShaderDefOperator {
   Equal
   NotEqual
@@ -7,7 +8,7 @@ pub(all) enum WgslShaderDefOperator {
   Less
   LessEqual
   Unknown(String)
-} derive(Eq, Debug)
+}
 
 ///|
 fn WgslShaderDefOperator::from_text(text : String) -> WgslShaderDefOperator {
@@ -23,11 +24,12 @@ fn WgslShaderDefOperator::from_text(text : String) -> WgslShaderDefOperator {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslShaderDefComparison {
   priv def : String
   priv operator : WgslShaderDefOperator
   priv value : String
-} derive(Debug)
+}
 
 ///|
 fn WgslShaderDefComparison::WgslShaderDefComparison(

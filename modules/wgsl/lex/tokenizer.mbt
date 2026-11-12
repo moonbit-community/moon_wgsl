@@ -13,22 +13,24 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 priv enum WgslTokenKind {
   Identifier
   Number
   Operator
   Punctuation
   Whitespace
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslToken {
   priv kind : WgslTokenKind
   priv text : String
   priv code : Int32
   priv pos : Int32
   priv end : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 fn WgslToken::new_text(

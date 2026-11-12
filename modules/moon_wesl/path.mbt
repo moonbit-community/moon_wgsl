@@ -13,17 +13,19 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Hash, Debug)
 pub(all) enum PathOrigin {
   Absolute
   Relative(Int32)
   Package(String)
-} derive(Eq, Hash, Debug)
+}
 
 ///|
+#derive(Eq, Hash, Debug)
 pub(all) struct ModulePath {
   origin : PathOrigin
   components : Array[String]
-} derive(Eq, Hash, Debug)
+}
 
 ///|
 pub(all) suberror ModulePathParseError {

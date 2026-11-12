@@ -13,31 +13,35 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct AttributeParseNode {
   name : String
   arguments : String?
   start_line : Int32
   end_line : Int32
   end_offset : Int32
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct AttributeParseDiagnostic {
   offset : Int32
   incomplete : Bool
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct AttributeParseSuccess {
   attributes : Array[AttributeParseNode]
   consumed_offset : Int32
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum AttributeParseResult {
   Parsed(AttributeParseSuccess)
   Failed(AttributeParseDiagnostic)
-} derive(Eq, Debug)
+}
 
 ///|
 priv enum AttributeLexResult {

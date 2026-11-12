@@ -64,11 +64,12 @@ pub fn ValidateError::message(self : ValidateError) -> String {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct SourcePosition {
   line : Int32
   column : Int32
   offset : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn SourcePosition::new(
@@ -80,10 +81,11 @@ pub fn SourcePosition::new(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct SourceSpan {
   start : SourcePosition
   end : SourcePosition
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn SourceSpan::new(
@@ -180,6 +182,7 @@ pub fn SourceSpan::from_line_range(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct DiagnosticDetail {
   source : String?
   output : String?
@@ -188,7 +191,7 @@ pub(all) struct DiagnosticDetail {
   declaration : String?
   span : SourceSpan?
   message : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn DiagnosticDetail::default() -> DiagnosticDetail {

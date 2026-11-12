@@ -13,35 +13,40 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ExpressionParseDiagnostic {
   offset : Int32
   incomplete : Bool
   message : String?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ExpressionParseResult {
   Parsed(ExpressionParseNode)
   Failed(ExpressionParseDiagnostic)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ExpressionTypeParseNode {
   path : Array[String]
   ident : String
   template_text : String?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ExpressionUnaryOperator {
   Negation
   LogicalNegation
   BitwiseComplement
   Indirection
   AddressOf
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ExpressionBinaryOperator {
   ShortCircuitOr
   ShortCircuitAnd
@@ -61,15 +66,17 @@ pub(all) enum ExpressionBinaryOperator {
   Multiplication
   Division
   Remainder
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ExpressionFunctionCallParseNode {
   callee : ExpressionTypeParseNode
   arguments : Array[ExpressionParseNode]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ExpressionParseNode {
   Literal(String)
   Bool(Bool)
@@ -80,13 +87,14 @@ pub(all) enum ExpressionParseNode {
   Unary(ExpressionUnaryOperator, ExpressionParseNode)
   Binary(ExpressionBinaryOperator, ExpressionParseNode, ExpressionParseNode)
   FunctionCall(ExpressionFunctionCallParseNode)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ExpressionPostfixSuffix {
   NamedComponent(String)
   Indexing(ExpressionParseNode)
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn ExpressionTypeParseNode::from_path(

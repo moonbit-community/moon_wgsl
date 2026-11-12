@@ -1,18 +1,21 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct WgslSourceFile {
   rel_path : String
   source : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslSourceCatalogEntry {
   rel_path : String
   symbol_name : String
   source_start : Int32
   source_end : Int32
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslSourceOriginKind {
   Type
   Constant
@@ -20,7 +23,7 @@ pub(all) enum WgslSourceOriginKind {
   GlobalVariable
   Function
   Other
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn WgslSourceCatalogEntry::WgslSourceCatalogEntry(
@@ -33,6 +36,7 @@ pub fn WgslSourceCatalogEntry::WgslSourceCatalogEntry(
 }
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslSourceOriginEntry {
   generated_symbol_name : String
   rel_path : String
@@ -40,7 +44,7 @@ pub struct WgslSourceOriginEntry {
   kind : WgslSourceOriginKind
   source_start : Int32
   source_end : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(

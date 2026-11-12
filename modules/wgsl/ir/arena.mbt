@@ -1,7 +1,8 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct TypeArena {
   items : Array[Type]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn TypeArena::TypeArena() -> TypeArena {
@@ -26,9 +27,10 @@ pub fn TypeArena::get(self : TypeArena, handle : Handle) -> Type? {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ConstantArena {
   items : Array[Constant]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn ConstantArena::ConstantArena() -> ConstantArena {
@@ -52,9 +54,10 @@ fn constant_arena_set(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct OverrideArena {
   items : Array[Override]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn OverrideArena::OverrideArena() -> OverrideArena {
@@ -78,9 +81,10 @@ pub fn OverrideArena::set(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct GlobalVariableArena {
   items : Array[GlobalVariable]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn GlobalVariableArena::GlobalVariableArena() -> GlobalVariableArena {
@@ -107,9 +111,10 @@ pub fn GlobalVariableArena::set(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct LocalVariableArena {
   items : Array[LocalVariable]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn LocalVariableArena::LocalVariableArena() -> LocalVariableArena {
@@ -136,18 +141,20 @@ fn LocalVariableArena::set(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ExpressionOrigin {
   SourceExpression
   FoldedLocalConstant
   RetainedSourceLetExpression
   SourceLocalConstInitializer
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ExpressionArena {
   items : Array[Expression]
   origins : Array[ExpressionOrigin]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn ExpressionArena::ExpressionArena() -> ExpressionArena {
@@ -211,9 +218,10 @@ fn ExpressionArena::truncate(self : ExpressionArena, length : Int32) -> Unit {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct FunctionArena {
   items : Array[Function]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn FunctionArena::FunctionArena() -> FunctionArena {
@@ -237,9 +245,10 @@ pub fn FunctionArena::set(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct DiagnosticFilterArena {
   items : Array[DiagnosticFilterNode]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn DiagnosticFilterArena::DiagnosticFilterArena() -> DiagnosticFilterArena {

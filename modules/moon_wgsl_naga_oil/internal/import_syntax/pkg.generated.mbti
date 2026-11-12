@@ -14,16 +14,18 @@ pub fn parse_wgsl_import_spec_is_empty_or_final_semicolon(String) -> Bool
 pub fn parse_wgsl_import_targets(String, String, Array[@contract.WgslImportTarget]) -> Unit raise ParseImportsError
 
 // Errors
+#derive(@debug.Debug)
 pub suberror ParseError {
   UnexpectedToken(Token, (Int32, Int32), Array[TokenKind])
   UnexpectedEndOfInput(Int32, Array[TokenKind])
-} derive(@debug.Debug)
+}
 
 pub(all) suberror ParseImportsError {
   Parse(String, Int32)
 }
 
 // Types and methods
+#derive(@debug.Debug)
 pub(all) enum Token {
   IDENT(String)
   AS
@@ -32,7 +34,7 @@ pub(all) enum Token {
   COMMA
   SEMI
   EOF
-} derive(@debug.Debug)
+}
 pub fn Token::kind(Self) -> TokenKind
 
 pub(all) enum TokenKind {

@@ -1,4 +1,5 @@
 ///|
+#derive(Debug)
 pub(all) enum Token {
   IDENT(String)
   VAR_TEMPLATE(String)
@@ -15,7 +16,7 @@ pub(all) enum Token {
   REQUIRES
   DIAGNOSTIC
   OTHER
-} derive(Debug)
+}
 
 ///|
 #deprecated("Use Debug::to_repr instead")

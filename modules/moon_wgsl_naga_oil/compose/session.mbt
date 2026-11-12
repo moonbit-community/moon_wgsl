@@ -215,13 +215,14 @@ priv struct WgslProcessedComposeModule {
 }
 
 ///|
+#derive(Eq)
 priv enum WgslProcessedDeclarationKind {
   SummaryType
   SummaryConstant
   SummaryOverride
   SummaryGlobalVariable
   SummaryFunction
-} derive(Eq)
+}
 
 ///|
 priv struct WgslProcessedDeclarationSummary {
@@ -230,10 +231,11 @@ priv struct WgslProcessedDeclarationSummary {
 }
 
 ///|
+#derive(Eq)
 priv enum WgslComposeBindingScope {
   QualifiedAliasBinding
   UnqualifiedItemBinding
-} derive(Eq)
+}
 
 ///|
 priv struct WgslComposeBinding {

@@ -13,34 +13,38 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum BindingParseKind {
   Alias
   Const
   Override
   Let
   Var
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct BindingParseNode {
   kind : BindingParseKind
   name : String?
   var_template : String?
   type_text : String?
   initializer : String?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct BindingParseDiagnostic {
   offset : Int32
   incomplete : Bool
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum BindingParseResult {
   Parsed(BindingParseNode)
   Failed(BindingParseDiagnostic)
-} derive(Eq, Debug)
+}
 
 ///|
 priv enum BindingLexResult {

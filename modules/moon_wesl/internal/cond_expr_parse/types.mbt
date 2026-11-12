@@ -13,25 +13,28 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum CondExprNode {
   Literal(Bool)
   Feature(String)
   Not(CondExprNode)
   And(CondExprNode, CondExprNode)
   Or(CondExprNode, CondExprNode)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct CondExprDiagnostic {
   offset : Int32
   incomplete : Bool
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum CondExprParseResult {
   Parsed(CondExprNode)
   Failed(CondExprDiagnostic)
-} derive(Eq, Debug)
+}
 
 ///|
 priv enum CondExprLexResult {

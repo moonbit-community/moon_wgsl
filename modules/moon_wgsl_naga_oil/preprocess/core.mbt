@@ -13,7 +13,8 @@
 // limitations under the License.
 
 ///|
-pub struct Preprocessor {} derive(Default)
+#derive(Default)
+pub struct Preprocessor {}
 
 ///|
 pub fn Preprocessor::default() -> Preprocessor {
@@ -33,11 +34,12 @@ pub suberror PreprocessError {
 }
 
 ///|
+#derive(Eq)
 priv enum ScopeLevel {
   Active
   PreviouslyActive
   NotActive
-} derive(Eq)
+}
 
 ///|
 priv struct Scope {

@@ -13,37 +13,42 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ModulePathParseOrigin {
   Absolute
   Relative(Int32)
   Package(String)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ModulePathParseNode {
   origin : ModulePathParseOrigin
   components : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ModulePathParseProblem {
   Empty
   MisplacedPackage
   MisplacedSelf
   MisplacedSuper
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ModulePathParseDiagnostic {
   offset : Int32
   problem : ModulePathParseProblem
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ModulePathParseResult {
   Parsed(ModulePathParseNode)
   Failed(ModulePathParseDiagnostic)
-} derive(Eq, Debug)
+}
 
 ///|
 priv enum ModulePathLexResult {

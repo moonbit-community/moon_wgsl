@@ -13,32 +13,36 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct FunctionParameterParseNode {
   name : String
   type_text : String
   attributes : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct FunctionParseNode {
   name : String
   generic_parameters : String?
   parameters : Array[FunctionParameterParseNode]
   return_type : String?
   body_text : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct FunctionParseDiagnostic {
   offset : Int32
   incomplete : Bool
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum FunctionParseResult {
   Parsed(FunctionParseNode)
   Failed(FunctionParseDiagnostic)
-} derive(Eq, Debug)
+}
 
 ///|
 priv enum FunctionLexResult {

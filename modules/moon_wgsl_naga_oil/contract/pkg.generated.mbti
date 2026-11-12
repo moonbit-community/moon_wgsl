@@ -11,47 +11,52 @@ import {
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct ComposableModuleDescriptor {
   source : String
   file_path : String
   as_name : String?
   additional_imports : Array[ImportDefinition]
   shader_defs : Map[String, ShaderDefValue]
-} derive(Eq, @debug.Debug)
+}
 pub fn ComposableModuleDescriptor::default() -> Self
 pub fn ComposableModuleDescriptor::equal(Self, Self) -> Bool
 pub fn ComposableModuleDescriptor::not_equal(Self, Self) -> Bool
 pub fn ComposableModuleDescriptor::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct DiagnosticDirective {
   severity : String
   rule : String
-} derive(Eq, @debug.Debug)
+}
 pub fn DiagnosticDirective::DiagnosticDirective(String, String) -> Self
 pub fn DiagnosticDirective::equal(Self, Self) -> Bool
 pub fn DiagnosticDirective::not_equal(Self, Self) -> Bool
 pub fn DiagnosticDirective::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct EnableDirective {
   extensions : Array[String]
-} derive(Eq, @debug.Debug)
+}
 pub fn EnableDirective::EnableDirective(Array[String]) -> Self
 pub fn EnableDirective::equal(Self, Self) -> Bool
 pub fn EnableDirective::not_equal(Self, Self) -> Bool
 pub fn EnableDirective::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct ImportDefWithOffset {
   definition : ImportDefinition
-} derive(Eq, @debug.Debug)
+}
 pub fn ImportDefWithOffset::ImportDefWithOffset(ImportDefinition) -> Self
 pub fn ImportDefWithOffset::equal(Self, Self) -> Bool
 pub fn ImportDefWithOffset::not_equal(Self, Self) -> Bool
 pub fn ImportDefWithOffset::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct ImportDefinition {
   import_path : String
   items : Array[String]
-} derive(Eq, @debug.Debug)
+}
 pub fn ImportDefinition::equal(Self, Self) -> Bool
 pub fn ImportDefinition::not_equal(Self, Self) -> Bool
 pub fn ImportDefinition::to_repr(Self) -> @debug.Repr
@@ -88,28 +93,31 @@ pub struct PreprocessorMetaData {
 }
 pub fn PreprocessorMetaData::PreprocessorMetaData(String?, Array[ImportDefWithOffset], Map[String, ShaderDefValue], @set.Set[String], WgslDirectives, String) -> Self
 
+#derive(Eq, @debug.Debug)
 pub struct RequiresDirective {
   extensions : Array[String]
-} derive(Eq, @debug.Debug)
+}
 pub fn RequiresDirective::RequiresDirective(Array[String]) -> Self
 pub fn RequiresDirective::equal(Self, Self) -> Bool
 pub fn RequiresDirective::not_equal(Self, Self) -> Bool
 pub fn RequiresDirective::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ShaderDefValue {
   Bool(Bool)
   Int(Int32)
   UInt(UInt32)
   Raw(String)
-} derive(Eq, @debug.Debug)
+}
 pub fn ShaderDefValue::equal(Self, Self) -> Bool
 pub fn ShaderDefValue::not_equal(Self, Self) -> Bool
 pub fn ShaderDefValue::to_repr(Self) -> @debug.Repr
 pub fn ShaderDefValue::value_as_string(Self) -> String
 
+#derive(Eq, @debug.Debug)
 pub struct WgslComposeAliasSymbolIdentity {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslComposeAliasSymbolIdentity::WgslComposeAliasSymbolIdentity(String, String, String) -> Self
 pub fn WgslComposeAliasSymbolIdentity::alias_name(Self) -> String
 pub fn WgslComposeAliasSymbolIdentity::equal(Self, Self) -> Bool
@@ -118,21 +126,23 @@ pub fn WgslComposeAliasSymbolIdentity::not_equal(Self, Self) -> Bool
 pub fn WgslComposeAliasSymbolIdentity::symbol(Self) -> WgslComposeSymbolIdentity
 pub fn WgslComposeAliasSymbolIdentity::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct WgslComposeOptions {
   defines : Map[String, Bool]
   value_defines : Map[String, ShaderDefValue]
   redirects : Array[WgslSymbolRedirect]
   additional_imports : Array[ImportDefinition]
   immediate_specializations : Array[WgslImmediateSpecialization]
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslComposeOptions::default() -> Self
 pub fn WgslComposeOptions::equal(Self, Self) -> Bool
 pub fn WgslComposeOptions::not_equal(Self, Self) -> Bool
 pub fn WgslComposeOptions::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct WgslComposeSymbolIdentity {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslComposeSymbolIdentity::WgslComposeSymbolIdentity(String, String) -> Self
 pub fn WgslComposeSymbolIdentity::equal(Self, Self) -> Bool
 pub fn WgslComposeSymbolIdentity::key(Self) -> String
@@ -141,30 +151,33 @@ pub fn WgslComposeSymbolIdentity::original_name(Self) -> String
 pub fn WgslComposeSymbolIdentity::rel_path(Self) -> String
 pub fn WgslComposeSymbolIdentity::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct WgslDiagnostic {
   severity : WgslDiagnosticSeverity
   message : String
   rel_path : String?
   symbol_name : String?
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslDiagnostic::WgslDiagnostic(WgslDiagnosticSeverity, String, String?, String?) -> Self
 pub fn WgslDiagnostic::equal(Self, Self) -> Bool
 pub fn WgslDiagnostic::not_equal(Self, Self) -> Bool
 pub fn WgslDiagnostic::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum WgslDiagnosticSeverity {
   Warn
   Error
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslDiagnosticSeverity::equal(Self, Self) -> Bool
 pub fn WgslDiagnosticSeverity::not_equal(Self, Self) -> Bool
 pub fn WgslDiagnosticSeverity::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct WgslDirectives {
   enables : Array[EnableDirective]
   requires : Array[RequiresDirective]
   diagnostics : Array[DiagnosticDirective]
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslDirectives::default() -> Self
 pub fn WgslDirectives::equal(Self, Self) -> Bool
 pub fn WgslDirectives::is_empty(Self) -> Bool
@@ -172,20 +185,22 @@ pub fn WgslDirectives::not_equal(Self, Self) -> Bool
 pub fn WgslDirectives::to_repr(Self) -> @debug.Repr
 pub fn WgslDirectives::to_wgsl_string(Self) -> String
 
+#derive(Eq, @debug.Debug)
 pub(all) struct WgslExportOptions {
   root_items : Array[String]
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslExportOptions::equal(Self, Self) -> Bool
 pub fn WgslExportOptions::not_equal(Self, Self) -> Bool
 pub fn WgslExportOptions::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct WgslExportOutput {
   source : String
   source_catalog : Array[WgslSourceCatalogEntry]
   source_origins : Array[WgslSourceOriginEntry]
   source_map : Array[WgslSourceMapEntry]
   diagnostics : Array[WgslDiagnostic]
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslExportOutput::WgslExportOutput(String, Array[WgslSourceCatalogEntry], Array[WgslSourceOriginEntry], Array[WgslSourceMapEntry], Array[WgslDiagnostic]) -> Self
 pub fn WgslExportOutput::diagnostics(Self) -> Array[WgslDiagnostic]
 pub fn WgslExportOutput::equal(Self, Self) -> Bool
@@ -196,27 +211,30 @@ pub fn WgslExportOutput::source_map(Self) -> Array[WgslSourceMapEntry]
 pub fn WgslExportOutput::source_origins(Self) -> Array[WgslSourceOriginEntry]
 pub fn WgslExportOutput::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct WgslImmediateSpecialization {
   rel_path : String
   global_name : String
   field_values : Map[String, ShaderDefValue]
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslImmediateSpecialization::WgslImmediateSpecialization(String, String, Map[String, ShaderDefValue]) -> Self
 pub fn WgslImmediateSpecialization::equal(Self, Self) -> Bool
 pub fn WgslImmediateSpecialization::not_equal(Self, Self) -> Bool
 pub fn WgslImmediateSpecialization::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct WgslImportTarget {
   raw_path : String
   alias_name : String
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslImportTarget::equal(Self, Self) -> Bool
 pub fn WgslImportTarget::not_equal(Self, Self) -> Bool
 pub fn WgslImportTarget::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct WgslReferencePath {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslReferencePath::equal(Self, Self) -> Bool
 pub fn WgslReferencePath::from_segments(Array[String]) -> Self?
 pub fn WgslReferencePath::from_text(String) -> Self?
@@ -226,9 +244,10 @@ pub fn WgslReferencePath::segments(Self) -> Array[String]
 pub fn WgslReferencePath::text(Self) -> String
 pub fn WgslReferencePath::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct WgslResolvedImportModule {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslResolvedImportModule::WgslResolvedImportModule(String, String) -> Self
 pub fn WgslResolvedImportModule::equal(Self, Self) -> Bool
 pub fn WgslResolvedImportModule::is_empty(Self) -> Bool
@@ -237,34 +256,38 @@ pub fn WgslResolvedImportModule::not_equal(Self, Self) -> Bool
 pub fn WgslResolvedImportModule::rel_path(Self) -> String
 pub fn WgslResolvedImportModule::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct WgslSourceCatalogEntry {
   rel_path : String
   symbol_name : String
   source_start : Int32
   source_end : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslSourceCatalogEntry::WgslSourceCatalogEntry(String, String, Int32, Int32) -> Self
 pub fn WgslSourceCatalogEntry::equal(Self, Self) -> Bool
 pub fn WgslSourceCatalogEntry::not_equal(Self, Self) -> Bool
 pub fn WgslSourceCatalogEntry::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct WgslSourceFile {
   rel_path : String
   source : String
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslSourceFile::equal(Self, Self) -> Bool
 pub fn WgslSourceFile::not_equal(Self, Self) -> Bool
 pub fn WgslSourceFile::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct WgslSourceMapEntry {
   rel_path : String
   symbol_name : String?
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslSourceMapEntry::WgslSourceMapEntry(String, String?) -> Self
 pub fn WgslSourceMapEntry::equal(Self, Self) -> Bool
 pub fn WgslSourceMapEntry::not_equal(Self, Self) -> Bool
 pub fn WgslSourceMapEntry::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct WgslSourceOriginEntry {
   generated_symbol_name : String
   rel_path : String
@@ -272,7 +295,7 @@ pub struct WgslSourceOriginEntry {
   kind : WgslSourceOriginKind
   source_start : Int32
   source_end : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(String, String, String, WgslSourceOriginKind, Int32, Int32) -> Self
 pub fn WgslSourceOriginEntry::equal(Self, Self) -> Bool
 pub fn WgslSourceOriginEntry::generated_symbol_name(Self) -> String
@@ -282,6 +305,7 @@ pub fn WgslSourceOriginEntry::rel_path(Self) -> String
 pub fn WgslSourceOriginEntry::source_symbol_name(Self) -> String
 pub fn WgslSourceOriginEntry::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum WgslSourceOriginKind {
   Type
   Constant
@@ -289,15 +313,16 @@ pub(all) enum WgslSourceOriginKind {
   GlobalVariable
   Function
   Other
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslSourceOriginKind::equal(Self, Self) -> Bool
 pub fn WgslSourceOriginKind::not_equal(Self, Self) -> Bool
 pub fn WgslSourceOriginKind::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct WgslSymbolRedirect {
   from_name : String
   to_name : String
-} derive(Eq, @debug.Debug)
+}
 pub fn WgslSymbolRedirect::equal(Self, Self) -> Bool
 pub fn WgslSymbolRedirect::not_equal(Self, Self) -> Bool
 pub fn WgslSymbolRedirect::to_repr(Self) -> @debug.Repr

@@ -1,9 +1,10 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct WgslSourceScanOptions {
   recursive : Bool
   extensions : Array[String]
   exclude_prefixes : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn WgslSourceScanOptions::default() -> WgslSourceScanOptions {

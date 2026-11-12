@@ -1,17 +1,19 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslDirectiveKind {
   Enable
   Requires
   Diagnostic
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct WgslDirectiveTail {
   priv text : String
   priv start : Int32
   priv end : Int32
   priv has_required_separator : Bool
-} derive(Debug)
+}
 
 ///|
 pub fn WgslDirectiveTail::WgslDirectiveTail(
@@ -49,13 +51,14 @@ fn WgslDirectiveTail::end(self : WgslDirectiveTail) -> Int32 {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslDirective {
   priv kind : WgslDirectiveKind
   priv name : WgslIdent
   priv tail : WgslDirectiveTail
   priv start : Int32
   priv end : Int32
-} derive(Debug)
+}
 
 ///|
 pub fn WgslDirective::WgslDirective(
@@ -114,6 +117,7 @@ pub fn WgslDirective::tail_end(self : WgslDirective) -> Int32 {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslGlobalDeclKind {
   Directive
   Function
@@ -125,14 +129,15 @@ pub(all) enum WgslGlobalDeclKind {
   ConstAssert
   Trivia
   Unknown
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct WgslIdent {
   priv name : String
   priv start : Int32
   priv end : Int32
-} derive(Debug)
+}
 
 ///|
 pub fn WgslIdent::WgslIdent(
@@ -159,6 +164,7 @@ pub fn WgslIdent::end(self : WgslIdent) -> Int32 {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslExprOperator {
   LogicalOr
   LogicalAnd
@@ -181,7 +187,7 @@ pub(all) enum WgslExprOperator {
   Not
   Complement
   Unknown(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn WgslExprOperator::from_text(text : String) -> WgslExprOperator {
@@ -255,6 +261,7 @@ pub fn WgslExprOperator::binary_precedence(self : WgslExprOperator) -> Int32 {
 }
 
 ///|
+#derive(Debug)
 pub(all) enum WgslExprTokenKind {
   Identifier
   BoolLiteral(Bool)
@@ -262,24 +269,27 @@ pub(all) enum WgslExprTokenKind {
   Operator(WgslExprOperator)
   Punctuation(Int32)
   Unknown
-} derive(Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslNumericLiteralBase {
   Decimal
   Hexadecimal
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslNumericLiteralSuffix {
   NoSuffix
   I32Suffix
   U32Suffix
   F32Suffix
   F16Suffix
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslNumericLiteralCategory {
   AbstractIntLiteral
   I32Literal
@@ -288,23 +298,25 @@ pub(all) enum WgslNumericLiteralCategory {
   F32Literal
   F16Literal
   InvalidNumericLiteral
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct WgslNumericLiteral {
   raw_text : String
   base : WgslNumericLiteralBase
   suffix : WgslNumericLiteralSuffix
   category : WgslNumericLiteralCategory
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct WgslExprToken {
   priv kind : WgslExprTokenKind
   priv text : String
   priv start : Int32
   priv end : Int32
-} derive(Debug)
+}
 
 ///|
 pub fn WgslExprToken::WgslExprToken(
@@ -347,6 +359,7 @@ pub fn WgslExprToken::numeric_literal(
 }
 
 ///|
+#derive(Debug)
 pub(all) enum WgslExprNodeKind {
   Identifier(WgslIdent)
   Literal(WgslExprToken)
@@ -362,14 +375,15 @@ pub(all) enum WgslExprNodeKind {
   Index(WgslExprNode, WgslExprNode)
   Group(WgslExprNode)
   Sequence(Array[WgslExprNode])
-} derive(Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct WgslExprNode {
   priv kind : WgslExprNodeKind
   priv start : Int32
   priv end : Int32
-} derive(Debug)
+}
 
 ///|
 pub fn WgslExprNode::WgslExprNode(
@@ -396,13 +410,14 @@ pub fn WgslExprNode::end(self : WgslExprNode) -> Int32 {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslExprRef {
   priv tokens : Array[WgslExprToken]
   priv identifiers : Array[WgslIdent]
   priv root : WgslExprNode?
   priv start : Int32
   priv end : Int32
-} derive(Debug)
+}
 
 ///|
 pub fn WgslExprRef::WgslExprRef(
@@ -441,12 +456,13 @@ pub fn WgslExprRef::end(self : WgslExprRef) -> Int32 {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslAttribute {
   priv name : WgslIdent
   priv start : Int32
   priv end : Int32
   priv arguments_ref : WgslExprRef?
-} derive(Debug)
+}
 
 ///|
 pub fn WgslAttribute::WgslAttribute(
@@ -479,25 +495,28 @@ pub fn WgslAttribute::arguments_ref(self : WgslAttribute) -> WgslExprRef? {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslTypeAtomKind {
   Identifier
   Numeric
   Unknown
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct WgslTypeAtom {
   priv kind : WgslTypeAtomKind
   priv text : String
   priv start : Int32
   priv end : Int32
-} derive(Debug)
+}
 
 ///|
+#derive(Debug)
 pub(all) enum WgslTypeArgument {
   Type(WgslTypeRef)
   Expression(WgslExprRef)
-} derive(Debug)
+}
 
 ///|
 pub fn WgslTypeAtom::WgslTypeAtom(
@@ -538,13 +557,14 @@ pub fn WgslTypeAtom::identifier(self : WgslTypeAtom) -> WgslIdent? {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslTypeRef {
   priv atom : WgslTypeAtom
   priv arguments : Array[WgslTypeRef]
   priv template_arguments : Array[WgslTypeArgument]
   priv start : Int32
   priv end : Int32
-} derive(Debug)
+}
 
 ///|
 pub fn WgslTypeRef::WgslTypeRef(
@@ -637,13 +657,14 @@ pub fn WgslTypeRef::end(self : WgslTypeRef) -> Int32 {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslFunctionArgument {
   priv attributes : Array[WgslAttribute]
   priv name : WgslIdent
   priv start : Int32
   priv end : Int32
   priv ty_ref : WgslTypeRef?
-} derive(Debug)
+}
 
 ///|
 pub fn WgslFunctionArgument::WgslFunctionArgument(
@@ -686,12 +707,13 @@ pub fn WgslFunctionArgument::ty_ref(
 }
 
 ///|
+#derive(Debug)
 pub struct WgslFunctionResult {
   priv attributes : Array[WgslAttribute]
   priv start : Int32
   priv end : Int32
   priv ty_ref : WgslTypeRef?
-} derive(Debug)
+}
 
 ///|
 pub fn WgslFunctionResult::WgslFunctionResult(
@@ -726,6 +748,7 @@ pub fn WgslFunctionResult::ty_ref(self : WgslFunctionResult) -> WgslTypeRef? {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslStatementKind {
   Empty
   LocalDeclaration
@@ -748,23 +771,25 @@ pub(all) enum WgslStatementKind {
   Decrement
   FunctionCall
   Expression
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslLocalDeclarationKind {
   Var
   Let
   Const
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct WgslLocalDeclaration {
   priv kind : WgslLocalDeclarationKind
   priv name : WgslIdent
   priv template_list : Array[WgslTypeRef]
   priv ty_ref : WgslTypeRef?
   priv initializer_ref : WgslExprRef?
-} derive(Debug)
+}
 
 ///|
 pub fn WgslLocalDeclaration::WgslLocalDeclaration(
@@ -811,6 +836,7 @@ pub fn WgslLocalDeclaration::initializer_ref(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslStatementExpressionRole {
   Condition
   ReturnValue
@@ -827,13 +853,14 @@ pub(all) enum WgslStatementExpressionRole {
   UpdateTarget
   FunctionCallValue
   ExpressionValue
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct WgslStatementExpression {
   priv role : WgslStatementExpressionRole
   priv expression : WgslExprRef
-} derive(Debug)
+}
 
 ///|
 pub fn WgslStatementExpression::WgslStatementExpression(
@@ -858,10 +885,11 @@ pub fn WgslStatementExpression::expression(
 }
 
 ///|
+#derive(Debug)
 pub(all) enum WgslCaseSelector {
   DefaultSelector
   ExpressionSelector(WgslExprRef)
-} derive(Debug)
+}
 
 ///|
 pub fn WgslCaseSelector::expression(self : WgslCaseSelector) -> WgslExprRef? {
@@ -872,6 +900,7 @@ pub fn WgslCaseSelector::expression(self : WgslCaseSelector) -> WgslExprRef? {
 }
 
 ///|
+#derive(Debug)
 pub(all) enum WgslStatementPayload {
   Empty
   LocalDeclaration(Array[WgslLocalDeclaration])
@@ -893,9 +922,10 @@ pub(all) enum WgslStatementPayload {
   Decrement(WgslExprRef?)
   FunctionCall(WgslExprRef?)
   Expression(WgslExprRef?)
-} derive(Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct WgslStatement {
   priv kind : WgslStatementKind
   priv attributes : Array[WgslAttribute]
@@ -906,7 +936,7 @@ pub struct WgslStatement {
   priv expression_refs : Array[WgslExprRef]
   priv expressions : Array[WgslStatementExpression]
   priv invalid_expression : Bool
-} derive(Debug)
+}
 
 ///|
 pub fn WgslStatement::WgslStatement(
@@ -987,11 +1017,12 @@ pub fn WgslStatement::has_invalid_expression(self : WgslStatement) -> Bool {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslBlock {
   priv start : Int32
   priv end : Int32
   priv statements : Array[WgslStatement]
-} derive(Debug)
+}
 
 ///|
 pub fn WgslBlock::WgslBlock(
@@ -1018,12 +1049,14 @@ pub fn WgslBlock::statements(self : WgslBlock) -> Array[WgslStatement] {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslFunctionQualifier {
   Virtual
   Override
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct WgslFunction {
   priv attributes : Array[WgslAttribute]
   priv qualifier : WgslFunctionQualifier?
@@ -1036,7 +1069,7 @@ pub struct WgslFunction {
   priv result : WgslFunctionResult?
   priv body_attributes : Array[WgslAttribute]
   priv body : WgslBlock
-} derive(Debug)
+}
 
 ///|
 pub fn WgslFunction::WgslFunction(
@@ -1127,13 +1160,14 @@ pub fn WgslFunction::body(self : WgslFunction) -> WgslBlock {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslStructMember {
   priv attributes : Array[WgslAttribute]
   priv name : WgslIdent
   priv start : Int32
   priv end : Int32
   priv ty_ref : WgslTypeRef?
-} derive(Debug)
+}
 
 ///|
 pub fn WgslStructMember::WgslStructMember(
@@ -1174,11 +1208,12 @@ pub fn WgslStructMember::ty_ref(self : WgslStructMember) -> WgslTypeRef? {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslStruct {
   priv attributes : Array[WgslAttribute]
   priv name : WgslIdent
   priv members : Array[WgslStructMember]
-} derive(Debug)
+}
 
 ///|
 pub fn WgslStruct::WgslStruct(
@@ -1205,13 +1240,14 @@ pub fn WgslStruct::members(self : WgslStruct) -> Array[WgslStructMember] {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslGlobalVariable {
   priv attributes : Array[WgslAttribute]
   priv name : WgslIdent
   priv template_list : Array[WgslTypeRef]
   priv ty_ref : WgslTypeRef?
   priv initializer_ref : WgslExprRef?
-} derive(Debug)
+}
 
 ///|
 pub fn WgslGlobalVariable::WgslGlobalVariable(
@@ -1256,11 +1292,12 @@ pub fn WgslGlobalVariable::initializer_ref(
 }
 
 ///|
+#derive(Debug)
 pub struct WgslConst {
   priv name : WgslIdent
   priv ty_ref : WgslTypeRef?
   priv initializer_ref : WgslExprRef?
-} derive(Debug)
+}
 
 ///|
 pub fn WgslConst::WgslConst(
@@ -1287,12 +1324,13 @@ pub fn WgslConst::initializer_ref(self : WgslConst) -> WgslExprRef? {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslOverride {
   priv attributes : Array[WgslAttribute]
   priv name : WgslIdent
   priv ty_ref : WgslTypeRef?
   priv initializer_ref : WgslExprRef?
-} derive(Debug)
+}
 
 ///|
 pub fn WgslOverride::WgslOverride(
@@ -1325,10 +1363,11 @@ pub fn WgslOverride::initializer_ref(self : WgslOverride) -> WgslExprRef? {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslTypeAlias {
   priv name : WgslIdent
   priv ty_ref : WgslTypeRef?
-} derive(Debug)
+}
 
 ///|
 pub fn WgslTypeAlias::WgslTypeAlias(
@@ -1349,6 +1388,7 @@ pub fn WgslTypeAlias::ty_ref(self : WgslTypeAlias) -> WgslTypeRef? {
 }
 
 ///|
+#derive(Debug)
 pub(all) enum WgslGlobalDeclData {
   Directive(WgslDirective)
   Function(WgslFunction)
@@ -1359,15 +1399,16 @@ pub(all) enum WgslGlobalDeclData {
   TypeAlias(WgslTypeAlias)
   ConstAssert(WgslExprRef)
   Raw
-} derive(Debug)
+}
 
 ///|
+#derive(Debug)
 pub struct WgslGlobalDecl {
   priv kind : WgslGlobalDeclKind
   priv data : WgslGlobalDeclData
   priv start : Int32
   priv end : Int32
-} derive(Debug)
+}
 
 ///|
 pub fn WgslGlobalDecl::WgslGlobalDecl(
@@ -1418,9 +1459,10 @@ pub fn WgslGlobalDecl::end(self : WgslGlobalDecl) -> Int32 {
 }
 
 ///|
+#derive(Debug)
 pub struct WgslTranslationUnit {
   priv declarations : Array[WgslGlobalDecl]
-} derive(Debug)
+}
 
 ///|
 pub fn WgslTranslationUnit::WgslTranslationUnit(

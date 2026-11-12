@@ -1,17 +1,20 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum ConservativeDepth {
   GreaterEqual
   LessEqual
   Unchanged
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum EarlyDepthTest {
   Force
   Allow(ConservativeDepth)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ShaderStage {
   Vertex
   Task
@@ -22,9 +25,10 @@ pub(all) enum ShaderStage {
   Miss
   AnyHit
   ClosestHit
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum AddressSpace {
   Function
   Private
@@ -36,9 +40,10 @@ pub(all) enum AddressSpace {
   TaskPayload
   RayPayload
   IncomingRayPayload
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum BuiltIn {
   PrimitiveIndex
   Position(Bool)
@@ -89,14 +94,15 @@ pub(all) enum BuiltIn {
   ObjectToWorld
   WorldToObject
   HitKind
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum VectorSize {
   Bi
   Tri
   Quad
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn VectorSize::width(self : VectorSize) -> Int32 {
@@ -108,12 +114,14 @@ pub fn VectorSize::width(self : VectorSize) -> Int32 {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum CooperativeSize {
   Eight
   Sixteen
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ScalarKind {
   Sint
   Uint
@@ -121,20 +129,22 @@ pub(all) enum ScalarKind {
   Bool
   AbstractInt
   AbstractFloat
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum CooperativeRole {
   A
   B
   C
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Scalar {
   kind : ScalarKind
   width : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Scalar::Scalar(kind : ScalarKind, width : Int32) -> Scalar {
@@ -142,38 +152,43 @@ pub fn Scalar::Scalar(kind : ScalarKind, width : Int32) -> Scalar {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ArraySize {
   Constant(Int32)
   Pending(Handle)
   Dynamic
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Interpolation {
   Perspective
   Linear
   Flat
   PerVertex
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Sampling {
   Center
   Centroid
   Sample
   First
   Either
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ImageDimension {
   D1
   D2
   D3
   Cube
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum StorageFormat {
   R8Unorm
   R8Snorm
@@ -216,23 +231,26 @@ pub(all) enum StorageFormat {
   Rg16Snorm
   Rgba16Unorm
   Rgba16Snorm
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ImageClass {
   Sampled(ScalarKind, Bool)
   Depth(Bool)
   External
   Storage(StorageFormat, StorageAccess)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Binding {
   BuiltIn(BuiltIn)
   Location(Int32, Interpolation?, Sampling?, Int32?, Bool)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StructMember {
   name : String?
   ty : Handle
@@ -240,15 +258,17 @@ pub(all) struct StructMember {
   offset : Int32
   size : Int32?
   align : Int32?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Type {
   name : String?
   inner : TypeInner
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum TypeInner {
   Scalar(Scalar)
   Vector(VectorSize, Scalar)
@@ -265,16 +285,18 @@ pub(all) enum TypeInner {
   AccelerationStructure(Bool)
   RayQuery(Bool)
   BindingArray(Handle, ArraySize)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum PredeclaredType {
   AtomicCompareExchangeWeakResult(Scalar)
   ModfResult(VectorSize?, Scalar)
   FrexpResult(VectorSize?, Scalar)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct SpecialTypes {
   ray_desc : Handle?
   ray_intersection : Handle?
@@ -282,7 +304,7 @@ pub(all) struct SpecialTypes {
   external_texture_params : Handle?
   external_texture_transfer_function : Handle?
   predeclared_types : Array[(PredeclaredType, Handle)]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn SpecialTypes::SpecialTypes() -> SpecialTypes {

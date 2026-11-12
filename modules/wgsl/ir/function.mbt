@@ -1,39 +1,45 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum SwitchCaseLabelStyle {
   Typed
   SourceAbstractInt
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum SwitchValue {
   I32(Int32, SwitchCaseLabelStyle)
   U32(UInt32, SwitchCaseLabelStyle)
   Default
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct SwitchCase {
   value : SwitchValue
   body : Block
   fall_through : Bool
   constant_dependencies : Array[Handle]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum RayQueryFunction {
   Initialize(Handle, Handle)
   Proceed(Handle)
   GenerateIntersection(Handle)
   ConfirmIntersection
   Terminate
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum RayPipelineFunction {
   TraceRay(Handle, Handle, Handle)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Statement {
   Declare(Handle)
   Emit(HandleRange)
@@ -67,12 +73,13 @@ pub(all) enum Statement {
     Handle
   )
   CooperativeStore(Handle, CooperativeData)
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Block {
   statements : Array[Statement]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Block::Block() -> Block {
@@ -85,26 +92,30 @@ pub fn Block::push(self : Block, statement : Statement) -> Unit {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct FunctionArgument {
   name : String?
   ty : Handle
   binding : Binding?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct FunctionResult {
   ty : Handle
   binding : Binding?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct NamedExpression {
   handle : Handle
   name : String
   ty : Handle
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Function {
   name : String?
   source_start : Int32
@@ -115,7 +126,7 @@ pub(all) struct Function {
   named_expressions : Array[NamedExpression]
   body : Block
   diagnostic_filter_leaf : Handle?
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn Function::Function(name : String?) -> Function {
@@ -175,6 +186,7 @@ fn wgsl_ir_function_replace_named_expression(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct EntryPoint {
   name : String
   source_start : Int32
@@ -186,9 +198,10 @@ pub(all) struct EntryPoint {
   mesh_info : MeshStageInfo?
   task_payload : Handle?
   incoming_ray_payload : Handle?
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct MeshStageInfo {
   topology : MeshOutputTopology
   max_vertices : Int32
@@ -198,14 +211,15 @@ pub(all) struct MeshStageInfo {
   vertex_output_type : Handle
   primitive_output_type : Handle
   output_variable : Handle
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum MeshOutputTopology {
   Points
   Lines
   Triangles
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Block with Debug::{to_repr}

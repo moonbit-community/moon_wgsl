@@ -1,11 +1,12 @@
 ///|
+#derive(Debug)
 pub(all) enum Token {
   SEGMENT(String)
   PACKAGE
   SELF
   SUPER
   DOUBLE_COLON
-} derive(Debug)
+}
 
 ///|
 #deprecated("Use Debug::to_repr instead")

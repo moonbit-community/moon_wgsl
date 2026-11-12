@@ -13,13 +13,14 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ComposableModuleDescriptor {
   source : String
   file_path : String
   as_name : String?
   additional_imports : Array[ImportDefinition]
   shader_defs : Map[String, ShaderDefValue]
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn ComposableModuleDescriptor::default() -> ComposableModuleDescriptor {

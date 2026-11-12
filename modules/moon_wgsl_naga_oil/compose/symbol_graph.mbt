@@ -1,14 +1,16 @@
 ///|
+#derive(Eq, Debug)
 pub struct WgslComposeCanonicalFinalNameEntry {
   priv identity : WgslComposeSymbolIdentity
   priv final_name : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslComposeAliasFinalNameEntry {
   priv identity : WgslComposeAliasSymbolIdentity
   priv final_name : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub struct WgslComposeFinalNameTable {
@@ -19,22 +21,25 @@ pub struct WgslComposeFinalNameTable {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslComposeImportEdgeKind {
   FullModule
   AliasModule
   ItemBinding
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum WgslComposeDeclarationKind {
   Type
   Constant
   Override
   GlobalVariable
   Function
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslComposeImportEdge {
   priv importer_rel_path : String
   priv target_rel_path : String
@@ -42,18 +47,20 @@ pub struct WgslComposeImportEdge {
   priv alias_name : String
   priv item_name : String
   priv kind : WgslComposeImportEdgeKind
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslComposeImportArenaSymbol {
   priv kind : WgslComposeDeclarationKind
   priv source_symbol_name : String
   priv generated_symbol_name : String
   priv source_decl_rank : Int32
   priv source_order_rank : Int32
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslComposeImportArenaEvent {
   priv sequence : Int32
   priv importer_rel_path : String
@@ -63,12 +70,13 @@ pub struct WgslComposeImportArenaEvent {
   priv item_names : Array[String]
   priv kind : WgslComposeImportEdgeKind
   priv generated_symbols : Array[WgslComposeImportArenaSymbol]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub struct WgslComposeSymbolNode {
   priv identity : WgslComposeSymbolIdentity
-} derive(Eq, Debug)
+}
 
 ///|
 pub struct WgslComposeLinkGraph {

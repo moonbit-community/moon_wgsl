@@ -13,6 +13,7 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum StatementParseKind {
   Empty
   Block
@@ -37,30 +38,34 @@ pub(all) enum StatementParseKind {
   Decrement
   Call
   Other
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StatementParseNode {
   kind : StatementParseKind
   source : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct FunctionBodyParseNode {
   statements : Array[StatementParseNode]
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StatementParseDiagnostic {
   offset : Int32
   incomplete : Bool
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum StatementParseResult {
   Parsed(FunctionBodyParseNode)
   Failed(StatementParseDiagnostic)
-} derive(Eq, Debug)
+}
 
 ///|
 priv enum StatementLexResult {

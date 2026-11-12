@@ -13,22 +13,25 @@
 // limitations under the License.
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct TopLevelItemSpan {
   start_offset : Int32
   end_offset : Int32
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct TopLevelItemDiagnostic {
   offset : Int32
   incomplete : Bool
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum TopLevelItemParseResult {
   Parsed(Array[TopLevelItemSpan])
   Failed(TopLevelItemDiagnostic)
-} derive(Eq, Debug)
+}
 
 ///|
 priv enum TopLevelItemLexResult {
